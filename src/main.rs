@@ -55,8 +55,8 @@ impl Interpreter{
 	}
 
 	pub fn run(&mut self, code:String){
-		let mut scanner = lex::Scanner::new(code);
-		let tokens = scanner.tokenize();
+		let mut scanner = lex::Scanner::new();
+		let tokens = scanner.tokenize(code);
 		for t in &tokens{
 			println!("{:?}",&t);
 		}		
