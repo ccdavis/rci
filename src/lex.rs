@@ -39,6 +39,7 @@ impl Token{
 }
 #[derive(Clone,Debug)]
 pub struct Scanner {		
+	text:String,
 	finished:bool,
 	start: usize,
 	current: usize,
@@ -48,8 +49,8 @@ pub struct Scanner {
 
 impl Scanner{
 
-	pub fn new()->Self{
-		Self {finished:false, start:0, current:0, line:1, column:0}
+	pub fn new(script:String)->Self{	
+		Self {text: script, finished:false, start:0, current:0, line:1, column:0}
 	}
 	
 	// place-holder
@@ -61,9 +62,27 @@ impl Scanner{
 		self.finished
 	}
 	
-	pub fn tokenize(&mut self, input:String)->Vec<Token>{
+	pub fn tokenize(&mut self)->Vec<Token>{
 		let mut tokens:Vec<Token> = Vec::new();
-		let mut source = input.chars();
+
+		// The chars() iterator borrows the string data, but string is mutable 
+		// and so is 'self' here. So we can't do self.text.chars().__rust_force_expr!
+		// Also, you simply cannot make an iterator like std::str::chars and the string 
+		// it iterates over owned by the same struct
+		//
+		// We want to hang on to the original text we're parsing because we want
+		// to retrieve lines at random to present in error messages.
+		//
+		// See  https://stackoverflow.com/questions/47193584/is-there-an-owned-version-of-stringchars for
+		// some more involved alternative solutions.
+		//
+		// The clone() here is fine except we double the memory.
+		//
+		// Another solution would be to only store a Vec<char> in the struct and index through it
+		// or iterate as desired. That also takes extra memory compared to a single string.
+
+		let text_to_iterate = self.text.clone();		
+		let mut source = text_to_iterate.chars();
 				
 		while !self.is_finished(){
 			self.start = self.current;
@@ -72,13 +91,8 @@ impl Scanner{
 				Ok(token) => tokens.push(token),
 			}			
 		}
-				
-		tokens.push(Token {
-			token_type: TokenType::EOF, 
-			start : self.start, 
-			current : self.current, 
-			line:self.line,
-			column:self.column} );
+		tokens.push(self.make_token(TokenType::EOF));
+		
 		tokens
 	}		
 	
