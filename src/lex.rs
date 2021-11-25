@@ -39,8 +39,7 @@ impl Token{
 }
 #[derive(Clone,Debug)]
 pub struct Scanner {		
-	text:String,
-	finished:bool,
+	text:Vec<char>,	
 	start: usize,
 	current: usize,
 	line:usize,
@@ -50,7 +49,7 @@ pub struct Scanner {
 impl Scanner{
 
 	pub fn new(script:String)->Self{	
-		Self {text: script, finished:false, start:0, current:0, line:1, column:0}
+		Self {text: script.chars().collect(), start:0, current:0, line:1, column:0}
 	}
 	
 	// place-holder
@@ -59,7 +58,7 @@ impl Scanner{
 	}
 	
 	fn is_finished(&self)->bool{
-		self.finished
+		self.current >= self.text.len()
 	}
 	
 	pub fn tokenize(&mut self)->Vec<Token>{
@@ -81,17 +80,18 @@ impl Scanner{
 		// Another solution would be to only store a Vec<char> in the struct and index through it
 		// or iterate as desired. That also takes extra memory compared to a single string.
 
-		let text_to_iterate = self.text.clone();		
-		let mut source = text_to_iterate.chars();
+		//
+		//let text_to_iterate = self.text.clone();		
+		//let mut source = text_to_iterate.chars();
 				
 		while !self.is_finished(){
 			self.start = self.current;
-			match self.scan_token(&mut source){
+			match self.scan_token(){
 				Err(msg) => self.error(msg),
 				Ok(token) => tokens.push(token),
 			}			
 		}
-		tokens.push(self.make_token(TokenType::EOF));
+		tokens.push(self.make_token(TokenType::EOF).unwrap());
 		
 		tokens
 	}		
@@ -110,44 +110,54 @@ impl Scanner{
 		}
 	}
 	
-	fn scan_token(&mut self, source: &mut Chars)-> Result<Token,String>{
-		match self.advance(source) {
-			Some(current_char) =>{
-				let token_type = match current_char {
-					'(' => TokenType::LEFT_PAREN,
-					')' => TokenType::RIGHT_PAREN,
-					'{' => TokenType::LEFT_BRACE,
-					'}' => TokenType::RIGHT_BRACE,
-					',' => TokenType::COMMA,
-					'.' => TokenType::DOT,
-					'-' => TokenType::MINUS,
-					'*' => TokenType::STAR,
-					'+' => TokenType::PLUS,
-					';' => TokenType::SEMICOLON,
-					_ => TokenType::ERROR(format!("Unrecognized character {} at {}, {}",
-								current_char, self.line, self.column)),						
-				};
-				self.make_token(token_type)						
-			},
-			None => self.make_token(TokenType::EOF),
-		}		
+	fn scan_token(&mut self)-> Result<Token,String>{
+		let c = self.advance();
+		let token_type = match c {
+			'(' => TokenType::LEFT_PAREN,
+			')' => TokenType::RIGHT_PAREN,
+			'{' => TokenType::LEFT_BRACE,
+			'}' => TokenType::RIGHT_BRACE,
+			',' => TokenType::COMMA,
+			'.' => TokenType::DOT,
+			'-' => TokenType::MINUS,
+			'*' => TokenType::STAR,
+			'+' => TokenType::PLUS,
+			';' => TokenType::SEMICOLON,
+			':' => if self.match_char('=') { 
+					TokenType::COLON_EQUAL
+				} else {
+					TokenType::COLON
+				},
+			
+			
+			_ => TokenType::ERROR(format!("Unrecognized character {} at {}, {}",
+						c, self.line, self.column)),						
+		};
+		self.make_token(token_type)						
 	}
 	
-	fn advance(&mut self, source:&mut Chars)->Option<char> {
-		let c = source.next();			
-		self.current += 1;
+	// This will be called after advance() so 'current' will be the char following
+	// the one we got from advance() -- a look-ahead.
+	fn match_char(&mut self, expected: char)->bool {
+		let not_matched = self.is_finished() || expected != self.text[self.current];
+		if not_matched { return false; }
+		self.current +=1;
+		true	
+	}
+				
+	fn advance(&mut self)->char {
+		if self.is_finished(){
+			panic!("Unexpected end of input!");
+		}
+		
+		let c = self.text[self.current];
+		self.current +=1;		
 		self.column += 1;
-		match c {
-			Some(value) =>{
-				if value == '\n' { 
-					self.line += 1;
-					self.column = 0;
-				}
-			},
-			None =>{},
+		if '\n' == c {
+			self.line += 1;
+			self.column = 0;
 		}
 		c							
-	}
-	
+	}	
 }
 
