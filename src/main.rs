@@ -4,6 +4,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
+#[macro_use] extern crate maplit;
 
 struct Interpreter{
 	had_error:bool

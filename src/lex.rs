@@ -1,5 +1,7 @@
 
 use core::str::Chars;
+use maplit;
+use std::collections::HashMap;
 #[derive(Clone,Debug)]
 pub enum TokenType{	
 	LeftParen, RightParen, LeftBrace, RightBrace,
@@ -22,6 +24,60 @@ pub enum TokenType{
 	Eof,
 }
 
+impl TokenType {
+
+	pub fn print(&self) -> String {
+		use TokenType::*;
+		let name = match self {
+			LeftParen => "(",
+			RightParen => ")",
+			LeftBrace => "{",
+			RightBrace => "}",
+			Set => "Set", 
+			In => "in",
+			Intersects => "intersects",
+			Intersection => "intersection",
+			Union => "union",
+			Difference => "difference",
+			Complement => "complement",
+			And => "and",
+			Class => "Class",
+			Else => "else",
+			False => "false",
+			Fun => "fun",
+			For => "for",
+			If => "if",
+			Nil => "nil",
+			Not => "not",
+			Or => "or",
+			Print => "print",
+			Return => "return",
+			Super => "super", 
+			This => "this",
+			True => "true",
+			Var => "var",
+			While => "while",
+			_ => "unknown", 
+		};
+		name.to_string()
+	}
+	
+	// Store this in the scanner struct for quick lookup
+	pub fn reserved_words() -> HashMap<String, TokenType> {
+		use TokenType::*;
+		let words = vec![
+			Set, In, Intersects, Intersection, Union, Difference, Complement, 
+			And, Class, Else, False, Fun, For, If, Nil, Not, Or,
+			Print, Return, Super, This, True, Var, While];
+					
+		let mut types_by_name:HashMap<String,TokenType> =  HashMap::new();
+		for w in words {
+			types_by_name.insert(w.print(), w);
+		}
+		
+		types_by_name
+	}
+}
 
 #[derive(Clone,Debug)]
 pub struct Token{
@@ -45,12 +101,19 @@ pub struct Scanner {
 	current: usize,
 	line:usize,
 	column:usize,
+	reserved_words:HashMap<String,TokenType>,
 }
 
 impl Scanner{
 
 	pub fn new(script:String)->Self{	
-		Self {text: script.chars().collect(), start:0, current:0, line:1, column:0}
+		Self {text: script.chars().collect(), 
+				start:0, 
+				current:0, 
+				line:1, 
+				column:0,
+				reserved_words : TokenType::reserved_words(),
+			}
 	}
 	
 	// place-holder
@@ -151,10 +214,18 @@ impl Scanner{
 					} else {
 						TokenType::Slash						
 					},
-			
-						
-			_ => TokenType::ScanError(format!("Unrecognized character {} at {}, {}",
-						c, self.line, self.column)),						
+			'"' => self.string_literal(),
+												
+			_ => {
+				if self.is_digit(c) {
+					self.number_literal()
+				}else if self.is_alpha(c) {
+					self.identifier()
+				} else {								
+					TokenType::ScanError(format!("Unrecognized character {} at {}, {}",
+						c, self.line, self.column))						
+				}
+			},
 		};
 		self.make_token(token_type)						
 	}
@@ -168,16 +239,20 @@ impl Scanner{
 		true	
 	}
 	
-	fn whitespace(&self)->bool{
-		self.this_char() == ' ' || 
-		self.this_char() == '\t' || 
-		self.this_char() == '\n' ||
-		self.this_char() == '\r'
+	fn is_digit(&self, c:char) ->bool {
+		c >= '0' && c <= '9'
+	}
+	
+	fn is_whitespace(&self, c:char)->bool {
+		c == ' ' || 
+		c == '\t' || 
+		c == '\n' ||
+		c == '\r'
 	}
 	
 	
 	fn skip_whitespace(&mut self){
-		while !self.is_finished() && self.whitespace(){
+		while !self.is_finished() && self.is_whitespace(self.this_char()){
 			self.advance();
 		}		
 	}
@@ -185,6 +260,78 @@ impl Scanner{
 	fn this_char(&self) -> char {
 		if self.is_finished() { return '\0'}
 		self.text[self.current]
+	}
+	
+	fn next_char(&self) -> char {
+		if self.current + 1 == self.text.len()  { return '\0'}
+		self.text[self.current+1]
+	}
+	
+	
+	fn number_literal(&mut self) -> TokenType {		
+		let mut integer_literal = true;
+		while self.is_digit(self.this_char()){
+			self.advance();
+		}
+		if self.this_char() == '.' && self.is_digit(self.next_char()){
+			integer_literal = false;
+			self.advance(); // eat the "."
+			while self.is_digit(self.this_char()){
+				self.advance();
+			}
+		}
+		let content:String = self.text[self.start..self.current].into_iter().collect();
+		let value : f64 = content.parse().unwrap();
+		
+		TokenType::Number(value)		
+	}
+	
+	 fn is_alpha(&self, c:char) -> bool {
+		(c >= 'a' && c <= 'z')  ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_' ||
+		c == '?' ||
+		c == '!'
+  }
+  
+  fn is_alpha_numeric(&self, c:char) -> bool {
+	self.is_alpha(c) || self.is_digit(c)
+  }
+
+  
+	
+	fn identifier(&mut self) -> TokenType {
+		while self.is_alpha_numeric(self.this_char()) { 
+			self.advance();
+		}
+		let content:String = self.text[self.start..self.current].into_iter().collect();
+		
+		match self.reserved_words.get(&content){
+			Some(word) => word.clone(),
+			None => TokenType::Identifier(content),
+		}
+	}
+	
+	// Consume content for string literal and return it
+	// in the TokenType::Str varient.
+	fn string_literal(&mut self) -> TokenType{
+		// For better reporting on unterminated strings
+		let starting_line = self.line;
+		let starting_column = self.column;
+		
+		let mut content = "".to_string();
+		self.advance(); // eat the opening "
+		while self.this_char() != '"' && !self.is_finished(){
+			content.push(self.this_char());
+			self.advance();			
+		}
+		
+		if self.is_finished(){
+			let msg:String = format!("Unterminated string starting at {}, {}",starting_line,starting_column);
+			TokenType::ScanError(msg)
+		} else {		
+			TokenType::Str(content)		
+		}
 	}
 				
 	fn advance(&mut self)->char {
