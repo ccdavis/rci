@@ -2,23 +2,24 @@
 use core::str::Chars;
 #[derive(Clone,Debug)]
 pub enum TokenType{	
-	  LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-	COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,COLON,
+	LeftParen, RightParen, LeftBrace, RightBrace,
+	Comma, Dot, Minus, Plus, SemiColon, Slash, Star,Colon,
 	  // One or two character tokens.
-	BANG, BANG_EQUAL,
-	COLON_EQUAL, EQUAL,
-	GREATER, GREATER_EQUAL,
-	LESS, LESS_EQUAL,
+	LessGreater,
+	ColonEqual, Equal,
+	Greater, GreaterEqual,
+	Less, LessEqual,	
 
 	// literals
-	NUMBER(f64), IDENTIFIER(String)	, STRING(String),
+	Number(f64), Identifier(String)	, Str(String),Comment(String),
 	
 	// keywords	  
-	AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-	PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
+	Set, In, Intersects, Intersection, Union, Difference, Complement, 
+	And, Class, Else, False, Fun, For, If, Nil, Not, Or,
+	Print, Return, Super, This, True, Var, While,
 
-	ERROR(String),
-	EOF,
+	ScanError(String),
+	Eof,
 }
 
 
@@ -91,14 +92,14 @@ impl Scanner{
 				Ok(token) => tokens.push(token),
 			}			
 		}
-		tokens.push(self.make_token(TokenType::EOF).unwrap());
+		tokens.push(self.make_token(TokenType::Eof).unwrap());
 		
 		tokens
 	}		
 	
 	fn make_token(&self, token_type:TokenType)->Result<Token,String>{
 		match token_type {
-			TokenType::ERROR(msg) =>Err(msg),
+			TokenType::ScanError(msg) =>Err(msg),
 			_ => Ok(Token 
 				{ 
 					token_type, 		
@@ -112,25 +113,47 @@ impl Scanner{
 	
 	fn scan_token(&mut self)-> Result<Token,String>{
 		let c = self.advance();
+		self.skip_whitespace();
 		let token_type = match c {
-			'(' => TokenType::LEFT_PAREN,
-			')' => TokenType::RIGHT_PAREN,
-			'{' => TokenType::LEFT_BRACE,
-			'}' => TokenType::RIGHT_BRACE,
-			',' => TokenType::COMMA,
-			'.' => TokenType::DOT,
-			'-' => TokenType::MINUS,
-			'*' => TokenType::STAR,
-			'+' => TokenType::PLUS,
-			';' => TokenType::SEMICOLON,
+			'(' => TokenType::LeftParen,
+			')' => TokenType::RightParen,
+			'{' => TokenType::LeftBrace,
+			'}' => TokenType::RightBrace,
+			',' => TokenType::Comma,
+			'.' => TokenType::Dot,
+			'-' => TokenType::Minus,
+			'*' => TokenType::Star,
+			'+' => TokenType::Plus,
+			';' => TokenType::SemiColon,
+			'=' => TokenType::Equal,
 			':' => if self.match_char('=') { 
-					TokenType::COLON_EQUAL
+					TokenType::ColonEqual
 				} else {
-					TokenType::COLON
+					TokenType::Colon
 				},
+			'>' => if self.match_char('=') {
+					TokenType::GreaterEqual
+				} else {
+					TokenType::Greater
+				},
+			'<' => if self.match_char('=') {
+					TokenType::LessEqual
+				} else {
+					TokenType::Less
+				},
+			'/' => if self.match_char('/') {
+						let mut content = "".to_string();
+						while self.this_char() != '\n' && !self.is_finished(){
+							content.push(self.this_char());
+							self.advance();
+						}
+						TokenType::Comment(content)						
+					} else {
+						TokenType::Slash						
+					},
 			
-			
-			_ => TokenType::ERROR(format!("Unrecognized character {} at {}, {}",
+						
+			_ => TokenType::ScanError(format!("Unrecognized character {} at {}, {}",
 						c, self.line, self.column)),						
 		};
 		self.make_token(token_type)						
@@ -144,12 +167,30 @@ impl Scanner{
 		self.current +=1;
 		true	
 	}
+	
+	fn whitespace(&self)->bool{
+		self.this_char() == ' ' || 
+		self.this_char() == '\t' || 
+		self.this_char() == '\n' ||
+		self.this_char() == '\r'
+	}
+	
+	
+	fn skip_whitespace(&mut self){
+		while !self.is_finished() && self.whitespace(){
+			self.advance();
+		}		
+	}
+	
+	fn this_char(&self) -> char {
+		if self.is_finished() { return '\0'}
+		self.text[self.current]
+	}
 				
 	fn advance(&mut self)->char {
 		if self.is_finished(){
 			panic!("Unexpected end of input!");
-		}
-		
+		}		
 		let c = self.text[self.current];
 		self.current +=1;		
 		self.column += 1;
