@@ -7,7 +7,7 @@ pub enum TokenType{
 	LeftParen, RightParen, LeftBrace, RightBrace,
 	Comma, Dot, Minus, Plus, SemiColon, Slash, Star,Colon,
 	  // One or two character tokens.
-	LessGreater,
+	LessGreater, // not equal
 	ColonEqual, Equal,
 	Greater, GreaterEqual,
 	Less, LessEqual,	
@@ -26,6 +26,22 @@ pub enum TokenType{
 
 impl TokenType {
 
+	// For the token types carrying data, print their values.
+	pub fn print_value(&self) -> String {
+		use TokenType::*;
+		match self {
+			Identifier(name) => format!("{}",&name),
+			Number(value) => format!("{}",value),
+			Str(value) => format!("{}",&value),
+			Comment(value) => format!("{}",&value),
+			ScanError(msg) => format!("{}",&msg),
+			_ => "".to_string(),
+		}
+	
+	}
+
+	// Prints only the name of the token type. Can be used to 
+	// compare TokenType instances if performance insn't a concern.
 	pub fn print(&self) -> String {
 		use TokenType::*;
 		let name = match self {
@@ -175,6 +191,12 @@ impl Scanner{
 	}
 	
 	fn scan_token(&mut self)-> Result<Token,String>{						
+		// Since with my design the match expression must return a token type 
+		// we can't use the match to match on whitespace characters;
+		// it can't be used to advance the scanner past non-token characters.
+		//
+		// I include comments in the match because they are returned as tokens
+		// for use in preprocessing, like annotations or for pretty-printing.
 		self.skip_whitespace();
 		let c = self.advance();
 		let token_type = match c {
@@ -202,6 +224,8 @@ impl Scanner{
 				},
 			'<' => if self.match_char('=') {
 					TokenType::LessEqual
+				} else if  match_char('>') {
+					TokenType::LessGreater
 				} else {
 					TokenType::Less
 				},

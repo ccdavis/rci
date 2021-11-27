@@ -63,6 +63,15 @@ pub enum Expr{
 }
 
 impl Expr{
+	
+	fn binary(l:Expr, op:Token, r:Expr) -> Expr{
+		let node = BinaryNode 
+		{ 	left : Box::new(l),
+			operator : op,
+			Box::new(r)
+		};
+		Expr::Binary( node)
+	}
 
 	
 	fn print(&self) -> String {
