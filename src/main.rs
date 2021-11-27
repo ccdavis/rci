@@ -1,4 +1,5 @@
 mod lex;
+mod expression;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
