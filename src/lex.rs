@@ -94,6 +94,7 @@ impl Token{
 		format!("{:?}",&self.token_type)
 	}
 }
+
 #[derive(Clone,Debug)]
 pub struct Scanner {		
 	text:Vec<char>,	
@@ -122,7 +123,7 @@ impl Scanner{
 	}
 	
 	fn is_finished(&self)->bool{
-		self.current >= self.text.len()
+		self.current >=  self.text.len()
 	}
 	
 	pub fn tokenize(&mut self)->Vec<Token>{
@@ -155,7 +156,6 @@ impl Scanner{
 				Ok(token) => tokens.push(token),
 			}			
 		}
-		tokens.push(self.make_token(TokenType::Eof).unwrap());
 		
 		tokens
 	}		
@@ -174,10 +174,11 @@ impl Scanner{
 		}
 	}
 	
-	fn scan_token(&mut self)-> Result<Token,String>{
-		let c = self.advance();
+	fn scan_token(&mut self)-> Result<Token,String>{						
 		self.skip_whitespace();
+		let c = self.advance();
 		let token_type = match c {
+			'\0' => TokenType::Eof,
 			'(' => TokenType::LeftParen,
 			')' => TokenType::RightParen,
 			'{' => TokenType::LeftBrace,
@@ -216,7 +217,7 @@ impl Scanner{
 					},
 			'"' => self.string_literal(),
 												
-			_ => {
+			_ => {				
 				if self.is_digit(c) {
 					self.number_literal()
 				}else if self.is_alpha(c) {
@@ -226,8 +227,9 @@ impl Scanner{
 						c, self.line, self.column))						
 				}
 			},
-		};
-		self.make_token(token_type)						
+		};		
+		self.make_token(token_type)
+		
 	}
 	
 	// This will be called after advance() so 'current' will be the char following
@@ -252,9 +254,10 @@ impl Scanner{
 	
 	
 	fn skip_whitespace(&mut self){
-		while !self.is_finished() && self.is_whitespace(self.this_char()){
+		while !self.is_finished() && self.is_whitespace(self.this_char()){			
 			self.advance();
 		}		
+		self.start = self.current;
 	}
 	
 	fn this_char(&self) -> char {
@@ -263,7 +266,7 @@ impl Scanner{
 	}
 	
 	fn next_char(&self) -> char {
-		if self.current + 1 == self.text.len()  { return '\0'}
+		if self.current + 1 >= self.text.len()  { return '\0'}
 		self.text[self.current+1]
 	}
 	
@@ -281,7 +284,13 @@ impl Scanner{
 			}
 		}
 		let content:String = self.text[self.start..self.current].into_iter().collect();
-		let value : f64 = content.parse().unwrap();
+		let value : f64 = match content.parse(){
+			Ok(valid) => valid,
+			Err(msg) =>{				
+				return  TokenType::ScanError(format!("{} when parsing '{}'",msg, &content));
+			},
+			
+		};
 		
 		TokenType::Number(value)		
 	}
@@ -325,27 +334,28 @@ impl Scanner{
 			content.push(self.this_char());
 			self.advance();			
 		}
-		
+				
 		if self.is_finished(){
 			let msg:String = format!("Unterminated string starting at {}, {}",starting_line,starting_column);
 			TokenType::ScanError(msg)
 		} else {		
+			// Eat the second "
+			self.advance();
 			TokenType::Str(content)		
 		}
 	}
 				
-	fn advance(&mut self)->char {
-		if self.is_finished(){
-			panic!("Unexpected end of input!");
-		}		
+	fn advance(&mut self) -> char{		
+		if self.is_finished() { return '\0'}
 		let c = self.text[self.current];
 		self.current +=1;		
 		self.column += 1;
 		if '\n' == c {
 			self.line += 1;
 			self.column = 0;
-		}
-		c							
+		}				
+		c
+		
 	}	
 }
 
