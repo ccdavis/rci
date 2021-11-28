@@ -5,14 +5,55 @@ use crate::lex::TokenType;
 struct Parser{
 	tokens : Vec<Token>,
 	current :usize,
-	
-	
+}
+
+struct ParseError{
+	message : String,
 }
 
 impl Parser {
 
 	pub fn new(tokens : Vec<Token>) -> Self{
 		Self { tokens, current : 0 }
+	}
+	
+	
+	fn error(&self, token : &Token,  message:&str){
+		// TODO: Call interpreter.error() here to report errors
+		eprintln!("{} at {:?}", message, token);
+	}
+	
+	
+	fn matches(&mut self,types: &[TokenType]) -> bool {
+		for token_type in types{
+			if self.check(token_type){
+				self.advance();
+				return true;				
+			}
+		} // each type		
+		false
+	}
+	
+	fn check(&self, token_type : &TokenType) -> bool {
+		if self.is_finished(){
+			false
+		} else {
+			// Using print() isn't the most efficient but it's convenient for now.
+			//You can't simply compare the token types directly because some carry
+			// data and the comparison will fail if the data differs. But, we only
+			// care about the varient part, not the data.
+			//
+			// The pure Rust solution would have you make methods on TokenType 
+			// like "is_number(), is_left_brace() etc which works but is pretty 
+			// verbose. The other solution is to use the Strum crate and pull
+			// out the enum discriminant value only.
+			// NOTE: looks like this works now too:
+			// fn variant_eq(a: &Op, b: &Op) -> bool {
+			//    std::mem::discriminant(a) == std::mem::discriminant(b)
+			//	}
+			self.peek().token_type.print() == token_type.print()
+			
+		}
 	}
 	
 	
@@ -38,20 +79,20 @@ impl Parser {
 	}
 	
 	fn equality(&mut self)-> Expr {
-		use lex::TokenType::*;
+		use TokenType::*;
 		let mut expr = self.comparison();
-		while self.matches(LessEqual, Equal) {
+		while self.matches(&[LessEqual, Equal]) {
 			let operator : Token = self.previous();
 			let right : Expr = self.comparison();
-			expr =  Expr(BinaryNode{ left : Box::new(expr), operator, right : Box::new(right)});
+			expr =  Expr::binary(expr, operator, right);
 		}
 		expr				
 	}
 	
 	fn comparison(&mut self) -> Expr {
-		let mut expr = term();
+		let mut expr = self.term();
 		use TokenType::*;
-		while self.matches([Less,LessEqual,Greater,GreaterEqual]){
+		while self.matches(&[Less,LessEqual,Greater,GreaterEqual]){
 			let operator = self.previous();
 			let right = self.term();
 			expr =  Expr::binary(expr, operator, right);				
@@ -61,7 +102,7 @@ impl Parser {
 	
 	fn term(&mut self) -> Expr {
 		let mut expr = self.factor();
-		while self.matches(TokenType::Minus, TokenType::Plus) {
+		while self.matches(&[TokenType::Minus, TokenType::Plus]) {
 			let operator = self.previous(); // a + or  -
 			let right = self.factor();
 			expr = Expr::binary(expr, operator, right);
@@ -71,7 +112,7 @@ impl Parser {
 	
 	fn factor(&mut self) -> Expr {
 		let mut expr = self.unary(); // get any leading - or 'not'
-		while self.matches(TokenType::Slash, TokenType::Star){
+		while self.matches(&[TokenType::Slash, TokenType::Star]){
 			let operator = self.previous();
 			let right = self.unary();
 			expr = Expr::binary(expr, operator, right);
@@ -80,7 +121,7 @@ impl Parser {
 	}
 	
 	fn unary(&mut self) -> Expr {
-		if self.matches(TokenType::Not, TokenType::Minus) {
+		if self.matches&[(TokenType::Not, TokenType::Minus]) {
 			let operator = self.previous();
 			let right = self.unary();
 			Expr::unary(operator, right)
@@ -89,7 +130,7 @@ impl Parser {
 		}				
 	}
 	
-	fn self.primary((&mut self) -> Expr {
+	fn primary(&mut self) -> Expr {
 		use TokenType::*;
 		match self.peek().token_type {
 			True | False | Nil =>  {
@@ -116,21 +157,21 @@ impl Parser {
 				let type_name = self.peek().token_type.print();
 				panic!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.");
 			},
-		};
-		
+		};		
 	}
 
 	
-	fn matchs(&mut self,types: &[TokenType]) -> bool {
-		for token_type in types{
-			if self.check(token_type){
-				self.advance();
-				return true;				
-			}
-		} // each type		
-		false
+	fn consume(&mut self, token_type:TokenType) -> Result<Token,ParseError> {
+		if self.check(token_type){
+			Ok(self.advance())
+		} else {
+			let message = "expected.";
+			self.error(self.peek(), message);
+			Err(ParseError { message: message.to_string() }) 
+			
+		}
 	}
-	
+		
 	fn advance(&mut self) -> Token {
 		if self.is_finished() { self.current += 1}
 		self.previous()
@@ -148,30 +189,10 @@ impl Parser {
 	}
 	
 	fn previous(&self) -> Token {
-		self.tokens[current - 1]
+		self.tokens[self.current - 1]
 	}
 	
-	fn check(&self, token_type : TokenType) -> bool {
-		if self.is_finished(){
-			false
-		} else {
-			// Using print() isn't the most efficient but it's convenient for now.
-			//You can't simply compare the token types directly because some carry
-			// data and the comparison will fail if the data differs. But, we only
-			// care about the varient part, not the data.
-			//
-			// The pure Rust solution would have you make methods on TokenType 
-			// like "is_number(), is_left_brace() etc which works but is pretty 
-			// verbose. The other solution is to use the Strum crate and pull
-			// out the enum discriminant value only.
-			// NOTE: looks like this works now too:
-			// fn variant_eq(a: &Op, b: &Op) -> bool {
-			//    std::mem::discriminant(a) == std::mem::discriminant(b)
-			//	}
-			self.peek().token_type.print() == token_type.print()
-			
-		}
-	}
+	
 	
 	
 	

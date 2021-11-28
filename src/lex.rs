@@ -224,7 +224,7 @@ impl Scanner{
 				},
 			'<' => if self.match_char('=') {
 					TokenType::LessEqual
-				} else if  match_char('>') {
+				} else if  self.match_char('>') {
 					TokenType::LessGreater
 				} else {
 					TokenType::Less

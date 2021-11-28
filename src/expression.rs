@@ -64,17 +64,33 @@ pub enum Expr{
 
 impl Expr{
 	
-	fn binary(l:Expr, op:Token, r:Expr) -> Expr{
+	pub fn binary(l:Expr, op:Token, r:Expr) -> Expr{
 		let node = BinaryNode 
 		{ 	left : Box::new(l),
 			operator : op,
-			Box::new(r)
+			right : Box::new(r)
 		};
 		Expr::Binary( node)
 	}
+	
+	pub fn unary(op : Token, e: Expr) -> Expr {
+		let node = UnaryNode {
+			operator : op,
+			expr : Box::new(e),
+		};
+		Expr::Unary(node)
+	}
+	
+	pub fn literal(value:TokenType) -> Expr {
+		Expr::Literal(LiteralNode {value} )		
+	}
+	
+	pub fn grouping(e: Expr) -> Expr {
+		Expr::Grouping(GroupingNode { expr : Box::new(e) })
+	}
 
 	
-	fn print(&self) -> String {
+	pub fn print(&self) -> String {
 		let inside = match self {
 			Expr::Binary(n) => n.print(),
 			Expr::Unary(n) =>n.print(),
