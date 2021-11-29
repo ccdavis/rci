@@ -2,7 +2,7 @@ use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 
-struct Parser{
+pub struct Parser{
 	tokens : Vec<Token>,
 	current :usize,
 }
@@ -55,6 +55,37 @@ impl Parser {
 			
 		}
 	}
+	fn advance(&mut self) -> Token {
+		if !self.is_finished() { self.current += 1}
+		self.previous()
+	}
+	
+	fn is_finished(&self) -> bool {
+		match self.peek().token_type {
+			TokenType::Eof => true,
+			_ => false,
+		}
+	}
+	
+	fn peek(&self) -> Token {
+		self.tokens[self.current].clone()
+	}
+	
+	fn previous(&self) -> Token {
+		self.tokens[self.current - 1].clone()
+	}
+	
+	
+	fn consume(&mut self, token_type:TokenType, message:&str) -> Result<Token,ParseError> {
+		if self.check(&token_type){
+			Ok(self.advance())
+		} else {			
+			self.error(&self.peek(), message);
+			Err(ParseError { message : message.to_string() }) 
+			
+		}
+	}
+		
 	
 	
 	/*
@@ -74,7 +105,7 @@ impl Parser {
 	
 	
 	
-	fn expression(&mut self) -> Expr {
+	pub fn expression(&mut self) -> Expr {
 		self.equality()
 	}
 	
@@ -121,7 +152,7 @@ impl Parser {
 	}
 	
 	fn unary(&mut self) -> Expr {
-		if self.matches&[(TokenType::Not, TokenType::Minus]) {
+		if self.matches(&[TokenType::Not, TokenType::Minus]) {
 			let operator = self.previous();
 			let right = self.unary();
 			Expr::unary(operator, right)
@@ -132,6 +163,8 @@ impl Parser {
 	
 	fn primary(&mut self) -> Expr {
 		use TokenType::*;
+		println!("in primary, token: {:?}",&self.peek());
+		
 		match self.peek().token_type {
 			True | False | Nil =>  {
 				self.advance();
@@ -155,44 +188,12 @@ impl Parser {
 				let l = self.peek().line;
 				let c = self.peek().column;
 				let type_name = self.peek().token_type.print();
-				panic!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.");
+				panic!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
+					l,c,&type_name);
 			},
 		};		
 	}
 
-	
-	fn consume(&mut self, token_type:TokenType) -> Result<Token,ParseError> {
-		if self.check(token_type){
-			Ok(self.advance())
-		} else {
-			let message = "expected.";
-			self.error(self.peek(), message);
-			Err(ParseError { message: message.to_string() }) 
-			
-		}
-	}
-		
-	fn advance(&mut self) -> Token {
-		if self.is_finished() { self.current += 1}
-		self.previous()
-	}
-	
-	fn is_finished(&self) -> bool {
-		match self.peek().token_type {
-			TokenType::Eof => true,
-			_ => false,
-		}
-	}
-	
-	fn peek(&self) -> Token {
-		self.tokens[self.current]
-	}
-	
-	fn previous(&self) -> Token {
-		self.tokens[self.current - 1]
-	}
-	
-	
 	
 	
 	

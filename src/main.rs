@@ -2,6 +2,7 @@ mod lex;
 mod expression;
 mod parser;
 
+use parser::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -61,9 +62,10 @@ impl Interpreter{
 	pub fn run(&mut self, code:String){		
 		let mut scanner = lex::Scanner::new(code);
 		let tokens = scanner.tokenize();
-		for t in &tokens{
-			println!("{:?}",&t);
-		}		
+		let mut parser = Parser::new(tokens);
+		let expr = parser.expression();
+		println!("Tree: {}", &expr.print());
+		
 	}
 
 	fn error(&mut self, line:i32,col:i32,message:String){

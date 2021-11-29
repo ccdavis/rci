@@ -97,11 +97,11 @@ impl TokenType {
 
 #[derive(Clone,Debug)]
 pub struct Token{
-	token_type:TokenType,
-	start:usize,
-	current : usize,
-	line:usize,
-	column:usize,
+	pub token_type:TokenType,
+	pub start:usize,
+	pub current : usize,
+	pub line:usize,
+	pub column:usize,
 }
 
 impl Token{
