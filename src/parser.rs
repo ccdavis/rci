@@ -28,6 +28,11 @@ impl Parser {
 		}		
 	}
 	
+	pub fn error(&self, error:ParseError){
+		self.report_error(error);
+		panic!("Unrecoverable error.");
+	}
+	
 	
 	fn matches(&mut self,types: &[TokenType]) -> bool {
 		for token_type in types{
@@ -39,7 +44,7 @@ impl Parser {
 		false
 	}
 	
-	fn check(&self, token_type : &TokenType) -> bool {
+	fn check(&self, token_type : &TokenType) -> bool {			
 		if self.is_finished(){
 			false
 		} else {
@@ -88,6 +93,27 @@ impl Parser {
 			Err(ParseError {t :self.peek().clone(),  message : message.to_string() }) 			
 		}
 	}
+	
+	// The idea is to consume tokens until we reach the end of the next statement.
+	fn synchronize(&mut self) {
+		self.advance();
+		use TokenType::*;
+		while !self.is_finished() {
+			if  matches!(self.previous().token_type, SemiColon) { return }
+		
+			match self.peek().token_type {
+				Class |
+				Fun |
+				Var |
+				For |
+				If |
+				While |
+				Print |
+				Return => return,
+				_ => {},
+			}			
+		}
+	}
 		
 		
 	/*
@@ -106,8 +132,13 @@ impl Parser {
 	*/
 	
 	
+	pub fn parse(&mut self) -> Expr {
+		self.expression()
+	}
 	
-	pub fn expression(&mut self) -> Expr {
+	
+	
+	fn expression(&mut self) -> Expr {
 		self.equality()
 	}
 	
@@ -159,26 +190,30 @@ impl Parser {
 			let right = self.unary();
 			Expr::unary(operator, right)
 		} else {
-			self.primary()
+			match self.primary() {
+				Err(parse_error) => {
+					self.report_error(parse_error);
+					panic!("Unrecoverable error.")
+				},
+				Ok(primary_expr) => primary_expr,
+			}
 		}				
 	}
 	
-	fn primary(&mut self) -> Expr {
-		use TokenType::*;
-		println!("in primary, token: {:?}",&self.peek());
-		
+	fn primary(&mut self) -> Result<Expr,ParseError> {
+		use TokenType::*;						
 		match self.peek().token_type {
 			True | False | Nil =>  {
 				self.advance();
-				return Expr::literal(self.previous().token_type);
+				Ok(Expr::literal(self.previous().token_type))
 			},
 			Number(value) =>{
 				self.advance();
-				return Expr::literal(self.previous().token_type);
+				Ok(Expr::literal(self.previous().token_type))
 			},
 			Str(value) => {
 				self.advance();
-				return Expr::literal(self.previous().token_type);
+				Ok(Expr::literal(self.previous().token_type))
 			},
 			LeftParen => {
 				self.advance();
@@ -187,16 +222,17 @@ impl Parser {
 					Ok(_) =>{},
 					Err(parse_error) => self.report_error(parse_error),
 				}
-				return Expr::grouping(expr);
+				Ok(Expr::grouping(expr))
 			},
 			_ =>{
 				let l = self.peek().line;
 				let c = self.peek().column;
 				let type_name = self.peek().token_type.print();
-				panic!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
+				let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
+				Err(ParseError{ t: self.peek(), message: message }) 				
 			},
-		};		
+		}
 	}
 
 	

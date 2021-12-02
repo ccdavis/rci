@@ -63,7 +63,7 @@ impl Interpreter{
 		let mut scanner = lex::Scanner::new(code);
 		let tokens = scanner.tokenize();
 		let mut parser = Parser::new(tokens);
-		let expr = parser.expression();
+		let expr = parser.parse();
 		println!("Tree: {}", &expr.print());
 		
 	}

@@ -49,6 +49,23 @@ impl TokenType {
 			RightParen => ")",
 			LeftBrace => "{",
 			RightBrace => "}",
+			Comma => ",",
+			Plus => "+",
+			Minus => "-",
+			Star => "*",
+			Dot => ".",
+			SemiColon => ";",
+			Slash => "/",
+			Colon => ":",
+			
+			Less => "<",
+			LessEqual => "<=",
+			Equal => "=",
+			ColonEqual => ":=",
+			Greater => ">",
+			GreaterEqual => ">=",
+			
+						
 			Set => "Set", 
 			In => "in",
 			Intersects => "intersects",
@@ -57,6 +74,7 @@ impl TokenType {
 			Difference => "difference",
 			Complement => "complement",
 			And => "and",
+			Or => "or",
 			Class => "Class",
 			Else => "else",
 			False => "false",
@@ -64,8 +82,7 @@ impl TokenType {
 			For => "for",
 			If => "if",
 			Nil => "nil",
-			Not => "not",
-			Or => "or",
+			Not => "not",			
 			Print => "print",
 			Return => "return",
 			Super => "super", 
@@ -73,7 +90,14 @@ impl TokenType {
 			True => "true",
 			Var => "var",
 			While => "while",
-			_ => "unknown", 
+			
+			
+			// literals
+			Number(_) => "Number",
+			Str(_) => "String",
+			Identifier(_) => "identifier",
+			Comment(_) => "comment",
+			_ => panic!("Unhandled {:?}", self),
 		};
 		name.to_string()
 	}
@@ -173,7 +197,15 @@ impl Scanner{
 			}			
 		}
 		
-		tokens
+		tokens.push(self.make_token(TokenType::Eof).unwrap());
+		
+		
+		tokens.into_iter().filter(|t| {
+			match t.token_type {
+				TokenType::Comment(_) => false,
+				_ => true,
+			}
+		}).collect()
 	}		
 	
 	fn make_token(&self, token_type:TokenType)->Result<Token,String>{
