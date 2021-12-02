@@ -8,6 +8,7 @@ pub struct Parser{
 }
 
 struct ParseError{
+	t : Token,
 	message : String,
 }
 
@@ -18,9 +19,13 @@ impl Parser {
 	}
 	
 	
-	fn error(&self, token : &Token,  message:&str){
+	pub fn report_error(&self, error:ParseError){
 		// TODO: Call interpreter.error() here to report errors
-		eprintln!("{} at {:?}", message, token);
+		match  error.t.token_type {
+			TokenType::Eof =>eprintln!("{} at {:?}. At end of input. ", 
+				error.message, error.t),
+			_ => eprintln!("{} at {:?}", error.message, error.t),
+		}		
 	}
 	
 	
@@ -79,15 +84,12 @@ impl Parser {
 	fn consume(&mut self, token_type:TokenType, message:&str) -> Result<Token,ParseError> {
 		if self.check(&token_type){
 			Ok(self.advance())
-		} else {			
-			self.error(&self.peek(), message);
-			Err(ParseError { message : message.to_string() }) 
-			
+		} else {						
+			Err(ParseError {t :self.peek().clone(),  message : message.to_string() }) 			
 		}
 	}
 		
-	
-	
+		
 	/*
 	Expression grammar from The Crafting Interpreters book
 	
@@ -181,7 +183,10 @@ impl Parser {
 			LeftParen => {
 				self.advance();
 				let mut expr = self.expression();
-				self.consume(RightParen, "Expect ')' after expression.");
+				match self.consume(RightParen, "Expect ')' after expression."){
+					Ok(_) =>{},
+					Err(parse_error) => self.report_error(parse_error),
+				}
 				return Expr::grouping(expr);
 			},
 			_ =>{
