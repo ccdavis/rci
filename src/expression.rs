@@ -11,7 +11,44 @@ pub trait Node {
     // return the name  of the operation if any and
     // associated expressions.
     fn print(&self) -> String;
-    fn evaluate(&self) -> Result<TokenType, EvaluationError>;
+    fn evaluate(&self) -> Result<ReturnValue, EvaluationError>;
+}
+
+#[derive(Clone,Debug)]
+pub enum ReturnValue {
+	Reference(Rc<TokenType>),
+	Value(TokenType),
+}
+
+impl ReturnValue {
+	pub fn new_ref(value:TokenType) -> Self {
+		ReturnValue::Reference(Rc::new(value))
+	}
+	
+	pub fn new_val(value:TokenType)->Self{
+		ReturnValue::Value(value)
+	}	
+	
+	pub fn get(&self) -> &TokenType {
+		match self {
+			ReturnValue::Reference(v) => &*v,
+			ReturnValue::Value(v) => &v,
+		}
+	}
+	
+	pub fn clone_or_increment_count(&self) -> ReturnValue {
+		match self{
+			ReturnValue::Reference(v) => 
+				ReturnValue::Reference(Rc::clone(&v)),
+			ReturnValue::Value(v) => ReturnValue::Value(v.clone()),
+		}
+	}
+	
+	pub fn print(&self) -> String {
+		self.get().print()
+	}
+	
+	
 }
 
 #[derive(Clone, Debug)]
@@ -31,21 +68,24 @@ impl Node for BinaryNode {
         )
     }
 
-    fn evaluate(&self) -> Result<TokenType, EvaluationError> {
+    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
         use TokenType::*;
         let left_value = self.left.evaluate()?;
         let right_value = self.right.evaluate()?;
         let result = match self.operator.token_type {			
+			Plus => operations::add(left_value.get(), right_value.get()),
+			/*
             Minus => operations::subtract(left_value, right_value),
             Slash => operations::divide(left_value, right_value),
             Star => operations::multiply(left_value, right_value),
-            Plus => operations::add(&left_value, &right_value),
+            
             Greater => operations::compare_gt(left_value, right_value),
             Less => operations::compare_lt(left_value, right_value),
             GreaterEqual => operations::compare_gte(left_value, right_value),
             LessEqual => operations::compare_lte(left_value, right_value),
             LessGreater => operations::not_equal(left_value, right_value),
             Equal => operations::equal(left_value, right_value),
+			*/
             _ => Err(format!(
                     "Operation {} not supported yet!",
                     self.operator.token_type.print())),
@@ -54,7 +94,7 @@ impl Node for BinaryNode {
 
         // If there's an error, add the source location from the token
         match result {
-            Ok(r) => Ok(r),
+            Ok(r) => Ok(r), 
             Err(message) => {
                 let eval_err = format!(
                     "Error performing '{}' operation at {}, {}: {}",
@@ -79,23 +119,23 @@ impl Node for GroupingNode {
         format!("Grouping: {}", &self.expr.print())
     }
 
-    fn evaluate(&self) -> Result<TokenType, EvaluationError> {
+    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
         self.expr.evaluate()
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct LiteralNode {
-    value: Rc<TokenType>
+    value:Rc< TokenType>, 
 }
 
 impl Node for LiteralNode {
     fn print(&self) -> String {
-        format!("{}", &self.value.print())
+        self.value.print()
     }
 
-    fn evaluate(&self) -> Result<TokenType, EvaluationError> {
-        Ok(self.value)
+    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+        Ok(ReturnValue::Reference(Rc::clone(&self.value)))
     }
 }
 
@@ -110,14 +150,15 @@ impl Node for UnaryNode {
         format!("{} {}", &self.operator.print(), &self.expr.print())
     }
 
-    fn evaluate(&self) -> Result<TokenType, EvaluationError> {
+    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
         let right = self.expr.evaluate()?;
+		
         match self.operator.token_type {
-            TokenType::Minus => match right {
+            TokenType::Minus => match right.get() {				
                 TokenType::Number(n) => {
-                    let new_value = TokenType::Number(-n);
+                    let new_value = ReturnValue::Value(TokenType::Number(-n));
                     Ok(new_value)
-                }
+                },
                 _ => {
                     let message = format!("Not a number value at {:?}", self.operator);
                     Err(EvaluationError { message })
@@ -126,9 +167,9 @@ impl Node for UnaryNode {
             TokenType::Not => {
                 if !matches!(TokenType::False,right) &&
 					!matches!(TokenType::Nil, right) {
-						Ok(TokenType::True)
+						Ok(ReturnValue::Value(TokenType::True))
                 } else {
-                    Ok(TokenType::False)
+                    Ok(ReturnValue::Value(TokenType::False))
                 }
             }
             _ => {
@@ -144,17 +185,18 @@ pub enum Expr {
     Binary(BinaryNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
-    Literal(LiteralNode),
+    Literal(ReturnValue),
 }
 
 impl Expr {
 
-	pub fn evaluate(&self) -> Result<TokenType,EvaluationError> {
+	pub fn evaluate(&self) -> Result<ReturnValue,EvaluationError> {
 		match self {
 			Expr::Binary(n) => n.evaluate(),
 			Expr::Unary(n) => n.evaluate(),
 			Expr::Grouping(n) => n.evaluate(),
-			Expr::Literal(n) => n.evaluate(),			
+			Expr::Literal(value) => Ok(value.clone_or_increment_count()),
+			
 		}
 	}
 
@@ -176,8 +218,8 @@ impl Expr {
         Expr::Unary(node)
     }
 
-    pub fn literal(value: TokenType) -> Expr {
-        Expr::Literal(LiteralNode {value: Rc::new(value) })
+    pub fn literal(value: Token) -> Expr {
+        Expr::Literal(ReturnValue::new_ref(value.token_type))
     }
 
     pub fn grouping(e: Expr) -> Expr {
@@ -185,21 +227,18 @@ impl Expr {
     }
 
     pub fn is_literal(&self) -> bool {
-        match self {
-            Expr::Literal(_) => true,
-            _ => false,
-        }
+		matches!(self, Expr::Literal(_))		
     }
 
-    pub fn literal_value(&self) -> TokenType {
-        match self {
-            Expr::Literal(l) => *l.value,
-            _ => panic!("Not a literal value: {:?}", self),
-        }
-    }
-
+    
     pub fn data_type(&self) -> TokenType {
-		self.literal_value().data_type()                 
+		match self{
+			Expr::Literal(ReturnValue::Reference(token_type)) => token_type.data_type(),
+			Expr::Literal(ReturnValue::Value(token_type)) => token_type.data_type(),
+			_ => panic!("Not a literal expression!"),
+		}
+			
+		
     }
 
     // Type check conveniences
@@ -235,7 +274,7 @@ impl Expr {
         let inside = match self {
             Binary(n) => n.print(),
             Unary(n) => n.print(),
-            Literal(n) => n.print(),
+            Literal(ref n) => n.print(),
             Grouping(n) => n.print(),
 
             _ => panic!("Not implemented"),

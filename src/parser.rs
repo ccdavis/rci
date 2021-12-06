@@ -190,20 +190,21 @@ impl Parser {
         }
     }
 
+	
     fn primary(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
         match self.peek().token_type {
             True | False | Nil => {
                 self.advance();
-                Ok(Expr::literal(self.previous().token_type))
+                Ok(Expr::literal(self.previous()))
             }
             Number(value) => {
                 self.advance();
-                Ok(Expr::literal(self.previous().token_type))
+                Ok(Expr::literal(self.previous()))
             }
             Str(value) => {
                 self.advance();
-                Ok(Expr::literal(self.previous().token_type))
+                Ok(Expr::literal(self.previous()))
             }
             LeftParen => {
                 self.advance();
