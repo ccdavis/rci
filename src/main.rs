@@ -14,11 +14,12 @@ extern crate maplit;
 
 struct Interpreter {
     had_error: bool,
+	had_runtime_error : bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter { had_error: false }
+        Interpreter { had_error: false , had_runtime_error : false}
     }
 
     pub fn repl(&mut self) {
@@ -39,6 +40,7 @@ impl Interpreter {
                     //let results = interpret(line, &mut envr);
                     self.run(line);
                     self.had_error = false;
+					self.had_runtime_error = false;
 
                     //println!("=>  {}", &results);
                 }
@@ -67,8 +69,12 @@ impl Interpreter {
 		let result = expr.evaluate();
 		match result {
 			Ok(return_value) => println!(" result >> {:?}",return_value.get()),
-			Err(msg) => eprintln!("{}",&msg.message),
+			Err(msg) => {
+				self.had_runtime_error = true;
+				eprintln!("{}",&msg.message);
+			}
 		}
+		
 		println!("");	
         println!("Tree: {}", &expr.print());
 		
@@ -105,5 +111,8 @@ fn main() {
         if interpreter.had_error {
             std::process::exit(65);
         }
+		if interpreter.had_runtime_error {
+			std::process::exit(70);
+		}
     }
 }
