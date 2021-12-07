@@ -1,7 +1,9 @@
-mod expression;
 mod lex;
-mod operations;
 mod parser;
+mod expression;
+mod operations;
+mod statement;
+
 
 use parser::*;
 
@@ -12,56 +14,17 @@ use std::fs;
 #[macro_use]
 extern crate maplit;
 
-struct Interpreter {
-    had_error: bool,
-	had_runtime_error : bool,
+pub struct Interpreter {
+    pub had_error: bool,
+	pub had_runtime_error : bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter { had_error: false , had_runtime_error : false}
     }
-
-    pub fn repl(&mut self) {
-        // `()` can be used when no completer is required
-        let mut rl = Editor::<()>::new();
-
-        if rl.load_history("history.txt").is_err() {
-            println!("No previous history.");
-        }
-
-        // The environment for the duration of the REPL session
-        //let mut envr = interpreter::Environment::new();
-        loop {
-            let readline = rl.readline(">> ");
-            match readline {
-                Ok(line) => {
-                    rl.add_history_entry(line.as_str());
-                    //let results = interpret(line, &mut envr);
-                    self.run(line);
-                    self.had_error = false;
-					self.had_runtime_error = false;
-
-                    //println!("=>  {}", &results);
-                }
-                Err(ReadlineError::Interrupted) => {
-                    println!("CTRL-C");
-                    break;
-                }
-                Err(ReadlineError::Eof) => {
-                    println!("CTRL-D");
-                    break;
-                }
-                Err(err) => {
-                    println!("Error: {:?}", err);
-                    break;
-                }
-            }
-        }
-        rl.save_history("history.txt").unwrap();
-    }
-
-    pub fn run(&mut self, code: String) {
+	
+	pub fn run(&mut self, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
@@ -80,6 +43,7 @@ impl Interpreter {
 		
     }
 
+
     fn error(&mut self, line: i32, col: i32, message: String) {
         self.report(line, col, "".to_string(), message)
     }
@@ -89,6 +53,50 @@ impl Interpreter {
         self.had_error = true
     }
 } // impl interpreter
+
+
+
+
+pub fn repl() {
+	// `()` can be used when no completer is required
+	let mut rl = Editor::<()>::new();
+
+	if rl.load_history("history.txt").is_err() {
+		println!("No previous history.");
+	}
+
+	// The environment for the duration of the REPL session
+	let mut envr = Interpreter::new();
+	
+	loop {
+		let readline = rl.readline(">> ");
+		match readline {
+			Ok(line) => {
+				rl.add_history_entry(line.as_str());
+				//let results = interpret(line, &mut envr);
+				envr.run(line);
+				envr.had_error = false;
+				envr.had_runtime_error = false;
+
+				//println!("=>  {}", &results);
+			}
+			Err(ReadlineError::Interrupted) => {
+				println!("CTRL-C");
+				break;
+			}
+			Err(ReadlineError::Eof) => {
+				println!("CTRL-D");
+				break;
+			}
+			Err(err) => {
+				println!("Error: {:?}", err);
+				break;
+			}
+		}
+	}
+	rl.save_history("history.txt").unwrap();
+}
+
 
 fn main() {
     println!("Starting interpreter...");
@@ -102,11 +110,12 @@ fn main() {
     let mut interpreter = Interpreter::new();
 
     if args.len() < 2 {
-        interpreter.repl();
+        repl();
     } else {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
+		let mut interpreter = Interpreter::new();
         interpreter.run(code);
         if interpreter.had_error {
             std::process::exit(65);
