@@ -64,7 +64,14 @@ impl Interpreter {
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let expr = parser.parse();
-        println!("Tree: {}", &expr.print());
+		let result = expr.evaluate();
+		match result {
+			Ok(return_value) => println!(" result >> {:?}",return_value.get()),
+			Err(msg) => eprintln!("{}",&msg.message),
+		}
+			
+        //println!("Tree: {}", &expr.print());
+		
     }
 
     fn error(&mut self, line: i32, col: i32, message: String) {

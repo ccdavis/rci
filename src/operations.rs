@@ -29,7 +29,7 @@ pub fn subtract(left: &TokenType, right: &TokenType) -> Result<ReturnValue, Stri
         (Number(l), Number(r)) => 
 			Ok(ReturnValue::Value(Number(l - r))),     
         _ => Err(format!(
-            "Can't apply '+' to types '{}' and '{}'",
+            "Can't apply '-' to types '{}' and '{}'",
             left.print(),
             right.print()
         )),
@@ -41,7 +41,7 @@ pub fn multiply(left: &TokenType, right: &TokenType) -> Result<ReturnValue, Stri
 		(Number(l), Number(r)) => 
 			Ok(ReturnValue::Value(Number(l * r))),     
         _ => Err(format!(
-            "Can't apply '+' to types '{}' and '{}'",
+            "Can't apply '*' to types '{}' and '{}'",
             left.print(),
             right.print()
         )),
@@ -53,7 +53,7 @@ pub fn divide(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String
 		(Number(l), Number(r)) => 
 			Ok(ReturnValue::Value(Number(l / r))),     
         _ => Err(format!(
-            "Can't apply '+' to types '{}' and '{}'",
+            "Can't apply '/' to types '{}' and '{}'",
             left.print(),
             right.print()
         )),

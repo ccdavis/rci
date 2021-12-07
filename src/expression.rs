@@ -70,11 +70,13 @@ impl Node for BinaryNode {
 
     fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
         use TokenType::*;
-        let left_value = self.left.evaluate()?;
-        let right_value = self.right.evaluate()?;
+        let left = self.left.evaluate()?;
+        let right = self.right.evaluate()?;
+		let left_value = left.get();
+		let right_value = right.get();
         let result = match self.operator.token_type {			
-			Plus => operations::add(left_value.get(), right_value.get()),
-			/*
+			Plus => operations::add(left_value, right_value),
+			
             Minus => operations::subtract(left_value, right_value),
             Slash => operations::divide(left_value, right_value),
             Star => operations::multiply(left_value, right_value),
@@ -85,7 +87,7 @@ impl Node for BinaryNode {
             LessEqual => operations::compare_lte(left_value, right_value),
             LessGreater => operations::not_equal(left_value, right_value),
             Equal => operations::equal(left_value, right_value),
-			*/
+			
             _ => Err(format!(
                     "Operation {} not supported yet!",
                     self.operator.token_type.print())),
