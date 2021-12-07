@@ -144,9 +144,9 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Expr {
-        let mut expr = self.term();
-        use TokenType::*;
-        while self.matches(&[Less, LessEqual, Greater, GreaterEqual]) {
+		use TokenType::*;
+        let mut expr = self.term();        
+        while self.matches(&[Less, LessEqual, Greater, GreaterEqual,LessGreater]) {
             let operator = self.previous();
             let right = self.term();
             expr = Expr::binary(expr, operator, right);

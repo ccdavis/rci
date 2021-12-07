@@ -75,12 +75,10 @@ impl Node for BinaryNode {
 		let left_value = left.get();
 		let right_value = right.get();
         let result = match self.operator.token_type {			
-			Plus => operations::add(left_value, right_value),
-			
+			Plus => operations::add(left_value, right_value),			
             Minus => operations::subtract(left_value, right_value),
             Slash => operations::divide(left_value, right_value),
-            Star => operations::multiply(left_value, right_value),
-            
+            Star => operations::multiply(left_value, right_value),            
             Greater => operations::compare_gt(left_value, right_value),
             Less => operations::compare_lt(left_value, right_value),
             GreaterEqual => operations::compare_gte(left_value, right_value),
@@ -166,7 +164,7 @@ impl Node for UnaryNode {
                     Err(EvaluationError { message })
                 }
             },
-            TokenType::Not => {
+            TokenType::Not => {				
                 if !matches!(TokenType::False,right) &&
 					!matches!(TokenType::Nil, right) {
 						Ok(ReturnValue::Value(TokenType::True))

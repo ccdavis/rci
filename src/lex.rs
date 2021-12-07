@@ -124,6 +124,7 @@ impl TokenType {
             If => "if",
             Nil => "nil",
             Not => "not",
+			LessGreater =>"<>",
             Print => "print",
             Return => "return",
             Super => "super",

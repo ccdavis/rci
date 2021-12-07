@@ -69,8 +69,8 @@ impl Interpreter {
 			Ok(return_value) => println!(" result >> {:?}",return_value.get()),
 			Err(msg) => eprintln!("{}",&msg.message),
 		}
-			
-        //println!("Tree: {}", &expr.print());
+		println!("");	
+        println!("Tree: {}", &expr.print());
 		
     }
 
