@@ -1,12 +1,15 @@
 use crate::expression::Expr;
 
 
-struct ExecutionError {
-	message : String,
+pub struct ExecutionError {
+	pub message : String,
+}
+pub trait Executable {
+	fn execute(&self) -> Result<(), ExecutionError>;	
 }
 
 #[derive(Clone,Debug)]
-enum Stmt {
+pub enum Stmt {
 	Print(PrintNode),
 	ExpressionStmt(ExpressionStmtNode),
 	Block(BlockNode),		
@@ -14,25 +17,37 @@ enum Stmt {
 	While(WhileNode),
 }
 
+impl Stmt {
 
-pub trait StmtNode {
-	pub fn execute(&self) -> Result<(), ExecutionError>;	
+	pub fn execute(&self) -> Result<(), ExecutionError>{
+		use Stmt::*;
+		match self {
+			Print(stmt) => stmt.execute(),
+			ExpressionStmt(stmt) => stmt.execute(),
+			_ => Err(ExecutionError { message: " Statement type not implemented.".to_string()}),
+			
+		}
+	}
 }
+
 
 #[derive(Clone,Debug)]
 struct PrintNode {
 	expression : Expr,
 }
 
-impl StmtNode for PrintNode {
+impl Executable for PrintNode {
 
 	fn execute(&self)  -> Result<(), ExecutionError> {
-		match self.expr.evaluate(){
-			Ok(v) =>println!("{}",&value.print()),
+		match self.expression.evaluate(){
+			Ok(value) => {
+				println!("{}",&value.print());
+				Ok(())
+			},
 			Err(msg) => {
 				let message = format!("Execution error on 'print' because of {}", &msg.message);
-				ExecutionError {message })
-			}
+				Err(ExecutionError {message:message})
+			},
 		}
 				
 	}
@@ -43,15 +58,15 @@ struct ExpressionStmtNode {
 	expression : Expr,
 }
 
-impl StmtNode for ExpressionNode {
+impl Executable for ExpressionStmtNode {
 
 	fn execute(&self) -> Result<(), ExecutionError> {
 		match self.expression.evaluate() {
 			Err(msg) =>{
 				let message = format!("Execution error on 'expression-statement' because of {}", &msg.message);
-				ExecutionError {message })
+				Err(ExecutionError {message})
 			},
-			_ => {},
+			_ => Ok(()),
 		}
 	}
 }

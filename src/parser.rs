@@ -1,13 +1,14 @@
 use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
+use crate::statement::Stmt;
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
 }
 
-struct ParseError {
+pub struct ParseError {
     t: Token,
     message: String,
 }
@@ -134,17 +135,23 @@ impl Parser {
 	
 	fn statement(&mut self) -> Stmt {
 		use TokenType::*;
-		if self.matches(Print) {
+		if self.matches(&[Print]) {
 			return self.print_statement();
 		}
 		
 		self.expression_statement()
 	}
 	
+	fn expression_statement(&mut self) -> Stmt {
+		let expr = self.expression();
+		self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+		Stmt::expression_stmt(expr)		
+	}
+	
 	fn print_statement(&mut self) ->Stmt {
 		let expr = self.expression();
-		self.consume(SemiColon);
-		Stmt::Print(expr)
+		self.consume(TokenType::SemiColon, "Expected ';'");
+		Stmt::print_stmt(expr)
 	}
 	
 	
