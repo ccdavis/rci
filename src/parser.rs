@@ -124,10 +124,30 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self) -> Expr {
-        self.expression()
+    pub fn parse(&mut self) ->Vec<Stmt> { 
+		let mut statements = Vec::new();
+		while !self.is_finished() {
+			statements.push(self.statement());
+		}
+		statements        
     }
-
+	
+	fn statement(&mut self) -> Stmt {
+		use TokenType::*;
+		if self.matches(Print) {
+			return self.print_statement();
+		}
+		
+		self.expression_statement()
+	}
+	
+	fn print_statement(&mut self) ->Stmt {
+		let expr = self.expression();
+		self.consume(SemiColon);
+		Stmt::Print(expr)
+	}
+	
+	
     fn expression(&mut self) -> Expr {
         self.equality()
     }

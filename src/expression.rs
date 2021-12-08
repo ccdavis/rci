@@ -45,7 +45,7 @@ impl ReturnValue {
 	}
 	
 	pub fn print(&self) -> String {
-		self.get().print()
+		self.get().print_value();
 	}
 	
 	

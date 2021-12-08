@@ -28,19 +28,19 @@ impl Interpreter {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
-		let result = expr.evaluate();
-		match result {
-			Ok(return_value) => println!(" result >> {:?}",return_value.get()),
-			Err(msg) => {
-				self.had_runtime_error = true;
-				eprintln!("{}",&msg.message);
+        let statements = parser.parse();
+		
+		for stmt in statements {
+			let result = stmt.execute();
+			match result {
+				Ok(_) => {},
+				Err(msg) => {
+					self.had_runtime_error = true;
+					eprintln!("{}",&msg.message);
+				}
 			}
-		}
-		
-		println!("");	
-        println!("Tree: {}", &expr.print());
-		
+			
+		}// each statement
     }
 
 
