@@ -28,8 +28,8 @@ pub enum TokenType {
     Number(f64),
     Identifier(String),
     Str(String),
-	Bool,
-	
+    Bool,
+
     Comment(String),
     NumberType,
     StringType,
@@ -37,7 +37,7 @@ pub enum TokenType {
     SetType,
 
     // keywords
-	Set,
+    Set,
     Enum,
     In,
     Intersects,
@@ -124,7 +124,7 @@ impl TokenType {
             If => "if",
             Nil => "nil",
             Not => "not",
-			LessGreater =>"<>",
+            LessGreater => "<>",
             Print => "print",
             Return => "return",
             Super => "super",
@@ -143,7 +143,7 @@ impl TokenType {
             Number(_) => "Number",
             Str(_) => "String",
             Identifier(_) => "identifier",
-			Bool =>"bool",
+            Bool => "bool",
             Comment(_) => "comment",
             _ => panic!("Unhandled {:?}", self),
         };
@@ -154,14 +154,13 @@ impl TokenType {
     pub fn reserved_words() -> HashMap<String, TokenType> {
         use TokenType::*;
         let words = vec![
-			StringType,
-			NumberType,
-			BooleanType,
-			SetType,
-			
+            StringType,
+            NumberType,
+            BooleanType,
+            SetType,
             Set,
             Enum,
-            Bool,           
+            Bool,
             In,
             Intersects,
             Intersection,
@@ -194,10 +193,10 @@ impl TokenType {
 
         types_by_name
     }
-	
-	pub fn data_type(&self) -> TokenType {
-		use TokenType::*;
-        match self{
+
+    pub fn data_type(&self) -> TokenType {
+        use TokenType::*;
+        match self {
             Number(_) => NumberType,
             Str(_) => StringType,
             True => BooleanType,
@@ -205,8 +204,6 @@ impl TokenType {
             _ => panic!("Not a supported value type."),
         }
     }
-
-	
 }
 
 #[derive(Clone, Debug)]
@@ -223,8 +220,6 @@ impl Token {
     pub fn print(&self) -> String {
         format!("{:?}", &self.token_type)
     }
-
-    
 }
 
 #[derive(Clone, Debug)]

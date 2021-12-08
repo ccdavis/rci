@@ -125,36 +125,35 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self) ->Vec<Stmt> { 
-		let mut statements = Vec::new();
-		while !self.is_finished() {
-			statements.push(self.statement());
-		}
-		statements        
+    pub fn parse(&mut self) -> Vec<Stmt> {
+        let mut statements = Vec::new();
+        while !self.is_finished() {
+            statements.push(self.statement());
+        }
+        statements
     }
-	
-	fn statement(&mut self) -> Stmt {
-		use TokenType::*;
-		if self.matches(&[Print]) {
-			return self.print_statement();
-		}
-		
-		self.expression_statement()
-	}
-	
-	fn expression_statement(&mut self) -> Stmt {
-		let expr = self.expression();
-		self.consume(TokenType::SemiColon, "Expect ';' after expression.");
-		Stmt::expression_stmt(expr)		
-	}
-	
-	fn print_statement(&mut self) ->Stmt {
-		let expr = self.expression();
-		self.consume(TokenType::SemiColon, "Expected ';'");
-		Stmt::print_stmt(expr)
-	}
-	
-	
+
+    fn statement(&mut self) -> Stmt {
+        use TokenType::*;
+        if self.matches(&[Print]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn expression_statement(&mut self) -> Stmt {
+        let expr = self.expression();
+        self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        Stmt::expression_stmt(expr)
+    }
+
+    fn print_statement(&mut self) -> Stmt {
+        let expr = self.expression();
+        self.consume(TokenType::SemiColon, "Expected ';'");
+        Stmt::print_stmt(expr)
+    }
+
     fn expression(&mut self) -> Expr {
         self.equality()
     }
@@ -171,9 +170,9 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Expr {
-		use TokenType::*;
-        let mut expr = self.term();        
-        while self.matches(&[Less, LessEqual, Greater, GreaterEqual,LessGreater]) {
+        use TokenType::*;
+        let mut expr = self.term();
+        while self.matches(&[Less, LessEqual, Greater, GreaterEqual, LessGreater]) {
             let operator = self.previous();
             let right = self.term();
             expr = Expr::binary(expr, operator, right);
@@ -217,7 +216,6 @@ impl Parser {
         }
     }
 
-	
     fn primary(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
         match self.peek().token_type {

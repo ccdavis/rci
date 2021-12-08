@@ -1,9 +1,8 @@
-mod lex;
-mod parser;
 mod expression;
+mod lex;
 mod operations;
+mod parser;
 mod statement;
-
 
 use parser::*;
 
@@ -16,33 +15,34 @@ extern crate maplit;
 
 pub struct Interpreter {
     pub had_error: bool,
-	pub had_runtime_error : bool,
+    pub had_runtime_error: bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter { had_error: false , had_runtime_error : false}
+        Interpreter {
+            had_error: false,
+            had_runtime_error: false,
+        }
     }
-	
-	pub fn run(&mut self, code: String) {
+
+    pub fn run(&mut self, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
-		
-		for stmt in statements {
-			let result = stmt.execute();
-			match result {
-				Ok(_) => {},
-				Err(msg) => {
-					self.had_runtime_error = true;
-					eprintln!("{}",&msg.message);
-				}
-			}
-			
-		}// each statement
-    }
 
+        for stmt in statements {
+            let result = stmt.execute();
+            match result {
+                Ok(_) => {}
+                Err(msg) => {
+                    self.had_runtime_error = true;
+                    eprintln!("{}", &msg.message);
+                }
+            }
+        } // each statement
+    }
 
     fn error(&mut self, line: i32, col: i32, message: String) {
         self.report(line, col, "".to_string(), message)
@@ -54,49 +54,45 @@ impl Interpreter {
     }
 } // impl interpreter
 
-
-
-
 pub fn repl() {
-	// `()` can be used when no completer is required
-	let mut rl = Editor::<()>::new();
+    // `()` can be used when no completer is required
+    let mut rl = Editor::<()>::new();
 
-	if rl.load_history("history.txt").is_err() {
-		println!("No previous history.");
-	}
+    if rl.load_history("history.txt").is_err() {
+        println!("No previous history.");
+    }
 
-	// The environment for the duration of the REPL session
-	let mut envr = Interpreter::new();
-	
-	loop {
-		let readline = rl.readline(">> ");
-		match readline {
-			Ok(line) => {
-				rl.add_history_entry(line.as_str());
-				//let results = interpret(line, &mut envr);
-				envr.run(line);
-				envr.had_error = false;
-				envr.had_runtime_error = false;
+    // The environment for the duration of the REPL session
+    let mut envr = Interpreter::new();
 
-				//println!("=>  {}", &results);
-			}
-			Err(ReadlineError::Interrupted) => {
-				println!("CTRL-C");
-				break;
-			}
-			Err(ReadlineError::Eof) => {
-				println!("CTRL-D");
-				break;
-			}
-			Err(err) => {
-				println!("Error: {:?}", err);
-				break;
-			}
-		}
-	}
-	rl.save_history("history.txt").unwrap();
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str());
+                //let results = interpret(line, &mut envr);
+                envr.run(line);
+                envr.had_error = false;
+                envr.had_runtime_error = false;
+
+                //println!("=>  {}", &results);
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
+        }
+    }
+    rl.save_history("history.txt").unwrap();
 }
-
 
 fn main() {
     println!("Starting interpreter...");
@@ -115,13 +111,13 @@ fn main() {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
-		let mut interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new();
         interpreter.run(code);
         if interpreter.had_error {
             std::process::exit(65);
         }
-		if interpreter.had_runtime_error {
-			std::process::exit(70);
-		}
+        if interpreter.had_runtime_error {
+            std::process::exit(70);
+        }
     }
 }
