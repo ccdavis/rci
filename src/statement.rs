@@ -13,6 +13,7 @@ pub enum Stmt {
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockNode),
     If(IfNode),
+	Var(VarNode),
     While(WhileNode),
 }
 
@@ -22,6 +23,7 @@ impl Stmt {
         match self {
             Print(stmt) => stmt.execute(),
             ExpressionStmt(stmt) => stmt.execute(),
+			Var(stmt) => stmt.execute(), 
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -82,6 +84,19 @@ struct IfNode {
 }
 
 #[derive(Clone, Debug)]
+struct VarNode {
+	name : String,
+	expr : Box<Expr>,
+}
+
+impl Executable for VarNode {
+
+	fn execute(&self) -> Result<(), ExecutionError> {
+		Ok(())
+	}
+}
+
+#[derive(Clone, Debug)]
 struct WhileNode {
     condition: Expr,
     body: Box<Stmt>,
@@ -107,6 +122,10 @@ impl Stmt {
             else_branch: Box::new(else_branch),
         })
     }
+	
+	pub fn var_stmt(name:String, expr:Expr) -> Stmt {
+		Stmt::Var ( VarNode {name, expr:Box::new(expr)} )
+	}
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
         Stmt::While(WhileNode {

@@ -128,16 +128,30 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_finished() {
+			statements.push(self.declaration());
             statements.push(self.statement());
         }
         statements
     }
+	
+	fn declaration(&mut self) -> Stmt {
+		if self.matches(&[TokenType::Var]) {
+			match self.statement() {
+				Ok(stmt) => stmt,
+				Err(ParseError) => {
+					self.synchronize();
+				}
+				
+			}
+		}
+	}
 
     fn statement(&mut self) -> Stmt {
         use TokenType::*;
         if self.matches(&[Print]) {
             return self.print_statement();
         }
+		
 
         self.expression_statement()
     }
