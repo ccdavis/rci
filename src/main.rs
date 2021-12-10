@@ -3,6 +3,7 @@ mod lex;
 mod operations;
 mod parser;
 mod statement;
+mod environment;
 
 use parser::*;
 
@@ -10,12 +11,11 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
-#[macro_use]
-extern crate maplit;
 
 pub struct Interpreter {
     pub had_error: bool,
-    pub had_runtime_error: bool,
+    pub had_runtime_error: bool,	
+	envr : Environment,
 }
 
 impl Interpreter {
@@ -23,6 +23,7 @@ impl Interpreter {
         Interpreter {
             had_error: false,
             had_runtime_error: false,
+			envr: Environment::new(),
         }
     }
 

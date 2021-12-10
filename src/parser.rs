@@ -6,6 +6,7 @@ use crate::statement::Stmt;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+	errors : Vec<ParseError>,
 }
 
 pub struct ParseError {
@@ -14,21 +15,26 @@ pub struct ParseError {
 }
 
 impl Parser {
+
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
 
     pub fn report_error(&self, error: ParseError) {
-        // TODO: Call interpreter.error() here to report errors
+        // TODO: Call interpreter.error() here to report errors		
         match error.t.token_type {
-            TokenType::Eof => eprintln!("{} at {:?}. At end of input. ", error.message, error.t),
-            _ => eprintln!("{} at {:?}", error.message, error.t),
+            TokenType::Eof => {				
+				eprintln!("{} at {:?}. At end of input. ", error.message, error.t);				
+			},
+            _ => {
+				eprintln!("{} at {:?}", error.message, error.t);
+			},
         }
+		self.errors.push(error);
     }
 
     pub fn error(&self, error: ParseError) {
-        self.report_error(error);
-        panic!("Unrecoverable error.");
+        self.report_error(error);        
     }
 
     fn matches(&mut self, types: &[TokenType]) -> bool {
@@ -128,105 +134,114 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-			statements.push(self.declaration());
-            statements.push(self.statement());
+			match self.declaration() { 
+				Ok(stmt) => statements.push(stmt),            
+				Err(parse_error) => self.error(parse_error),
+			}
         }
         statements
     }
 	
-	fn declaration(&mut self) -> Stmt {
-		if self.matches(&[TokenType::Var]) {
-			match self.statement() {
-				Ok(stmt) => stmt,
-				Err(ParseError) => {
-					self.synchronize();
-				}
-				
-			}
+	fn declaration(&mut self) -> Result<Stmt,ParseError> {
+		if self.matches(&[TokenType::Var]){
+			return self.var_declaration();
+		}
+		
+		let result = self.statement();
+		if result.is_err() {
+			self.synchronize();
+		}
+		result		
+	}
+	
+	fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+		let name = self.consume(TokenType::Identifier, "Expect variable name")?;
+		if self.matches(&[TokenType::Equal]) {
+			let initializer = self.expression()?;
+			self.consume(TokenType::SemiColon)?;
+			Ok(Stmt::var(name, initializer))
+		} else {
+			Err( ParseError 
+				{ t : name, 
+				"Variable declaration requires initial value assignment with '='.".to_string()
+			} )
 		}
 	}
 
-    fn statement(&mut self) -> Stmt {
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
         use TokenType::*;
         if self.matches(&[Print]) {
             return self.print_statement();
         }
 		
-
         self.expression_statement()
     }
 
-    fn expression_statement(&mut self) -> Stmt {
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression();
-        self.consume(TokenType::SemiColon, "Expect ';' after expression.");
-        Stmt::expression_stmt(expr)
+        self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
+        Ok(Stmt::expression_stmt(expr))
     }
 
-    fn print_statement(&mut self) -> Stmt {
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression();
-        self.consume(TokenType::SemiColon, "Expected ';'");
-        Stmt::print_stmt(expr)
+        self.consume(TokenType::SemiColon, "Expected ';'")?;
+		Ok(Stmt::print_stmt(expr))		
     }
 
-    fn expression(&mut self) -> Expr {
+    fn expression(&mut self) -> Result<Expr, ParseError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Expr {
+    fn equality(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.comparison();
+        let mut expr = self.comparison()?;
         while self.matches(&[LessEqual, Equal]) {
             let operator: Token = self.previous();
-            let right: Expr = self.comparison();
+            let right: Expr = self.comparison()?;
             expr = Expr::binary(expr, operator, right);
         }
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&mut self) -> Expr {
+    fn comparison(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.term();
+        let mut expr = self.term()?;
         while self.matches(&[Less, LessEqual, Greater, GreaterEqual, LessGreater]) {
             let operator = self.previous();
-            let right = self.term();
+            let right = self.term()?;
             expr = Expr::binary(expr, operator, right);
         }
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Expr {
-        let mut expr = self.factor();
+    fn term(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.factor()?;
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous(); // a + or  -
-            let right = self.factor();
+            let right = self.factor()?;
             expr = Expr::binary(expr, operator, right);
         }
-        expr
+        Ok(expr)
     }
 
-    fn factor(&mut self) -> Expr {
-        let mut expr = self.unary(); // get any leading - or 'not'
+    fn factor(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.unary()?; // get any leading - or 'not'
         while self.matches(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous();
-            let right = self.unary();
+            let right = self.unary()?;
             expr = Expr::binary(expr, operator, right);
         }
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> Result<Expr, ParseError> {
         if self.matches(&[TokenType::Not, TokenType::Minus]) {
             let operator = self.previous();
-            let right = self.unary();
-            Expr::unary(operator, right)
+            let right = self.unary()?;
+            Ok(Expr::unary(operator, right))
         } else {
-            match self.primary() {
-                Err(parse_error) => {
-                    self.report_error(parse_error);
-                    panic!("Unrecoverable error.")
-                }
-                Ok(primary_expr) => primary_expr,
-            }
+			self.primary()            
         }
     }
 
@@ -245,13 +260,14 @@ impl Parser {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
+			Identifier(name) => {
+				self.advance();								
+				Ok(Expr::variable(name))
+			}
             LeftParen => {
                 self.advance();
-                let mut expr = self.expression();
-                match self.consume(RightParen, "Expect ')' after expression.") {
-                    Ok(_) => {}
-                    Err(parse_error) => self.report_error(parse_error),
-                }
+                let mut expr = self.expression()?;
+                self.consume(RightParen, "Expect ')' after expression.")?;
                 Ok(Expr::grouping(expr))
             }
             _ => {

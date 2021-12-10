@@ -86,13 +86,24 @@ struct IfNode {
 #[derive(Clone, Debug)]
 struct VarNode {
 	name : String,
-	expr : Box<Expr>,
+	index: usize,
+	initializer : Box<Expr>,
 }
 
 impl Executable for VarNode {
 
 	fn execute(&self) -> Result<(), ExecutionError> {
-		Ok(())
+		let initial_value = match self.initializer.evaluate() {
+			Ok(value) => value,
+			Err(msg) => {
+                let message = 
+					format!("Execution error on variable initialization for '{}' because of {}", 
+						&self.name, &msg.message);
+                Err(ExecutionError { message: message })
+            }
+		}
+		
+		
 	}
 }
 
@@ -124,7 +135,7 @@ impl Stmt {
     }
 	
 	pub fn var_stmt(name:String, expr:Expr) -> Stmt {
-		Stmt::Var ( VarNode {name, expr:Box::new(expr)} )
+		Stmt::Var ( VarNode {name, index: 0, expr:Box::new(expr)} )
 	}
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {

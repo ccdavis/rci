@@ -177,11 +177,28 @@ impl Node for UnaryNode {
 }
 
 #[derive(Clone, Debug)]
+pub struct VariableNode {
+	pub name: String,
+	pub index : usize,	
+}
+
+impl Node for VariableNode {
+	fn print(&self) -> String {
+		format!("var: {}",&self.name)
+	}
+	
+	fn evaluate(&mut self) -> Result<ReturnValue, EvaluationError> {
+		ReturnValue::value(TokenType::Number(0))
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
     Literal(ReturnValue),
+	Variable(VariableNode),
 }
 
 impl Expr {
@@ -190,6 +207,7 @@ impl Expr {
             Expr::Binary(n) => n.evaluate(),
             Expr::Unary(n) => n.evaluate(),
             Expr::Grouping(n) => n.evaluate(),
+			Expr::variable(n) => n.evaluate();
             Expr::Literal(value) => Ok(value.clone_or_increment_count()),
         }
     }
@@ -218,6 +236,10 @@ impl Expr {
     pub fn grouping(e: Expr) -> Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
+	
+	pub fn variable(name: String) -> Expr {		
+		Expr::Variable(VariableNode { name, index: 0})
+	}
 
     pub fn is_literal(&self) -> bool {
         matches!(self, Expr::Literal(_))
