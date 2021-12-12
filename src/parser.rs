@@ -17,10 +17,10 @@ pub struct ParseError {
 impl Parser {
 
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self { tokens, current: 0 , errors: Vec::new()}
     }
 
-    pub fn report_error(&self, error: ParseError) {
+    pub fn report_error(&mut self, error: ParseError) {
         // TODO: Call interpreter.error() here to report errors		
         match error.t.token_type {
             TokenType::Eof => {				
@@ -33,7 +33,7 @@ impl Parser {
 		self.errors.push(error);
     }
 
-    pub fn error(&self, error: ParseError) {
+    pub fn error(&mut self, error: ParseError) {
         self.report_error(error);        
     }
 
@@ -99,6 +99,21 @@ impl Parser {
             })
         }
     }
+	
+	// Need specialized consume() functions because can't pass 
+	// enums with values like Identifier(String), Number(i64) etc.
+    fn consume_identifier(&mut self, message: &str) -> Result<Token, ParseError> {
+		match self.peek().token_type {
+			TokenType::Identifier(_) =>Ok(self.advance()),			
+			_ => Err(
+				ParseError {
+					t: self.peek().clone(),
+					message: message.to_string(),
+				}
+			),
+		}        
+    }
+	
 
     // The idea is to consume tokens until we reach the end of the next statement.
     fn synchronize(&mut self) {
@@ -155,15 +170,15 @@ impl Parser {
 	}
 	
 	fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
-		let name = self.consume(TokenType::Identifier, "Expect variable name")?;
+		let v:Token  = self.consume_identifier("Expect variable name")?;
 		if self.matches(&[TokenType::Equal]) {
 			let initializer = self.expression()?;
-			self.consume(TokenType::SemiColon)?;
-			Ok(Stmt::var(name, initializer))
+			self.consume(TokenType::SemiColon, "expect ';'")?;
+			Ok(Stmt::var_stmt(v, initializer))
 		} else {
 			Err( ParseError 
-				{ t : name, 
-				"Variable declaration requires initial value assignment with '='.".to_string()
+				{ t : v, 
+				message: "Variable declaration requires initial value assignment with '='.".to_string()
 			} )
 		}
 	}
@@ -178,13 +193,13 @@ impl Parser {
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
-        let expr = self.expression();
+        let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::expression_stmt(expr))
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
-        let expr = self.expression();
+        let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expected ';'")?;
 		Ok(Stmt::print_stmt(expr))		
     }

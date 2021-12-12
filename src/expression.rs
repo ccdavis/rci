@@ -187,8 +187,8 @@ impl Node for VariableNode {
 		format!("var: {}",&self.name)
 	}
 	
-	fn evaluate(&mut self) -> Result<ReturnValue, EvaluationError> {
-		ReturnValue::value(TokenType::Number(0))
+	fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+		Ok(ReturnValue::Value(TokenType::Number(0.0)))
 	}
 }
 
@@ -207,7 +207,7 @@ impl Expr {
             Expr::Binary(n) => n.evaluate(),
             Expr::Unary(n) => n.evaluate(),
             Expr::Grouping(n) => n.evaluate(),
-			Expr::variable(n) => n.evaluate();
+			Expr::Variable(n) => n.evaluate(),
             Expr::Literal(value) => Ok(value.clone_or_increment_count()),
         }
     }

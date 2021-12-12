@@ -6,6 +6,7 @@ mod statement;
 mod environment;
 
 use parser::*;
+use environment::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;

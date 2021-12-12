@@ -1,4 +1,6 @@
 use crate::expression::Expr;
+use crate::lex::TokenType;
+use crate::lex::Token;
 
 pub struct ExecutionError {
     pub message: String,
@@ -93,8 +95,13 @@ struct VarNode {
 impl Executable for VarNode {
 
 	fn execute(&self) -> Result<(), ExecutionError> {
-		let initial_value = match self.initializer.evaluate() {
-			Ok(value) => value,
+		// unwrap result of evaluation and 
+		let evaluated = self.initializer.evaluate();
+		match evaluated  {
+			Ok(value) =>{
+				// Add value to environment binding to name
+				Ok(())
+			}, 
 			Err(msg) => {
                 let message = 
 					format!("Execution error on variable initialization for '{}' because of {}", 
@@ -134,8 +141,15 @@ impl Stmt {
         })
     }
 	
-	pub fn var_stmt(name:String, expr:Expr) -> Stmt {
-		Stmt::Var ( VarNode {name, index: 0, expr:Box::new(expr)} )
+	pub fn var_stmt(name:Token, expr:Expr) -> Stmt {
+		match name.token_type {
+			TokenType::Identifier(n) => 
+				Stmt::Var ( VarNode {
+					name: n, 
+					index: 0, 
+					initializer:Box::new(expr)} ),
+			_ =>  panic!("Can't add variable at {:?}",&name),
+		}
 	}
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
