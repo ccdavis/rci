@@ -205,13 +205,32 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.assignment()
     }
+	
+	fn assignment(&mut self) -> Result<Expr, ParseError> {
+		let l_value = self.equality()?;
+		
+		// Check for special assignment operator
+		if self.matches(&[TokenType::ColonEqual]) {
+			let change = self.previous();
+			let new_value = self.assignment()?;
+			return match l_value {
+				Expr::Variable(ref node) => Ok(Expr::assignment(change, new_value)), 
+				_ =>  {
+					let message = format!("{} not a valid assignment target.",&l_value.print());
+					Err(ParseError { t: change, message }) 
+				}
+			}
+		} // assignment operator
+		Ok(l_value)  // if we get here it's an r-value!
+	}
+	
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
         let mut expr = self.comparison()?;
-        while self.matches(&[LessEqual, Equal]) {
+        while self.matches(&[LessGreater, Equal]) {
             let operator: Token = self.previous();
             let right: Expr = self.comparison()?;
             expr = Expr::binary(expr, operator, right);
@@ -222,7 +241,7 @@ impl Parser {
     fn comparison(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
         let mut expr = self.term()?;
-        while self.matches(&[Less, LessEqual, Greater, GreaterEqual, LessGreater]) {
+        while self.matches(&[Less, LessEqual, Greater, GreaterEqual]) {
             let operator = self.previous();
             let right = self.term()?;
             expr = Expr::binary(expr, operator, right);

@@ -192,6 +192,26 @@ impl Node for VariableNode {
 	}
 }
 
+#[derive(Clone,Debug)]
+pub struct AssignmentNode {
+	name: Token,
+	value: Box<Expr>		
+}
+
+impl Node for AssignmentNode {
+	fn print(&self) -> String {
+		format!("var: {} := {}",&self.name.print(), &self.value.print())
+	}
+	
+	fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+		let value_to_store = self.value.evaluate()?;
+		
+		// TODO: implement assignment by passing in the environment
+		Ok(value_to_store)
+	}
+	
+}
+
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
@@ -199,6 +219,7 @@ pub enum Expr {
     Grouping(GroupingNode),
     Literal(ReturnValue),
 	Variable(VariableNode),
+	Assignment(AssignmentNode),
 }
 
 impl Expr {
@@ -208,6 +229,7 @@ impl Expr {
             Expr::Unary(n) => n.evaluate(),
             Expr::Grouping(n) => n.evaluate(),
 			Expr::Variable(n) => n.evaluate(),
+			Expr::Assignment(n) => n.evaluate(),
             Expr::Literal(value) => Ok(value.clone_or_increment_count()),
         }
     }
@@ -239,6 +261,13 @@ impl Expr {
 	
 	pub fn variable(name: String) -> Expr {		
 		Expr::Variable(VariableNode { name, index: 0})
+	}
+	
+	pub fn assignment(name: Token, new_value: Expr) -> Expr {
+		Expr::Assignment( AssignmentNode {
+			name,
+			value: Box::new(new_value)
+		 } )
 	}
 
     pub fn is_literal(&self) -> bool {
