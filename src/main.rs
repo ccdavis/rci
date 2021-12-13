@@ -15,16 +15,14 @@ use std::fs;
 
 pub struct Interpreter {
     pub had_error: bool,
-    pub had_runtime_error: bool,	
-	envr : Environment,
+    pub had_runtime_error: bool,		
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             had_error: false,
-            had_runtime_error: false,
-			envr: Environment::new(),
+            had_runtime_error: false,			
         }
     }
 
@@ -33,6 +31,8 @@ impl Interpreter {
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
+		
+		let global_env = Environment::new();
 
         for stmt in statements {
             let result = stmt.execute();

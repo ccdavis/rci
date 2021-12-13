@@ -5,15 +5,28 @@ use crate::expression::EvaluationError;
 
 
 // Consider using SlotMap here or return &ValueType instead
-pub struct Environment {
+#[derive(Clone)]
+pub struct Environment <'a>{
 	storage : Vec<ReturnValue>,
 	lookup: HashMap<String,usize>,		
+	parent: Option<&'a Environment<'a>>,
 }
 
-impl Environment {
+impl Environment<'_> {
 
-	pub fn new() -> Self {
-		Self { storage: Vec::new(), lookup: HashMap::new()}
+	pub fn new<'a>() -> Environment<'a>{
+		Environment { 
+			storage: Vec::new(), 
+			lookup: HashMap::new(), 
+			parent: None}
+	}
+	
+	pub fn extend<'a>(&'a self) -> Environment<'a> {
+		Environment {
+			parent: Some(self),
+			lookup: HashMap::new(),
+			storage: Vec::new(),			
+		}
 	}
 
 	pub fn define(&mut self, name: String, value:ReturnValue) -> usize {
@@ -32,12 +45,16 @@ impl Environment {
 	
 	pub fn get(&self, name:String) -> Result<ReturnValue, EvaluationError> {
 		match self.lookup.get(&name) {
-			Some(index) => Ok(self.storage[*index].clone()),
-			None => Err(EvaluationError { 
-				message : format!("{} not defined.",&name) })
-		}
-			
-						
+			Some(index) => Ok(self.storage[*index].clone()),			
+			None => {
+				if let Some(enclosing) = self.parent{
+					enclosing.get(name)
+				} else {
+					Err(EvaluationError { 
+						message : format!("{} not defined.",&name) })
+				}
+			}
+		}									
 	}
 	
 	// This is only safe if you had previously gotten the index
