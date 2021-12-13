@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::expression::ReturnValue;
 use crate::expression::EvaluationError;
+use crate::statement::ExecutionError;
 
 
 // Consider using SlotMap here or return &ValueType instead
@@ -41,6 +42,11 @@ impl Environment<'_> {
 			self.lookup.insert(name, index);
 			index		
 		}
+	}
+	
+	pub fn assign(&mut self, name:String, , value:ReturnValue) -> Result<(),ExecutionError> {
+		
+		Ok(())
 	}
 	
 	pub fn get(&self, name:String) -> Result<ReturnValue, EvaluationError> {
