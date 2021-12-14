@@ -43,20 +43,28 @@ impl Environment<'_> {
         }
     }
 
-    pub fn assign(&mut self, name: String, value: ReturnValue) -> Result<(), ExecutionError> {
-        // TODO: complete this
-        Ok(())
+    pub fn assign(&mut self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
+		if self.lookup.contains_key(name) {
+            // TODO: Figure out something better
+            let index: usize = *self.lookup.get(name).unwrap();
+            self.storage[index] = value.clone();			
+			Ok(())
+        } else {
+			let message = format!("Nothing named {} found in current scope.",name);
+			Err( EvaluationError { message })
+			
+		}                       
     }
 
-    pub fn get(&self, name: String) -> Result<ReturnValue, EvaluationError> {
-        match self.lookup.get(&name) {
+    pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
+        match self.lookup.get(name) {
             Some(index) => Ok(self.storage[*index].clone()),
             None => {
                 if let Some(enclosing) = self.parent {
                     enclosing.get(name)
                 } else {
                     Err(EvaluationError {
-                        message: format!("{} not defined.", &name),
+                        message: format!("{} not defined.", name),
                     })
                 }
             }

@@ -7,7 +7,7 @@ pub struct ExecutionError {
     pub message: String,
 }
 pub trait Executable {
-    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError>;
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError>;
 }
 
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ pub enum Stmt {
 }
 
 impl Stmt {
-    pub fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+    pub fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
         match self {
             Print(stmt) => stmt.execute(envr),
@@ -40,7 +40,7 @@ struct PrintNode {
 }
 
 impl Executable for PrintNode {
-    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         match self.expression.evaluate(envr) {
             Ok(value) => {
                 println!("{}", &value.print());
@@ -60,7 +60,7 @@ struct ExpressionStmtNode {
 }
 
 impl Executable for ExpressionStmtNode {
-    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         match self.expression.evaluate(envr) {
             Err(msg) => {
                 let message = format!(
@@ -94,12 +94,13 @@ struct VarNode {
 }
 
 impl Executable for VarNode {
-    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         // unwrap result of evaluation and
         let evaluated = self.initializer.evaluate(envr);
         match evaluated {
             Ok(value) => {
-                // Add value to environment binding to name
+                // Add value to environment binding to name				
+				self.index = envr.define(self.name.clone(), value);
                 Ok(())
             }
             Err(msg) => {

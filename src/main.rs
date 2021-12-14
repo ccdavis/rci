@@ -33,8 +33,8 @@ impl Interpreter {
 
         let mut global_env = Environment::new();
 
-        for stmt in statements {
-            let result = stmt.execute(&mut global_env);
+        for mut stmt in statements {
+            let mut result = stmt.execute(&mut global_env);
             match result {
                 Ok(_) => {}
                 Err(msg) => {

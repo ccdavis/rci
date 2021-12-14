@@ -189,7 +189,7 @@ impl Node for VariableNode {
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-        Ok(ReturnValue::Value(TokenType::Number(0.0)))
+        envr.get(&self.name)
     }
 }
 
@@ -206,9 +206,17 @@ impl Node for AssignmentNode {
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         let value_to_store = self.value.evaluate(envr)?;
-
-        // TODO: implement assignment by passing in the environment
-        Ok(value_to_store)
+		let var_name = match self.name.token_type {
+			TokenType::Identifier(ref variable_name) => Ok(variable_name),
+			_ => {
+				let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
+				Err( EvaluationError { message } )
+			}
+		};
+		
+		let assignable_var = var_name?;
+		envr.assign(assignable_var, value_to_store)?;		
+		Ok(ReturnValue::Value(TokenType::Nil))
     }
 }
 
