@@ -32,10 +32,10 @@ impl Interpreter {
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
 		
-		let global_env = Environment::new();
+		let mut global_env = Environment::new();
 
         for stmt in statements {
-            let result = stmt.execute();
+            let result = stmt.execute(&mut global_env);
             match result {
                 Ok(_) => {}
                 Err(msg) => {

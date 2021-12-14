@@ -1,12 +1,13 @@
 use crate::expression::Expr;
 use crate::lex::TokenType;
 use crate::lex::Token;
+use crate::environment::Environment;
 
 pub struct ExecutionError {
     pub message: String,
 }
 pub trait Executable {
-    fn execute(&self) -> Result<(), ExecutionError>;
+    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError>;
 }
 
 #[derive(Clone, Debug)]
@@ -20,12 +21,12 @@ pub enum Stmt {
 }
 
 impl Stmt {
-    pub fn execute(&self) -> Result<(), ExecutionError> {
+    pub fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
         match self {
-            Print(stmt) => stmt.execute(),
-            ExpressionStmt(stmt) => stmt.execute(),
-			Var(stmt) => stmt.execute(), 
+            Print(stmt) => stmt.execute(envr),
+            ExpressionStmt(stmt) => stmt.execute(envr),
+			Var(stmt) => stmt.execute(envr), 
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -39,8 +40,8 @@ struct PrintNode {
 }
 
 impl Executable for PrintNode {
-    fn execute(&self) -> Result<(), ExecutionError> {
-        match self.expression.evaluate() {
+    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        match self.expression.evaluate(envr) {
             Ok(value) => {
                 println!("{}", &value.print());
                 Ok(())
@@ -59,8 +60,8 @@ struct ExpressionStmtNode {
 }
 
 impl Executable for ExpressionStmtNode {
-    fn execute(&self) -> Result<(), ExecutionError> {
-        match self.expression.evaluate() {
+    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        match self.expression.evaluate(envr) {
             Err(msg) => {
                 let message = format!(
                     "Execution error on 'expression-statement' because of {}",
@@ -94,9 +95,9 @@ struct VarNode {
 
 impl Executable for VarNode {
 
-	fn execute(&self) -> Result<(), ExecutionError> {
+	fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
 		// unwrap result of evaluation and 
-		let evaluated = self.initializer.evaluate();
+		let evaluated = self.initializer.evaluate(envr);
 		match evaluated  {
 			Ok(value) =>{
 				// Add value to environment binding to name
@@ -109,8 +110,6 @@ impl Executable for VarNode {
                 Err(ExecutionError { message: message })
             }
 		}
-		
-		
 	}
 }
 

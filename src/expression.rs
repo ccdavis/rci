@@ -1,6 +1,7 @@
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
+use crate::environment::Environment;
 use std::rc::Rc;
 
 pub struct EvaluationError {
@@ -11,7 +12,7 @@ pub trait Node {
     // return the name  of the operation if any and
     // associated expressions.
     fn print(&self) -> String;
-    fn evaluate(&self) -> Result<ReturnValue, EvaluationError>;
+    fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError>;
 }
 
 #[derive(Clone, Debug)]
@@ -65,10 +66,10 @@ impl Node for BinaryNode {
         )
     }
 
-    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         use TokenType::*;
-        let left = self.left.evaluate()?;
-        let right = self.right.evaluate()?;
+        let left = self.left.evaluate(envr)?;
+        let right = self.right.evaluate(envr)?;
         let left_value = left.get();
         let right_value = right.get();
         let result = match self.operator.token_type {
@@ -116,8 +117,8 @@ impl Node for GroupingNode {
         format!("Grouping: {}", &self.expr.print())
     }
 
-    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
-        self.expr.evaluate()
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+        self.expr.evaluate(envr)
     }
 }
 
@@ -131,7 +132,7 @@ impl Node for LiteralNode {
         self.value.print()
     }
 
-    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         Ok(ReturnValue::Reference(Rc::clone(&self.value)))
     }
 }
@@ -147,8 +148,8 @@ impl Node for UnaryNode {
         format!("{} {}", &self.operator.print(), &self.expr.print())
     }
 
-    fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
-        let right = self.expr.evaluate()?;
+    fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
+        let right = self.expr.evaluate(envr)?;
 
         match self.operator.token_type {
             TokenType::Minus => match right.get() {
@@ -187,7 +188,7 @@ impl Node for VariableNode {
 		format!("var: {}",&self.name)
 	}
 	
-	fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+	fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
 		Ok(ReturnValue::Value(TokenType::Number(0.0)))
 	}
 }
@@ -199,12 +200,13 @@ pub struct AssignmentNode {
 }
 
 impl Node for AssignmentNode {
+
 	fn print(&self) -> String {
 		format!("var: {} := {}",&self.name.print(), &self.value.print())
 	}
 	
-	fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
-		let value_to_store = self.value.evaluate()?;
+	fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
+		let value_to_store = self.value.evaluate(envr)?;
 		
 		// TODO: implement assignment by passing in the environment
 		Ok(value_to_store)
@@ -223,13 +225,13 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn evaluate(&self) -> Result<ReturnValue, EvaluationError> {
+    pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         match self {
-            Expr::Binary(n) => n.evaluate(),
-            Expr::Unary(n) => n.evaluate(),
-            Expr::Grouping(n) => n.evaluate(),
-			Expr::Variable(n) => n.evaluate(),
-			Expr::Assignment(n) => n.evaluate(),
+            Expr::Binary(n) => n.evaluate(envr),
+            Expr::Unary(n) => n.evaluate(envr),
+            Expr::Grouping(n) => n.evaluate(envr),
+			Expr::Variable(n) => n.evaluate(envr),
+			Expr::Assignment(n) => n.evaluate(envr),
             Expr::Literal(value) => Ok(value.clone_or_increment_count()),
         }
     }
