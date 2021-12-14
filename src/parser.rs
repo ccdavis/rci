@@ -6,7 +6,7 @@ use crate::statement::Stmt;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
-	errors : Vec<ParseError>,
+    errors: Vec<ParseError>,
 }
 
 pub struct ParseError {
@@ -15,26 +15,29 @@ pub struct ParseError {
 }
 
 impl Parser {
-
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 , errors: Vec::new()}
+        Self {
+            tokens,
+            current: 0,
+            errors: Vec::new(),
+        }
     }
 
     pub fn report_error(&mut self, error: ParseError) {
-        // TODO: Call interpreter.error() here to report errors		
+        // TODO: Call interpreter.error() here to report errors
         match error.t.token_type {
-            TokenType::Eof => {				
-				eprintln!("{} at {:?}. At end of input. ", error.message, error.t);				
-			},
+            TokenType::Eof => {
+                eprintln!("{} at {:?}. At end of input. ", error.message, error.t);
+            }
             _ => {
-				eprintln!("{} at {:?}", error.message, error.t);
-			},
+                eprintln!("{} at {:?}", error.message, error.t);
+            }
         }
-		self.errors.push(error);
+        self.errors.push(error);
     }
 
     pub fn error(&mut self, error: ParseError) {
-        self.report_error(error);        
+        self.report_error(error);
     }
 
     fn matches(&mut self, types: &[TokenType]) -> bool {
@@ -99,21 +102,18 @@ impl Parser {
             })
         }
     }
-	
-	// Need specialized consume() functions because can't pass 
-	// enums with values like Identifier(String), Number(i64) etc.
+
+    // Need specialized consume() functions because can't pass
+    // enums with values like Identifier(String), Number(i64) etc.
     fn consume_identifier(&mut self, message: &str) -> Result<Token, ParseError> {
-		match self.peek().token_type {
-			TokenType::Identifier(_) =>Ok(self.advance()),			
-			_ => Err(
-				ParseError {
-					t: self.peek().clone(),
-					message: message.to_string(),
-				}
-			),
-		}        
+        match self.peek().token_type {
+            TokenType::Identifier(_) => Ok(self.advance()),
+            _ => Err(ParseError {
+                t: self.peek().clone(),
+                message: message.to_string(),
+            }),
+        }
     }
-	
 
     // The idea is to consume tokens until we reach the end of the next statement.
     fn synchronize(&mut self) {
@@ -149,46 +149,47 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-			match self.declaration() { 
-				Ok(stmt) => statements.push(stmt),            
-				Err(parse_error) => self.error(parse_error),
-			}
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(parse_error) => self.error(parse_error),
+            }
         }
         statements
     }
-	
-	fn declaration(&mut self) -> Result<Stmt,ParseError> {
-		if self.matches(&[TokenType::Var]){
-			return self.var_declaration();
-		}
-		
-		let result = self.statement();
-		if result.is_err() {
-			self.synchronize();
-		}
-		result		
-	}
-	
-	fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
-		let v:Token  = self.consume_identifier("Expect variable name")?;
-		if self.matches(&[TokenType::Equal]) {
-			let initializer = self.expression()?;
-			self.consume(TokenType::SemiColon, "expect ';'")?;
-			Ok(Stmt::var_stmt(v, initializer))
-		} else {
-			Err( ParseError 
-				{ t : v, 
-				message: "Variable declaration requires initial value assignment with '='.".to_string()
-			} )
-		}
-	}
+
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Var]) {
+            return self.var_declaration();
+        }
+
+        let result = self.statement();
+        if result.is_err() {
+            self.synchronize();
+        }
+        result
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let v: Token = self.consume_identifier("Expect variable name")?;
+        if self.matches(&[TokenType::Equal]) {
+            let initializer = self.expression()?;
+            self.consume(TokenType::SemiColon, "expect ';'")?;
+            Ok(Stmt::var_stmt(v, initializer))
+        } else {
+            Err(ParseError {
+                t: v,
+                message: "Variable declaration requires initial value assignment with '='."
+                    .to_string(),
+            })
+        }
+    }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         use TokenType::*;
         if self.matches(&[Print]) {
             return self.print_statement();
         }
-		
+
         self.expression_statement()
     }
 
@@ -201,31 +202,30 @@ impl Parser {
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expected ';'")?;
-		Ok(Stmt::print_stmt(expr))		
+        Ok(Stmt::print_stmt(expr))
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
         self.assignment()
     }
-	
-	fn assignment(&mut self) -> Result<Expr, ParseError> {
-		let l_value = self.equality()?;
-		
-		// Check for special assignment operator
-		if self.matches(&[TokenType::ColonEqual]) {
-			let change = self.previous();
-			let new_value = self.assignment()?;
-			return match l_value {
-				Expr::Variable(ref node) => Ok(Expr::assignment(change, new_value)), 
-				_ =>  {
-					let message = format!("{} not a valid assignment target.",&l_value.print());
-					Err(ParseError { t: change, message }) 
-				}
-			}
-		} // assignment operator
-		Ok(l_value)  // if we get here it's an r-value!
-	}
-	
+
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        let l_value = self.equality()?;
+
+        // Check for special assignment operator
+        if self.matches(&[TokenType::ColonEqual]) {
+            let change = self.previous();
+            let new_value = self.assignment()?;
+            return match l_value {
+                Expr::Variable(ref node) => Ok(Expr::assignment(change, new_value)),
+                _ => {
+                    let message = format!("{} not a valid assignment target.", &l_value.print());
+                    Err(ParseError { t: change, message })
+                }
+            };
+        } // assignment operator
+        Ok(l_value) // if we get here it's an r-value!
+    }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
@@ -275,7 +275,7 @@ impl Parser {
             let right = self.unary()?;
             Ok(Expr::unary(operator, right))
         } else {
-			self.primary()            
+            self.primary()
         }
     }
 
@@ -294,10 +294,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
-			Identifier(name) => {
-				self.advance();								
-				Ok(Expr::variable(name))
-			}
+            Identifier(name) => {
+                self.advance();
+                Ok(Expr::variable(name))
+            }
             LeftParen => {
                 self.advance();
                 let mut expr = self.expression()?;

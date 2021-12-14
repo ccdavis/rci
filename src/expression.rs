@@ -1,7 +1,7 @@
+use crate::environment::Environment;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
-use crate::environment::Environment;
 use std::rc::Rc;
 
 pub struct EvaluationError {
@@ -12,7 +12,7 @@ pub trait Node {
     // return the name  of the operation if any and
     // associated expressions.
     fn print(&self) -> String;
-    fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError>;
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError>;
 }
 
 #[derive(Clone, Debug)]
@@ -148,7 +148,7 @@ impl Node for UnaryNode {
         format!("{} {}", &self.operator.print(), &self.expr.print())
     }
 
-    fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         let right = self.expr.evaluate(envr)?;
 
         match self.operator.token_type {
@@ -179,39 +179,37 @@ impl Node for UnaryNode {
 
 #[derive(Clone, Debug)]
 pub struct VariableNode {
-	pub name: String,
-	pub index : usize,	
+    pub name: String,
+    pub index: usize,
 }
 
 impl Node for VariableNode {
-	fn print(&self) -> String {
-		format!("var: {}",&self.name)
-	}
-	
-	fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-		Ok(ReturnValue::Value(TokenType::Number(0.0)))
-	}
+    fn print(&self) -> String {
+        format!("var: {}", &self.name)
+    }
+
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+        Ok(ReturnValue::Value(TokenType::Number(0.0)))
+    }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct AssignmentNode {
-	name: Token,
-	value: Box<Expr>		
+    name: Token,
+    value: Box<Expr>,
 }
 
 impl Node for AssignmentNode {
+    fn print(&self) -> String {
+        format!("var: {} := {}", &self.name.print(), &self.value.print())
+    }
 
-	fn print(&self) -> String {
-		format!("var: {} := {}",&self.name.print(), &self.value.print())
-	}
-	
-	fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
-		let value_to_store = self.value.evaluate(envr)?;
-		
-		// TODO: implement assignment by passing in the environment
-		Ok(value_to_store)
-	}
-	
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+        let value_to_store = self.value.evaluate(envr)?;
+
+        // TODO: implement assignment by passing in the environment
+        Ok(value_to_store)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -220,8 +218,8 @@ pub enum Expr {
     Unary(UnaryNode),
     Grouping(GroupingNode),
     Literal(ReturnValue),
-	Variable(VariableNode),
-	Assignment(AssignmentNode),
+    Variable(VariableNode),
+    Assignment(AssignmentNode),
 }
 
 impl Expr {
@@ -230,8 +228,8 @@ impl Expr {
             Expr::Binary(n) => n.evaluate(envr),
             Expr::Unary(n) => n.evaluate(envr),
             Expr::Grouping(n) => n.evaluate(envr),
-			Expr::Variable(n) => n.evaluate(envr),
-			Expr::Assignment(n) => n.evaluate(envr),
+            Expr::Variable(n) => n.evaluate(envr),
+            Expr::Assignment(n) => n.evaluate(envr),
             Expr::Literal(value) => Ok(value.clone_or_increment_count()),
         }
     }
@@ -260,17 +258,17 @@ impl Expr {
     pub fn grouping(e: Expr) -> Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
-	
-	pub fn variable(name: String) -> Expr {		
-		Expr::Variable(VariableNode { name, index: 0})
-	}
-	
-	pub fn assignment(name: Token, new_value: Expr) -> Expr {
-		Expr::Assignment( AssignmentNode {
-			name,
-			value: Box::new(new_value)
-		 } )
-	}
+
+    pub fn variable(name: String) -> Expr {
+        Expr::Variable(VariableNode { name, index: 0 })
+    }
+
+    pub fn assignment(name: Token, new_value: Expr) -> Expr {
+        Expr::Assignment(AssignmentNode {
+            name,
+            value: Box::new(new_value),
+        })
+    }
 
     pub fn is_literal(&self) -> bool {
         matches!(self, Expr::Literal(_))

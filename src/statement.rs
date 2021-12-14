@@ -1,7 +1,7 @@
-use crate::expression::Expr;
-use crate::lex::TokenType;
-use crate::lex::Token;
 use crate::environment::Environment;
+use crate::expression::Expr;
+use crate::lex::Token;
+use crate::lex::TokenType;
 
 pub struct ExecutionError {
     pub message: String,
@@ -16,7 +16,7 @@ pub enum Stmt {
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockNode),
     If(IfNode),
-	Var(VarNode),
+    Var(VarNode),
     While(WhileNode),
 }
 
@@ -26,7 +26,7 @@ impl Stmt {
         match self {
             Print(stmt) => stmt.execute(envr),
             ExpressionStmt(stmt) => stmt.execute(envr),
-			Var(stmt) => stmt.execute(envr), 
+            Var(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -88,29 +88,29 @@ struct IfNode {
 
 #[derive(Clone, Debug)]
 struct VarNode {
-	name : String,
-	index: usize,
-	initializer : Box<Expr>,
+    name: String,
+    index: usize,
+    initializer: Box<Expr>,
 }
 
 impl Executable for VarNode {
-
-	fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
-		// unwrap result of evaluation and 
-		let evaluated = self.initializer.evaluate(envr);
-		match evaluated  {
-			Ok(value) =>{
-				// Add value to environment binding to name
-				Ok(())
-			}, 
-			Err(msg) => {
-                let message = 
-					format!("Execution error on variable initialization for '{}' because of {}", 
-						&self.name, &msg.message);
+    fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        // unwrap result of evaluation and
+        let evaluated = self.initializer.evaluate(envr);
+        match evaluated {
+            Ok(value) => {
+                // Add value to environment binding to name
+                Ok(())
+            }
+            Err(msg) => {
+                let message = format!(
+                    "Execution error on variable initialization for '{}' because of {}",
+                    &self.name, &msg.message
+                );
                 Err(ExecutionError { message: message })
             }
-		}
-	}
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -139,17 +139,17 @@ impl Stmt {
             else_branch: Box::new(else_branch),
         })
     }
-	
-	pub fn var_stmt(name:Token, expr:Expr) -> Stmt {
-		match name.token_type {
-			TokenType::Identifier(n) => 
-				Stmt::Var ( VarNode {
-					name: n, 
-					index: 0, 
-					initializer:Box::new(expr)} ),
-			_ =>  panic!("Can't add variable at {:?}",&name),
-		}
-	}
+
+    pub fn var_stmt(name: Token, expr: Expr) -> Stmt {
+        match name.token_type {
+            TokenType::Identifier(n) => Stmt::Var(VarNode {
+                name: n,
+                index: 0,
+                initializer: Box::new(expr),
+            }),
+            _ => panic!("Can't add variable at {:?}", &name),
+        }
+    }
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
         Stmt::While(WhileNode {

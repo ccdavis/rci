@@ -1,28 +1,27 @@
+mod environment;
 mod expression;
 mod lex;
 mod operations;
 mod parser;
 mod statement;
-mod environment;
 
-use parser::*;
 use environment::*;
+use parser::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
-
 pub struct Interpreter {
     pub had_error: bool,
-    pub had_runtime_error: bool,		
+    pub had_runtime_error: bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             had_error: false,
-            had_runtime_error: false,			
+            had_runtime_error: false,
         }
     }
 
@@ -31,8 +30,8 @@ impl Interpreter {
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
-		
-		let mut global_env = Environment::new();
+
+        let mut global_env = Environment::new();
 
         for stmt in statements {
             let result = stmt.execute(&mut global_env);
