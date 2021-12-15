@@ -210,21 +210,22 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let l_value = self.equality()?;
-
+        let assignee = self.equality()?;	
         // Check for special assignment operator
-        if self.matches(&[TokenType::ColonEqual]) {
-            let change = self.previous();
+        if self.matches(&[TokenType::ColonEqual]) {            
+			let change = self.previous();
             let new_value = self.assignment()?;
-            return match l_value {
-                Expr::Variable(ref node) => Ok(Expr::assignment(change, new_value)),
+            return match assignee {
+                Expr::Variable(ref node) => {					
+					Ok(Expr::assignment(node.name.clone(), new_value))
+				},
                 _ => {
-                    let message = format!("{} not a valid assignment target.", &l_value.print());
+                    let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(ParseError { t: change, message })
                 }
             };
         } // assignment operator
-        Ok(l_value) // if we get here it's an r-value!
+        Ok(assignee) // if we get here it's an r-value!
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
@@ -296,11 +297,11 @@ impl Parser {
             }
             Identifier(name) => {
                 self.advance();
-                Ok(Expr::variable(name))
+                Ok(Expr::variable(self.previous()))
             }
             LeftParen => {
                 self.advance();
-                let mut expr = self.expression()?;
+                let expr = self.expression()?;
                 self.consume(RightParen, "Expect ')' after expression.")?;
                 Ok(Expr::grouping(expr))
             }

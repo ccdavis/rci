@@ -12,6 +12,8 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
+const TRACE:bool = true;
+
 pub struct Interpreter {
     pub had_error: bool,
     pub had_runtime_error: bool,	

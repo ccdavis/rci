@@ -179,17 +179,22 @@ impl Node for UnaryNode {
 
 #[derive(Clone, Debug)]
 pub struct VariableNode {
-    pub name: String,
+    pub name: Token,
     pub index: usize,
 }
 
 impl Node for VariableNode {
     fn print(&self) -> String {
-        format!("var: {}", &self.name)
+        format!("var: {}", &self.name.print())
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-        envr.get(&self.name)
+		match self.name.token_type {
+			TokenType::Identifier(ref name) => envr.get(&name),
+			_ => Err(EvaluationError { 
+				message: "Can't look up non-identifiers".to_string()
+			}),
+		}
     }
 }
 
@@ -201,7 +206,7 @@ pub struct AssignmentNode {
 
 impl Node for AssignmentNode {
     fn print(&self) -> String {
-        format!("var: {} := {}", &self.name.print(), &self.value.print())
+        format!("assign var: {} to  {}", &self.name.print(), &self.value.print())
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
@@ -267,7 +272,7 @@ impl Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
 
-    pub fn variable(name: String) -> Expr {
+    pub fn variable(name: Token) -> Expr {
         Expr::Variable(VariableNode { name, index: 0 })
     }
 
