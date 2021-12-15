@@ -36,9 +36,11 @@ impl Environment<'_> {
             self.storage[index] = value.clone();
             index
         } else {
+			println!("defined {} with value {}",&name, &value.print());
             self.storage.push(value);
-            let index = self.storage.len() - 1;
+            let index = self.storage.len() - 1;			
             self.lookup.insert(name, index);
+			
             index
         }
     }
@@ -60,9 +62,17 @@ impl Environment<'_> {
         match self.lookup.get(name) {
             Some(index) => Ok(self.storage[*index].clone()),
             None => {
+				eprintln!("Symbol table: ");
+				for (name, index) in &self.lookup {
+					println!("{}: {}",&name, index);
+				}
+					
+						
                 if let Some(enclosing) = self.parent {
                     enclosing.get(name)
                 } else {
+					
+						
                     Err(EvaluationError {
                         message: format!("{} not defined.", name),
                     })

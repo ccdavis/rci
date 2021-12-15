@@ -14,7 +14,7 @@ use std::fs;
 
 pub struct Interpreter {
     pub had_error: bool,
-    pub had_runtime_error: bool,
+    pub had_runtime_error: bool,	
 }
 
 impl Interpreter {
@@ -25,16 +25,24 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self, code: String) {
+    pub fn run(&mut self,global_env:&mut Environment, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
-
-        let mut global_env = Environment::new();
+		
+		if TRACE {
+			statements.iter()
+			.for_each(|stmt| 
+				println!("{}",&stmt.print()));
+		}
+	
+       	
+		
 
         for mut stmt in statements {
-            let mut result = stmt.execute(&mut global_env);
+			
+            let mut result = stmt.execute(global_env);
             match result {
                 Ok(_) => {}
                 Err(msg) => {
@@ -64,17 +72,18 @@ pub fn repl() {
     }
 
     // The environment for the duration of the REPL session
-    let mut envr = Interpreter::new();
-
+	let mut global_env = Environment::new();
+    let mut interpreter = Interpreter::new();
+	
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                //let results = interpret(line, &mut envr);
-                envr.run(line);
-                envr.had_error = false;
-                envr.had_runtime_error = false;
+                
+                interpreter.run(&mut global_env, line);
+                interpreter.had_error = false;
+                interpreter.had_runtime_error = false;
 
                 //println!("=>  {}", &results);
             }
@@ -104,16 +113,15 @@ fn main() {
         std::process::exit(0);
     }
 
-    let mut interpreter = Interpreter::new();
-
     if args.len() < 2 {
         repl();
     } else {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
+		let mut global_env = Environment::new();
         let mut interpreter = Interpreter::new();
-        interpreter.run(code);
+        interpreter.run(&mut global_env, code);
         if interpreter.had_error {
             std::process::exit(65);
         }

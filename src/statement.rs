@@ -8,11 +8,13 @@ pub struct ExecutionError {
 }
 pub trait Executable {
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError>;
+	fn print(&self) -> String;
+	
 }
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
-    Print(PrintNode),
+    Print(PrintStmtNode),
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockNode),
     If(IfNode),
@@ -21,6 +23,17 @@ pub enum Stmt {
 }
 
 impl Stmt {
+
+	pub fn print(&self) -> String {
+		use Stmt::*;
+        match self {
+            Print(stmt) => stmt.print(),
+            ExpressionStmt(stmt) => stmt.print(),
+            Var(stmt) => stmt.print(),
+            _ => format!("{:?}",&self),
+        }
+	}
+	
     pub fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
         match self {
@@ -35,11 +48,15 @@ impl Stmt {
 }
 
 #[derive(Clone, Debug)]
-struct PrintNode {
+struct PrintStmtNode {
     expression: Expr,
 }
 
-impl Executable for PrintNode {
+impl Executable for PrintStmtNode {
+	fn print(&self) -> String {
+		format!("print-stmt {}", &self.expression.print())
+	}
+
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         match self.expression.evaluate(envr) {
             Ok(value) => {
@@ -60,6 +77,11 @@ struct ExpressionStmtNode {
 }
 
 impl Executable for ExpressionStmtNode {
+
+	fn print(&self) -> String {
+		format!("expr-stmt {}", &self.expression.print())
+	}
+	
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         match self.expression.evaluate(envr) {
             Err(msg) => {
@@ -94,6 +116,11 @@ struct VarNode {
 }
 
 impl Executable for VarNode {
+
+	fn print(&self) -> String {
+		format!("var-stmt = {}",&self.initializer.print())
+	}
+
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         // unwrap result of evaluation and
         let evaluated = self.initializer.evaluate(envr);
@@ -122,7 +149,7 @@ struct WhileNode {
 
 impl Stmt {
     pub fn print_stmt(expression: Expr) -> Stmt {
-        Stmt::Print(PrintNode { expression })
+        Stmt::Print(PrintStmtNode { expression })
     }
 
     pub fn expression_stmt(expression: Expr) -> Stmt {

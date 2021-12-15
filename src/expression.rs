@@ -325,6 +325,8 @@ impl Expr {
             Unary(n) => n.print(),
             Literal(ref n) => n.print(),
             Grouping(n) => n.print(),
+			Variable(n) => n.print(),
+			Assignment(n) => n.print(),
 
             _ => panic!("Not implemented"),
         };
