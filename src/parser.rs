@@ -190,6 +190,10 @@ impl Parser {
             return self.print_statement();
         }
 
+        if self.matches(&[LeftBrace]) {
+            return self.block_statement();
+        }
+
         self.expression_statement()
     }
 
@@ -205,20 +209,29 @@ impl Parser {
         Ok(Stmt::print_stmt(expr))
     }
 
+    fn block_statement(&mut self) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+        let mut stmt_list: Vec<Stmt> = Vec::new();
+        while !self.check(&RightBrace) && !self.is_finished() {
+            let stmt = self.declaration()?;
+            stmt_list.push(stmt);
+        }
+        self.consume(RightBrace, "expect '}' after block.");
+        Ok(Stmt::block_stmt(stmt_list))
+    }
+
     fn expression(&mut self) -> Result<Expr, ParseError> {
         self.assignment()
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let assignee = self.equality()?;	
+        let assignee = self.equality()?;
         // Check for special assignment operator
-        if self.matches(&[TokenType::ColonEqual]) {            
-			let change = self.previous();
+        if self.matches(&[TokenType::ColonEqual]) {
+            let change = self.previous();
             let new_value = self.assignment()?;
             return match assignee {
-                Expr::Variable(ref node) => {					
-					Ok(Expr::assignment(node.name.clone(), new_value))
-				},
+                Expr::Variable(ref node) => Ok(Expr::assignment(node.name.clone(), new_value)),
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(ParseError { t: change, message })

@@ -189,12 +189,12 @@ impl Node for VariableNode {
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-		match self.name.token_type {
-			TokenType::Identifier(ref name) => envr.get(&name),
-			_ => Err(EvaluationError { 
-				message: "Can't look up non-identifiers".to_string()
-			}),
-		}
+        match self.name.token_type {
+            TokenType::Identifier(ref name) => envr.get(&name),
+            _ => Err(EvaluationError {
+                message: "Can't look up non-identifiers".to_string(),
+            }),
+        }
     }
 }
 
@@ -206,22 +206,26 @@ pub struct AssignmentNode {
 
 impl Node for AssignmentNode {
     fn print(&self) -> String {
-        format!("assign var: {} to  {}", &self.name.print(), &self.value.print())
+        format!(
+            "assign var: {} to  {}",
+            &self.name.print(),
+            &self.value.print()
+        )
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         let value_to_store = self.value.evaluate(envr)?;
-		let var_name = match self.name.token_type {
-			TokenType::Identifier(ref variable_name) => Ok(variable_name),
-			_ => {
-				let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
-				Err( EvaluationError { message } )
-			}
-		};
-		
-		let assignable_var = var_name?;
-		envr.assign(assignable_var, value_to_store)?;		
-		Ok(ReturnValue::Value(TokenType::Nil))
+        let var_name = match self.name.token_type {
+            TokenType::Identifier(ref variable_name) => Ok(variable_name),
+            _ => {
+                let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
+                Err(EvaluationError { message })
+            }
+        };
+
+        let assignable_var = var_name?;
+        envr.assign(assignable_var, value_to_store)?;
+        Ok(ReturnValue::Value(TokenType::Nil))
     }
 }
 
@@ -330,8 +334,8 @@ impl Expr {
             Unary(n) => n.print(),
             Literal(ref n) => n.print(),
             Grouping(n) => n.print(),
-			Variable(n) => n.print(),
-			Assignment(n) => n.print(),
+            Variable(n) => n.print(),
+            Assignment(n) => n.print(),
 
             _ => panic!("Not implemented"),
         };

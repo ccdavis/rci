@@ -12,11 +12,11 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
-const TRACE:bool = true;
+const TRACE: bool = true;
 
 pub struct Interpreter {
     pub had_error: bool,
-    pub had_runtime_error: bool,	
+    pub had_runtime_error: bool,
 }
 
 impl Interpreter {
@@ -27,23 +27,19 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self,global_env:&mut Environment, code: String) {
+    pub fn run(&mut self, global_env: &mut Environment, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
         let statements = parser.parse();
-		
-		if TRACE {
-			statements.iter()
-			.for_each(|stmt| 
-				println!("{}",&stmt.print()));
-		}
-	
-       	
-		
+
+        if TRACE {
+            statements
+                .iter()
+                .for_each(|stmt| println!("{}", &stmt.print()));
+        }
 
         for mut stmt in statements {
-			
             let mut result = stmt.execute(global_env);
             match result {
                 Ok(_) => {}
@@ -74,15 +70,15 @@ pub fn repl() {
     }
 
     // The environment for the duration of the REPL session
-	let mut global_env = Environment::new();
+    let mut global_env = Environment::new();
     let mut interpreter = Interpreter::new();
-	
+
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                
+
                 interpreter.run(&mut global_env, line);
                 interpreter.had_error = false;
                 interpreter.had_runtime_error = false;
@@ -121,7 +117,7 @@ fn main() {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
-		let mut global_env = Environment::new();
+        let mut global_env = Environment::new();
         let mut interpreter = Interpreter::new();
         interpreter.run(&mut global_env, code);
         if interpreter.had_error {
