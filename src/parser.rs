@@ -186,6 +186,11 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         use TokenType::*;
+		
+		if self.matches(&[If]) {
+			return self.if_statement();
+		}
+		
         if self.matches(&[Print]) {
             return self.print_statement();
         }
@@ -202,6 +207,20 @@ impl Parser {
         self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::expression_stmt(expr))
     }
+	
+	fn if_statement(&mut self) -> Result<Stmt, ParseError> {
+		use TokenType::*;
+		let condition = self.expression()?;
+		self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
+		let then_branch = self.block_statement()?;
+		if self.matches(&[Else]) {
+			self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
+			let else_branch = self.block_statement()?;
+			Ok(Stmt::if_stmt(condition, then_branch, Some(else_branch)))
+		} else {
+			Ok(Stmt::if_stmt(condition, then_branch, None))
+		}
+	}
 
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;

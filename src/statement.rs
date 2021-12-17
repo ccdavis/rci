@@ -16,9 +16,10 @@ pub enum Stmt {
     Print(PrintStmtNode),
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockStmtNode),
-    If(IfNode),
+    If(IfStmtNode),
     Var(VarNode),
     While(WhileNode),
+	NoOp,
 }
 
 impl Stmt {
@@ -29,6 +30,7 @@ impl Stmt {
             ExpressionStmt(stmt) => stmt.print(),
             Var(stmt) => stmt.print(),
             Block(stmt) => stmt.print(),
+			If(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
@@ -40,6 +42,7 @@ impl Stmt {
             ExpressionStmt(stmt) => stmt.execute(envr),
             Var(stmt) => stmt.execute(envr),
             Block(stmt) => stmt.execute(envr),
+			If(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -122,10 +125,44 @@ impl Executable for BlockStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct IfNode {
+struct IfStmtNode {
     condition: Expr,
     then_branch: Box<Stmt>,
+	has_else: bool, // avoid Option inside else box
     else_branch: Box<Stmt>,
+}
+
+impl Executable for IfStmtNode {
+	fn print(&self) -> String {
+		let else_stmt = if self.has_else {
+			self.else_branch.print()
+		} else {
+			"None".to_string()
+		};
+		format!("if-stmt {} then {} else {}", &self.condition.print(), &*self.then_branch.print(), else_stmt)
+	}
+	
+	fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+		let test = self.condition.evaluate(envr);
+		match test {
+			Ok(result) => {
+				let falsey = matches!(result.get(), TokenType::False) || 
+					matches!(result.get(), TokenType::Nil);
+				
+				if !falsey {
+					self.then_branch.execute(envr)
+				} else {
+					if self.has_else {
+						self.else_branch.execute(envr)
+					} else {
+						Ok(())
+					}
+					
+				}				
+			},
+			Err(err) => Err(ExecutionError { message: err.message } ),
+		}
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -136,6 +173,7 @@ struct VarNode {
 }
 
 impl Executable for VarNode {
+
     fn print(&self) -> String {
         format!("var-stmt = {}", &self.initializer.print())
     }
@@ -179,14 +217,25 @@ impl Stmt {
         Stmt::Block(BlockStmtNode { statements })
     }
 
-    pub fn if_stmt(condition: Expr, then_branch: Stmt, else_branch: Stmt) -> Stmt {
-        Stmt::If(IfNode {
-            condition,
-            then_branch: Box::new(then_branch),
-            else_branch: Box::new(else_branch),
-        })
+    pub fn if_stmt(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Stmt {
+		match else_branch {
+			None => 
+			Stmt::If(IfStmtNode {
+				condition,
+				then_branch: Box::new(then_branch),
+				has_else: false,
+				else_branch: Box::new(Stmt::no_op()),
+			}),
+			Some(unwrapped_else_branch) =>
+			Stmt::If(IfStmtNode {
+				condition,
+				then_branch: Box::new(then_branch),
+				has_else: true,
+				else_branch: Box::new(unwrapped_else_branch),
+			}),			
+		}
     }
-
+	
     pub fn var_stmt(name: Token, expr: Expr) -> Stmt {
         match name.token_type {
             TokenType::Identifier(n) => Stmt::Var(VarNode {
@@ -197,6 +246,10 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
+	
+	pub fn no_op() -> Stmt {
+		Stmt::NoOp
+	}
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
         Stmt::While(WhileNode {
