@@ -235,7 +235,7 @@ impl Parser {
             let stmt = self.declaration()?;
             stmt_list.push(stmt);
         }
-        self.consume(RightBrace, "expect '}' after block.");
+        self.consume(RightBrace, "expect '}' after block.")?;
         Ok(Stmt::block_stmt(stmt_list))
     }
 

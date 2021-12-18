@@ -216,7 +216,7 @@ impl Expr {
             Expr::Grouping(n) => n.evaluate(envr),
             Expr::Variable(n) => n.evaluate(envr),
             Expr::Assignment(n) => n.evaluate(envr),
-            Expr::Literal(value) => Ok(value.clone_or_increment_count()),
+            Expr::Literal(ref value) => Ok(value.clone_or_increment_count()),
         }
     }
 

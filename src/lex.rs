@@ -473,8 +473,7 @@ impl Scanner {
         let starting_line = self.line;
         let starting_column = self.column;
 
-        let mut content = "".to_string();
-        self.advance(); // eat the opening "
+        let mut content = "".to_string();        
         while self.this_char() != '"' && !self.is_finished() {
             content.push(self.this_char());
             self.advance();
