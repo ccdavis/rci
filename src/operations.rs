@@ -1,4 +1,4 @@
-use crate::expression::ReturnValue;
+use crate::types::ReturnValue;
 use crate::lex::TokenType;
 
 // Takes generic TokenType enums that carry literal values.

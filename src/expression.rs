@@ -2,6 +2,7 @@ use crate::environment::Environment;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
+use crate::types::ReturnValue;
 use std::rc::Rc;
 
 pub struct EvaluationError {
@@ -13,40 +14,6 @@ pub trait Node {
     // associated expressions.
     fn print(&self) -> String;
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError>;
-}
-
-#[derive(Clone, Debug)]
-pub enum ReturnValue {
-    Reference(Rc<TokenType>),
-    Value(TokenType),
-}
-
-impl ReturnValue {
-    pub fn new_ref(value: TokenType) -> Self {
-        ReturnValue::Reference(Rc::new(value))
-    }
-
-    pub fn new_val(value: TokenType) -> Self {
-        ReturnValue::Value(value)
-    }
-
-    pub fn get(&self) -> &TokenType {
-        match self {
-            ReturnValue::Reference(v) => &*v,
-            ReturnValue::Value(v) => &v,
-        }
-    }
-
-    pub fn clone_or_increment_count(&self) -> ReturnValue {
-        match self {
-            ReturnValue::Reference(v) => ReturnValue::Reference(Rc::clone(&v)),
-            ReturnValue::Value(v) => ReturnValue::Value(v.clone()),
-        }
-    }
-
-    pub fn print(&self) -> String {
-        self.get().print_value()
-    }
 }
 
 #[derive(Clone, Debug)]

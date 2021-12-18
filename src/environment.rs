@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::expression::EvaluationError;
-use crate::expression::ReturnValue;
+use crate::types::*;
 use crate::statement::ExecutionError;
 
 // Consider using SlotMap here or return &ValueType instead

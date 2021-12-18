@@ -4,6 +4,7 @@ mod lex;
 mod operations;
 mod parser;
 mod statement;
+mod types;
 
 use environment::*;
 use parser::*;

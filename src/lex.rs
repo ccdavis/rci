@@ -82,7 +82,7 @@ impl TokenType {
     }
 
     // Prints only the name of the token type. Can be used to
-    // compare TokenType instances if performance insn't a concern.
+    // compare TokenType instances if performance isn't a concern.
     pub fn print(&self) -> String {
         use TokenType::*;
         let name = match self {
