@@ -2,6 +2,7 @@ use crate::environment::Environment;
 use crate::expression::Expr;
 use crate::lex::Token;
 use crate::lex::TokenType;
+use crate::types::DataValue;
 
 pub struct ExecutionError {
     pub message: String,
@@ -146,9 +147,13 @@ impl Executable for IfStmtNode {
 		let test = self.condition.evaluate(envr);
 		match test {
 			Ok(result) => {
-				let falsey = matches!(result.get(), TokenType::False) || 
-					matches!(result.get(), TokenType::Nil);
+
+				let falsey = match result.get() {
+					DataValue::Bool(b) => !b,					
+					_ => false,					
+				};
 				
+								
 				if !falsey {
 					self.then_branch.execute(envr)
 				} else {

@@ -3,6 +3,8 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
 use crate::types::ReturnValue;
+use crate::types::DataValue;
+use crate::types::DataType;
 use std::rc::Rc;
 
 pub struct EvaluationError {
@@ -91,7 +93,7 @@ impl Node for GroupingNode {
 
 #[derive(Clone, Debug)]
 pub struct LiteralNode {
-    value: Rc<TokenType>,
+    value: Rc<DataValue>,
 }
 
 impl Node for LiteralNode {
@@ -99,8 +101,8 @@ impl Node for LiteralNode {
         self.value.print()
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-        Ok(ReturnValue::Reference(Rc::clone(&self.value)))
+    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {        
+		Ok(ReturnValue::Reference(Rc::clone(&self.value)))
     }
 }
 
@@ -116,12 +118,12 @@ impl Node for UnaryNode {
     }
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-        let right = self.expr.evaluate(envr)?;
+        let right = &self.expr.evaluate(envr)?;
 
         match self.operator.token_type {
             TokenType::Minus => match right.get() {
-                TokenType::Number(n) => {
-                    let new_value = ReturnValue::Value(TokenType::Number(-n));
+                DataValue::Number(n) => {
+                    let new_value = ReturnValue::Value(DataValue::Number(-n));
                     Ok(new_value)
                 }
                 _ => {
@@ -131,9 +133,9 @@ impl Node for UnaryNode {
             },
             TokenType::Not => {
                 if !matches!(TokenType::False, right) && !matches!(TokenType::Nil, right) {
-                    Ok(ReturnValue::Value(TokenType::True))
+                    Ok(ReturnValue::Value(DataValue::Bool(true)))
                 } else {
-                    Ok(ReturnValue::Value(TokenType::False))
+                    Ok(ReturnValue::Value(DataValue::Bool(false)))
                 }
             }
             _ => {
@@ -192,7 +194,7 @@ impl Node for AssignmentNode {
 
         let assignable_var = var_name?;
         envr.assign(assignable_var, value_to_store)?;
-        Ok(ReturnValue::Value(TokenType::Nil))
+        Ok(ReturnValue::None)
     }
 }
 
@@ -236,7 +238,8 @@ impl Expr {
     }
 
     pub fn literal(value: Token) -> Expr {
-        Expr::Literal(ReturnValue::new_ref(value.token_type))
+		let data_value = DataValue::from_token_type(&value.token_type);
+        Expr::Literal(ReturnValue::new_ref(data_value))
     }
 
     pub fn grouping(e: Expr) -> Expr {
@@ -258,10 +261,12 @@ impl Expr {
         matches!(self, Expr::Literal(_))
     }
 
-    pub fn data_type(&self) -> TokenType {
+    pub fn data_type(&self) -> DataType{
         match self {
-            Expr::Literal(ReturnValue::Reference(token_type)) => token_type.data_type(),
-            Expr::Literal(ReturnValue::Value(token_type)) => token_type.data_type(),
+            Expr::Literal(ReturnValue::Reference(data_value)) => 
+				DataType::from_data_value(&data_value),
+            Expr::Literal(ReturnValue::Value(data_value)) => 
+				DataType::from_data_value(&data_value),
             _ => panic!("Not a literal expression!"),
         }
     }
@@ -269,30 +274,22 @@ impl Expr {
     // Type check conveniences
 
     pub fn is_number(&self) -> bool {
-        matches!(self.data_type(), TokenType::NumberType)
+        matches!(self.data_type(), DataType::Number)
     }
 
     pub fn is_boolean(&self) -> bool {
-        matches!(self.data_type(), TokenType::BooleanType)
+        matches!(self.data_type(), DataType::Bool)
     }
 
     pub fn is_string(&self) -> bool {
-        matches!(self.data_type(), TokenType::StringType)
+        matches!(self.data_type(), DataType::Str)
     }
 
-    //  True or not Nil
-    pub fn is_truthy(&self) -> bool {
-        match self.data_type() {
-            TokenType::True => true,
-            TokenType::False => false,
-            TokenType::Nil => false,
-            _ => true,
-        }
-    }
-
+    
     fn parenthesize(inside: String) -> String {
         "(".to_string() + &inside + ")"
     }
+	
 
     pub fn print(&self) -> String {
         use Expr::*;

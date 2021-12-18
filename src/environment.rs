@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
 use crate::expression::EvaluationError;
+use crate::types::DataValue;
+use crate::types::ReturnValue;
 use crate::types::*;
 use crate::statement::ExecutionError;
 
 // Consider using SlotMap here or return &ValueType instead
 #[derive(Clone)]
 pub struct Environment<'a> {
-    storage: Vec<ReturnValue>,
+    storage: Vec<DataValue>,
     lookup: HashMap<String, usize>,
     parent: Option<&'a Environment<'a>>,
 }
@@ -33,11 +35,11 @@ impl Environment<'_> {
         if self.lookup.contains_key(&name) {
             // TODO: Figure out something better
             let index: usize = *self.lookup.get(&name).unwrap();
-            self.storage[index] = value.clone();
+            self.storage[index] = value.get().clone();
             index
         } else {
             println!("defined {} with value {}", &name, &value.print());
-            self.storage.push(value);
+            self.storage.push(value.get().clone());
             let index = self.storage.len() - 1;
             self.lookup.insert(name, index);
 
@@ -49,7 +51,7 @@ impl Environment<'_> {
         if self.lookup.contains_key(name) {
             // TODO: Figure out something better
             let index: usize = *self.lookup.get(name).unwrap();
-            self.storage[index] = value.clone();
+            self.storage[index] = value.get().clone();
             Ok(())
         } else {
             let message = format!("Nothing named {} found in current scope.", name);
@@ -59,7 +61,8 @@ impl Environment<'_> {
 
     pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
         match self.lookup.get(name) {
-            Some(index) => Ok(self.storage[*index].clone()),
+            Some(index) => 
+				Ok(ReturnValue::Value(self.storage[*index].clone())),
             None => {
                 eprintln!("Symbol table: ");
                 for (name, index) in &self.lookup {
@@ -79,6 +82,6 @@ impl Environment<'_> {
 
     // This is only safe if you had previously gotten the index
     pub fn get_by_index(&self, index: usize) -> ReturnValue {
-        self.storage[index].clone()
+        ReturnValue::Value(self.storage[index].clone())
     }
 }

@@ -1,12 +1,15 @@
 use crate::types::ReturnValue;
-use crate::lex::TokenType;
+use crate::types::DataValue;
+use crate::types::*;
 
-// Takes generic TokenType enums that carry literal values.
+
+// Takes generic DataValue enums that carry literal values.
 // Apply common operations or return error messages.
 
-use TokenType::*;
 
-pub fn add(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+use DataValue::*;
+
+pub fn add(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => Ok(ReturnValue::Value(Number(l + r))),
         (Str(l), Str(r)) => {
@@ -21,7 +24,7 @@ pub fn add(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
     }
 }
 
-pub fn subtract(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn subtract(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => Ok(ReturnValue::Value(Number(l - r))),
         _ => Err(format!(
@@ -32,7 +35,7 @@ pub fn subtract(left: &TokenType, right: &TokenType) -> Result<ReturnValue, Stri
     }
 }
 
-pub fn multiply(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn multiply(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => Ok(ReturnValue::Value(Number(l * r))),
         _ => Err(format!(
@@ -43,7 +46,7 @@ pub fn multiply(left: &TokenType, right: &TokenType) -> Result<ReturnValue, Stri
     }
 }
 
-pub fn divide(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn divide(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => Ok(ReturnValue::Value(Number(l / r))),
         _ => Err(format!(
@@ -55,14 +58,10 @@ pub fn divide(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String
 }
 
 fn make_bool(val: bool) -> Result<ReturnValue, String> {
-    Ok(if val {
-        ReturnValue::Value(True)
-    } else {
-        ReturnValue::Value(False)
-    })
+	Ok(ReturnValue::Value(DataValue::Bool(val)))
 }
 
-pub fn compare_gt(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn compare_gt(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l > r),
         _ => Err(format!(
@@ -73,7 +72,7 @@ pub fn compare_gt(left: &TokenType, right: &TokenType) -> Result<ReturnValue, St
     }
 }
 
-pub fn compare_lt(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn compare_lt(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l < r),
         _ => Err(format!(
@@ -84,7 +83,7 @@ pub fn compare_lt(left: &TokenType, right: &TokenType) -> Result<ReturnValue, St
     }
 }
 
-pub fn compare_lte(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn compare_lte(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l <= r),
         _ => Err(format!(
@@ -95,7 +94,7 @@ pub fn compare_lte(left: &TokenType, right: &TokenType) -> Result<ReturnValue, S
     }
 }
 
-pub fn compare_gte(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn compare_gte(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l >= r),
         _ => Err(format!(
@@ -106,14 +105,12 @@ pub fn compare_gte(left: &TokenType, right: &TokenType) -> Result<ReturnValue, S
     }
 }
 
-pub fn not_equal(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn not_equal(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l != r),
         (Str(l), Str(r)) => make_bool(l != r),
-        (True, True) => Ok(ReturnValue::Value(False)),
-        (False, False) => Ok(ReturnValue::Value(False)),
-        (True, False) => Ok(ReturnValue::Value(True)),
-        (False, True) => Ok(ReturnValue::Value(True)),
+		(Bool(l),Bool(r)) => make_bool(l != r),
+        
         _ => Err(format!(
             "Can't apply '+' to types '{}' and '{}'",
             left.print(),
@@ -122,14 +119,12 @@ pub fn not_equal(left: &TokenType, right: &TokenType) -> Result<ReturnValue, Str
     }
 }
 
-pub fn equal(left: &TokenType, right: &TokenType) -> Result<ReturnValue, String> {
+pub fn equal(left: &DataValue, right: &DataValue) -> Result<ReturnValue, String> {
     match (left, right) {
         (Number(l), Number(r)) => make_bool(l == r),
         (Str(l), Str(r)) => make_bool(l == r),
-        (True, True) => Ok(ReturnValue::Value(True)),
-        (False, False) => Ok(ReturnValue::Value(True)),
-        (True, False) => Ok(ReturnValue::Value(False)),
-        (False, True) => Ok(ReturnValue::Value(False)),
+		(Bool(l), Bool(r))=> make_bool(l == r),
+             
         _ => Err(format!(
             "Can't apply '+' to types '{}' and '{}'",
             left.print(),
