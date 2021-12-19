@@ -1,29 +1,51 @@
 use std::rc::Rc;
+use std::fmt;
 use crate::lex::TokenType;
 #[derive(Clone,Debug)]
 pub enum DataValue{
 	Str(String),
 	Number(f64),
 	Bool(bool),
+	User(String), // just give the name for now
 		
 }
 
 
 // Simple data types and values
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,PartialEq)]
 pub enum DataType {
 	Str,
 	Number,
 	Bool,
+	User(String),
+	Empty, // Like the '()' expressiontype in Rust
+	Unresolved, // Incomplete type checker results
 }
 
+impl fmt::Display for DataType {
+
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+		let name = match self{
+			DataType::Number=>"number",
+			DataType::Str => "string",
+			DataType::Bool => "boolean",
+			DataType::Empty => "empty",
+			DataType::User(u) => u.as_str(),
+			DataType::Unresolved => "UNRESOLVED",			
+		};
+		write!(f,"{}",name) 
+	}
+}
+
+
 impl DataType {
-	pub fn from_token_type(tt: &TokenType) -> DataType{
+	pub fn from_token_type(tt: &TokenType) -> Option<DataType>{
 		match tt {
-			TokenType::NumberType => DataType::Number,
-			TokenType::StringType => DataType::Str,
-			TokenType::BooleanType => DataType::Bool,			
-			_ => panic!("Not a token type derived from parsing a type name in the code: {}",tt.print()),
+			TokenType::NumberType => Some(DataType::Number),
+			TokenType::StringType => Some(DataType::Str),
+			TokenType::BooleanType => Some(DataType::Bool),			
+			TokenType::Identifier(n) =>  Some(DataType::User(n.to_owned())),
+			_ => None,
 		}
 	}
 	
@@ -32,6 +54,7 @@ impl DataType {
 			DataValue::Str(_) => DataType::Str,
 			DataValue::Number(_) => DataType::Number,
 			DataValue::Bool(_) => DataType::Bool,
+			DataValue::User(n) =>  DataType::User(n.to_owned()),
 		}
 	}
 }
@@ -43,6 +66,7 @@ impl DataValue {
 			DataValue::Str(s) => s.to_string(),
 			DataValue::Number(n) => format!("{}",n),
 			DataValue::Bool(b) => format!("{}",b),
+			DataValue::User(u) => format!("{}",u.to_string()),
 		}
 	}
 

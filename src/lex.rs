@@ -134,10 +134,10 @@ impl TokenType {
             While => "while",
 
             // Type names
-            NumberType => "NumberType",
-            StringType => "StringType",
-            BooleanType => "BooleanType",
-            SetType => "SetType",
+            NumberType => "number",
+            StringType => "string",
+            BooleanType => "boolean",
+            SetType => "set",
 
             // literals
             Number(_) => "Number",
@@ -149,6 +149,29 @@ impl TokenType {
         };
         name.to_string()
     }
+	
+	
+	pub fn is_comparison_operator(&self) -> bool {
+		use TokenType::*;
+		match self {
+			LessGreater |
+			Equal |
+			Greater |
+			GreaterEqual |
+			Less |
+			LessEqual => true,
+			_ => false,			
+		}
+	}
+	
+	pub fn is_arithmetic_operator(&self) -> bool{
+		use TokenType::*;
+		match self {		
+			Plus | Minus | Slash | Star => true,
+			_ => false,
+			
+		}
+	}
 
     // Store this in the scanner struct for quick lookup
     pub fn reserved_words() -> HashMap<String, TokenType> {
@@ -218,8 +241,17 @@ pub struct Token {
 impl Token {
     // The point is to dump all the info including the line and column
     pub fn print(&self) -> String {
-        format!("{:?}", &self.token_type)
+        format!("'{:?}' at {}, {}", &self.token_type, self.line, self.column)
     }
+	
+	
+	pub fn is_comparison_operator(&self) -> bool {
+		self.token_type.is_comparison_operator()
+	}
+	
+	pub fn is_arithmetic_operator(&self) -> bool {
+		self.token_type.is_arithmetic_operator()
+	}
 }
 
 #[derive(Clone, Debug)]

@@ -3,6 +3,9 @@ use crate::expression::Expr;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::types::DataValue;
+use crate::types::DataType;
+use crate::types::ReturnValue;
+
 
 pub struct ExecutionError {
     pub message: String,
@@ -18,7 +21,7 @@ pub enum Stmt {
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockStmtNode),
     If(IfStmtNode),
-    Var(VarNode),
+    Var(VarStmtNode),
     While(WhileNode),
 	NoOp,
 }
@@ -171,13 +174,14 @@ impl Executable for IfStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct VarNode {
+struct VarStmtNode {
     name: String,
+	data_type: DataType,
     index: usize,
     initializer: Box<Expr>,
 }
 
-impl Executable for VarNode {
+impl Executable for VarStmtNode {
 
     fn print(&self) -> String {
         format!("var-stmt = {}", &self.initializer.print())
@@ -241,10 +245,11 @@ impl Stmt {
 		}
     }
 	
-    pub fn var_stmt(name: Token, expr: Expr) -> Stmt {
+    pub fn var_stmt(name: Token, data_type:DataType, expr: Expr) -> Stmt {
         match name.token_type {
-            TokenType::Identifier(n) => Stmt::Var(VarNode {
+            TokenType::Identifier(n) => Stmt::Var(VarStmtNode {
                 name: n,
+				data_type,
                 index: 0,
                 initializer: Box::new(expr),
             }),

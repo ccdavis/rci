@@ -2,6 +2,7 @@ use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::statement::Stmt;
+use crate::types::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -163,7 +164,7 @@ impl Parser {
         }
 
         let result = self.statement();
-        if result.is_err() {
+        if result.is_err() {			
             self.synchronize();
         }
         result
@@ -171,17 +172,81 @@ impl Parser {
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
         let v: Token = self.consume_identifier("Expect variable name")?;
-        if self.matches(&[TokenType::Equal]) {
-            let initializer = self.expression()?;
-            self.consume(TokenType::SemiColon, "expect ';'")?;
-            Ok(Stmt::var_stmt(v, initializer))
-        } else {
-            Err(ParseError {
-                t: v,
-                message: "Variable declaration requires initial value assignment with '='."
-                    .to_string(),
-            })
-        }
+		if self.matches(&[TokenType::Colon]) {
+			// Type may be a built-in type or an identifier for a user-defined type			
+			let type_name = self.advance();			
+			let valid_type_name = match DataType::from_token_type(&type_name.token_type){
+				Some(valid_type) => valid_type,
+				None => {											
+					return Err(ParseError { 
+						t:type_name, 
+						message: "Types must be built-in or user defined.".to_string() 
+					});
+				}
+			};
+			
+			if let DataType::User(ref u) = valid_type_name {
+				// Look up in a symbol table built during parsing...
+			}
+			
+			
+			if self.matches(&[TokenType::Equal]) {
+				let initializer = self.expression()?;
+				
+				let inferred_type_result = initializer.expected_type();
+				match inferred_type_result {
+					Err(type_error) =>  {}, // do nothing for now
+					Ok(ref inferred_type) => {
+						if inferred_type != &valid_type_name {
+							let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
+								&v.print(), &valid_type_name, &inferred_type);
+							return Err(ParseError { 
+								t: type_name,
+								message });
+						}
+					}
+				}
+				
+				self.consume(TokenType::SemiColon, "expect ';'")?;
+				Ok(Stmt::var_stmt(v, valid_type_name, initializer))
+			} else {
+				Err(ParseError {
+					t: v,
+					message: "Variable declaration requires initial value assignment with '='."
+						.to_string(),
+				})
+			}
+													
+		} else { // infer data type
+			
+			if self.matches(&[TokenType::Equal]) {
+				let initializer = self.expression()?;
+				let inferred_type = match initializer.expected_type() {
+					Err(type_error) => {
+						self.error( ParseError { 
+							t: self.previous(),
+							message: type_error.message.clone()});
+						
+						let message = format!("Can't infer type for {}, initial value can't be resolved. Please put a specific type next to the variable name. ",&v.print());
+						
+						return  Err(ParseError { t: v, message });
+						
+						
+					},
+					Ok(data_type) => data_type,
+				};
+				
+				self.consume(TokenType::SemiColon, "expect ';'")?;
+				Ok(Stmt::var_stmt(v, inferred_type, initializer))
+			} else {
+				Err(ParseError {
+					t: v,
+					message: "Variable declaration requires initial value assignment with '='."
+						.to_string(),
+				})
+			}
+		}
+	
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -211,6 +276,7 @@ impl Parser {
 	fn if_statement(&mut self) -> Result<Stmt, ParseError> {
 		use TokenType::*;
 		let condition = self.expression()?;
+				
 		self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
 		let then_branch = self.block_statement()?;
 		if self.matches(&[Else]) {
