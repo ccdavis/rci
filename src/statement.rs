@@ -1,5 +1,6 @@
 use crate::environment::Environment;
 use crate::expression::Expr;
+use crate::expression::TypeError;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::types::DataValue;
@@ -10,11 +11,15 @@ use crate::types::ReturnValue;
 pub struct ExecutionError {
     pub message: String,
 }
+
 pub trait Executable {
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError>;
     fn print(&self) -> String;
 }
 
+pub trait TypeChecking {
+	fn check_types(&self) -> Result<(), TypeError> ;	
+}
 #[derive(Clone, Debug)]
 pub enum Stmt {
     Print(PrintStmtNode),
@@ -38,6 +43,8 @@ impl Stmt {
             _ => format!("{:?}", &self),
         }
     }
+	
+	
 
     pub fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
@@ -52,6 +59,20 @@ impl Stmt {
             }),
         }
     }
+	
+	pub fn check_types(&self) -> Result<(),TypeError> {
+		use Stmt::*;
+		match self {
+			Print(n) => n.check_types(),
+			ExpressionStmt(n) => n.check_types(),
+			Var(n) => n.check_types(),
+			Block(n) => n.check_types(),
+			If(n) => n.check_types(),
+			_ => Err(TypeError {
+                message: " Statement type not type-checked yet.".to_string(),
+            }),						
+		}
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +81,7 @@ struct PrintStmtNode {
 }
 
 impl Executable for PrintStmtNode {
+
     fn print(&self) -> String {
         format!("print-stmt {}", &self.expression.print())
     }
@@ -76,6 +98,17 @@ impl Executable for PrintStmtNode {
             }
         }
     }
+}
+
+impl TypeChecking for PrintStmtNode {
+
+	fn check_types(&self) -> Result<(), TypeError> {
+		// print can take any type
+		let expr_type = self.expr.expected_type();
+				
+		Ok(())
+	}
+
 }
 
 #[derive(Clone, Debug)]
@@ -102,6 +135,14 @@ impl Executable for ExpressionStmtNode {
     }
 }
 
+impl TypeChecking for ExpressionStmtNode {
+
+	fn check_types(&self) -> Result<(), TypeError> {
+		// Trigger type checks from the expression contained
+		self.expression.check_types()	
+	}
+}
+
 #[derive(Clone, Debug)]
 struct BlockStmtNode {
     statements: Vec<Stmt>,
@@ -126,6 +167,19 @@ impl Executable for BlockStmtNode {
         }
         Ok(())
     }
+}
+
+impl TypeChecking for BlockStmtNode {
+
+	fn check_types(&self) -> Result<(), TypeError> {
+		// TODO: For now just return error on the first 
+		// bad statement, but improve this to check them all.
+		for stmt in &self.statements {
+            stmt.check_types()?
+        }
+		Ok(())
+				
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -173,6 +227,19 @@ impl Executable for IfStmtNode {
 	}
 }
 
+impl TypeChecking for IfStmtNode {
+
+	fn check_types(&self) -> Result<(), TypeError> {
+		let cond_type = self.condition.expected_type()?;
+		if let DataType::Bool(_) = cond_type {
+			Ok(())
+		}else {
+			let message = format!("Condition in if-statement must be boolean but was {} instead.",cond_type);
+			Err( TypeError { message })
+		}				
+	}
+}
+
 #[derive(Clone, Debug)]
 struct VarStmtNode {
     name: String,
@@ -205,6 +272,22 @@ impl Executable for VarStmtNode {
             }
         }
     }
+}
+
+
+impl TypeChecking for VarStmtNode {
+
+	fn check_types(&self) -> Result<(), TypeError> {
+		let init_type = self.initializer.expected_type()?;
+		if self.data_type != init_type {
+			let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
+				self.data_type, &self.name, init_type);
+				
+			Err( TypeError { message } );			
+		} else {		
+			Ok(())
+		}		
+	}
 }
 
 #[derive(Clone, Debug)]
