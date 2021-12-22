@@ -411,7 +411,7 @@ impl Parser {
 					l,c,&type_name);
                 Err(ParseError {
                     t: self.peek(),
-                    message: message,
+                    message,
                 })
             }
         }

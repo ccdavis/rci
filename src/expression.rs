@@ -27,6 +27,66 @@ pub trait TypeCheck {
 	fn expected_type(&self) -> Result<DataType, TypeError>;
 }
 
+
+
+#[derive(Clone, Debug)]
+pub enum Expr {
+    Binary(BinaryNode),
+    Unary(UnaryNode),
+    Grouping(GroupingNode),
+    Literal(ReturnValue),
+    Variable(VariableNode),
+    Assignment(AssignmentNode),
+}
+
+impl Expr {
+    pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+        match self {
+            Expr::Binary(n) => n.evaluate(envr),
+            Expr::Unary(n) => n.evaluate(envr),
+            Expr::Grouping(n) => n.evaluate(envr),
+            Expr::Variable(n) => n.evaluate(envr),
+            Expr::Assignment(n) => n.evaluate(envr),
+            Expr::Literal(ref value) => Ok(value.clone_or_increment_count()),
+        }
+    }
+	
+	// Try to figure out what type the expression will yield before evaluation,
+	// for use in type-checking during parsing.
+	// 'Unresolved' is a valid result.
+	pub fn expected_type(&self) -> Result<DataType, TypeError>{
+		match self {
+            Expr::Binary(n) => n.expected_type(),
+            Expr::Unary(n) => n.expected_type(),
+            Expr::Grouping(n) => n.expected_type(),
+            Expr::Variable(n) => n.expected_type(),
+            Expr::Assignment(n) => n.expected_type(),
+            Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
+        }
+	}
+} // impl expr
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Clone, Debug)]
 struct BinaryNode {
     left: Box<Expr>,
@@ -335,42 +395,7 @@ impl TypeCheck for AssignmentNode {
 	}
 }
 
-#[derive(Clone, Debug)]
-pub enum Expr {
-    Binary(BinaryNode),
-    Unary(UnaryNode),
-    Grouping(GroupingNode),
-    Literal(ReturnValue),
-    Variable(VariableNode),
-    Assignment(AssignmentNode),
-}
-
 impl Expr {
-    pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-        match self {
-            Expr::Binary(n) => n.evaluate(envr),
-            Expr::Unary(n) => n.evaluate(envr),
-            Expr::Grouping(n) => n.evaluate(envr),
-            Expr::Variable(n) => n.evaluate(envr),
-            Expr::Assignment(n) => n.evaluate(envr),
-            Expr::Literal(ref value) => Ok(value.clone_or_increment_count()),
-        }
-    }
-	
-	// Try to figure out what type the expression will yield before evaluation,
-	// for use in type-checking during parsing.
-	// 'Unresolved' is a valid result.
-	pub fn expected_type(&self) -> Result<DataType, TypeError>{
-		match self {
-            Expr::Binary(n) => n.expected_type(),
-            Expr::Unary(n) => n.expected_type(),
-            Expr::Grouping(n) => n.expected_type(),
-            Expr::Variable(n) => n.expected_type(),
-            Expr::Assignment(n) => n.expected_type(),
-            Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
-        }
-	}
-
     pub fn binary(l: Expr, op: Token, r: Expr) -> Expr {
         let node = BinaryNode {
             left: Box::new(l),

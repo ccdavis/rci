@@ -104,7 +104,7 @@ impl TypeChecking for PrintStmtNode {
 
 	fn check_types(&self) -> Result<(), TypeError> {
 		// print can take any type
-		let expr_type = self.expr.expected_type();
+		let expr_type = self.expression.expected_type()?;
 				
 		Ok(())
 	}
@@ -139,7 +139,8 @@ impl TypeChecking for ExpressionStmtNode {
 
 	fn check_types(&self) -> Result<(), TypeError> {
 		// Trigger type checks from the expression contained
-		self.expression.check_types()	
+		let t = self.expression.expected_type()?;
+		Ok(())
 	}
 }
 
@@ -204,23 +205,20 @@ impl Executable for IfStmtNode {
 		let test = self.condition.evaluate(envr);
 		match test {
 			Ok(result) => {
-
 				let falsey = match result.get() {
 					DataValue::Bool(b) => !b,					
 					_ => false,					
 				};
-				
-								
+												
 				if !falsey {
 					self.then_branch.execute(envr)
-				} else {
-					if self.has_else {
+				} else if self.has_else {
 						self.else_branch.execute(envr)
 					} else {
 						Ok(())
 					}
 					
-				}				
+				
 			},
 			Err(err) => Err(ExecutionError { message: err.message } ),
 		}
@@ -231,7 +229,7 @@ impl TypeChecking for IfStmtNode {
 
 	fn check_types(&self) -> Result<(), TypeError> {
 		let cond_type = self.condition.expected_type()?;
-		if let DataType::Bool(_) = cond_type {
+		if let DataType::Bool = cond_type {
 			Ok(())
 		}else {
 			let message = format!("Condition in if-statement must be boolean but was {} instead.",cond_type);
@@ -283,7 +281,7 @@ impl TypeChecking for VarStmtNode {
 			let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
 				
-			Err( TypeError { message } );			
+			Err( TypeError { message } )			
 		} else {		
 			Ok(())
 		}		
