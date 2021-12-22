@@ -1,15 +1,6 @@
 use std::rc::Rc;
 use std::fmt;
 use crate::lex::TokenType;
-#[derive(Clone,Debug)]
-pub enum DataValue{
-	Str(String),
-	Number(f64),
-	Bool(bool),
-	User(String), // just give the name for now
-		
-}
-
 
 // Simple data types and values
 #[derive(Clone,Debug,PartialEq)]
@@ -21,6 +12,18 @@ pub enum DataType {
 	Empty, // Like the '()' expressiontype in Rust
 	Unresolved, // Incomplete type checker results
 }
+
+#[derive(Clone,Debug)]
+pub enum DataValue{
+	Str(String),
+	Number(f64),
+	Bool(bool),
+	User(String), // just give the name for now
+		
+}
+
+
+
 
 impl fmt::Display for DataType {
 

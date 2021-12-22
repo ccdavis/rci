@@ -5,6 +5,7 @@ mod operations;
 mod parser;
 mod statement;
 mod types;
+mod symbol_table;
 
 use environment::*;
 use parser::*;
