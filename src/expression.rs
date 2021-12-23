@@ -5,6 +5,8 @@ use crate::operations;
 use crate::types::ReturnValue;
 use crate::types::DataValue;
 use crate::types::DataType;
+use crate::symbol_table::*;
+
 
 use std::rc::Rc;
 
@@ -24,7 +26,11 @@ pub trait Evaluation {
 }
 
 pub trait TypeCheck {
+	// This is for use before the symbol table is fully populated
 	fn expected_type(&self) -> Result<DataType, TypeError>;
+	
+	// This is for after the program has been fully parsed and all symbols are known.
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> ;	
 }
 
 
@@ -64,25 +70,19 @@ impl Expr {
             Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
         }
 	}
+	
+	pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError>{
+		match self {
+            Expr::Binary(n) => n.determine_type(symbols),
+            Expr::Unary(n) => n.determine_type(symbols),
+            Expr::Grouping(n) => n.determine_type(symbols),
+            Expr::Variable(n) => n.determine_type(symbols),
+            Expr::Assignment(n) => n.determine_type(symbols),
+            Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
+        }
+	}
+	
 } // impl expr
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -195,6 +195,56 @@ impl TypeCheck for BinaryNode {
 		let message = format!("Operator should not be part of a binary expression:{:}",&self.operator.print());
 		Err(TypeError { message })
 	}
+	
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		use TokenType::*;
+		
+		let left_type = self.left.determine_type()?;
+		let right_type = self.right.determine_type()?;
+		
+		if self.operator.is_comparison_operator() {
+			if matches!(left_type, DataType::Number) &&
+				matches!(right_type, DataType::Number) {
+					return Ok(DataType::Bool);
+					
+			// Allow boolean comparison with = or <>
+			} else if matches!(left_type, DataType::Bool) &&
+						matches!(right_type, DataType::Bool) 
+						&& (matches!(self.operator.token_type, Equal)||
+							matches!(self.operator.token_type, LessGreater)){
+								return Ok(DataType::Bool)
+					
+					// TODO: support String comparison
+			} else {
+					let message = format!("Invalid operand types for operator {:?}",self.operator);
+					return Err(TypeError { message });
+				}
+			
+		}
+		
+		if self.operator.is_arithmetic_operator() {
+			// Allow string concatenation with '+'
+			if matches!(self.operator.token_type, Plus) {
+				if matches!(left_type, DataType::Str) &&
+					matches!(right_type,DataType::Str) {
+						return Ok(DataType::Str);
+					}					
+			} // allow + for strings
+			
+			if matches!(left_type, DataType::Number) &&
+				matches!(right_type, DataType::Number) {
+					return Ok(DataType::Number)
+				} else {
+					let message = format!("Invalid operand types for operator {:?}, expected Numbers.",self.operator);
+					return Err(TypeError { message });
+				}
+		}				
+		
+		let message = format!("Operator should not be part of a binary expression:{:}",&self.operator.print());
+		Err(TypeError { message })
+	}
+	
 } // impl
 
 #[derive(Clone, Debug)]
@@ -218,6 +268,10 @@ impl TypeCheck for GroupingNode {
 	fn expected_type(&self) -> Result<DataType, TypeError> {
 		self.expr.expected_type()
 	}
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		self.expr.determine_type(symbols)
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -240,6 +294,10 @@ impl Evaluation for LiteralNode {
 impl TypeCheck for LiteralNode {
 	
 	fn expected_type(&self) -> Result<DataType, TypeError> {
+		Ok(DataType::from_data_value(&*self.value))
+	}
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
 		Ok(DataType::from_data_value(&*self.value))
 	}
 }
@@ -308,6 +366,27 @@ impl TypeCheck for UnaryNode {
 		Err(TypeError { message } )
 		
 	}
+	
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		use TokenType::*;
+		let right_type = self.expr.determine_type(symbols)?;
+		if matches!(right_type, DataType::Number) &&
+			matches!(self.operator.token_type, Minus) {
+				return Ok(DataType::Number)
+			}
+			
+		if matches!(right_type, DataType::Bool) &&
+			matches!(self.operator.token_type, Not) {
+				return Ok(DataType::Bool)
+			}
+		
+		let message = format!("Type / operator mismatch on unary operator {:?} with operand type {}",
+			self.operator, right_type);
+			
+		Err(TypeError { message } )
+		
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -338,6 +417,23 @@ impl TypeCheck for VariableNode {
 	// lexical scoping rules.
 	fn expected_type(&self) -> Result<DataType, TypeError> {
 		Ok(DataType::Unresolved)
+	}
+	
+	fn determine_type(&self) -> Result<DataType, TypeError> {
+		if let TokenType::Identifier(variable_name) = self.name.token_type {
+			match symbols.lookup(&variable_name) {
+				Ok(ref symbol_table_entry) => Ok(symbol_table_entry.data_type),
+				Err(declaration_error) => {
+					let message = format!("Type Error at {}, {}: {}", 
+						self.name.line,
+						self.name.column,
+						&declaration_error.message);
+					Err(TypeError { message })
+				}
+			}
+		} else {
+			panic!("Fatal error during type-checking: A variable expression must have a TokenType::Identifier(name) token type!");
+		}
 	}
 }
 
@@ -393,6 +489,44 @@ impl TypeCheck for AssignmentNode {
 		Ok(DataType::Empty)
 		
 	}
+	
+	// compare assign_type with the type of the variable
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {		
+		let assign_type = self.value.determine_type(symbols)?;
+		
+		// get variable / assignee name
+		let assignee_name = match  self.name.token_type {
+			TokenType::Identifier(n) => n.clone(),
+			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
+			
+		};
+		
+		let to_type = match symbols.lookup(&assignee_name) {
+			Ok(ste) =>ste.data_type,
+			Err(not_declared) => {
+				let message = format!("Type error at {}, {}: {}",
+					self.name.line,
+					self.name.column,
+					&not_declared.message);
+				return Err( TypeError { message });					
+			}
+		};
+					
+		if assign_type == to_type {
+			Ok(DataType::Empty)
+		} else {
+			let message = format!("Type Error at {}, {}: Can't assign {} with type {} to a value of type {}.",
+				self.name.line,
+				self.name.column,
+				&assignee_name,  
+				&to_type, 
+				&assign_type);
+			Err( TypeError { message })
+		}
+					
+	}
+	
+	
 }
 
 impl Expr {

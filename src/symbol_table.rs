@@ -8,16 +8,16 @@ use crate::lex::Token;
 pub struct SymbolTableEntry {
 	pub name: String,
 	// Where the symbol was declared in the source
-	location: Token, // use the col and line
-	data_type: DataType,
-	data_value: DataValue, // some will be DataValue::None
-	entry_type: DeclarationType,
+	pub location: Token, // use the col and line
+	pub data_type: DataType,
+	pub data_value: DataValue, // some will be DataValue::None
+	pub entry_type: DeclarationType,
 	
-	size: usize, // compile-time number of items if a collection type
-	contains_type: DataType, // type inside of collection if any
+	pub size: usize, // compile-time number of items if a collection type
+	pub contains_type: DataType, // type inside of collection if any
 	
 	// For record / class members
-	fields: Vec<Box<SymbolTableEntry>>,
+	pub fields: Vec<Box<SymbolTableEntry>>,
 }
 
 impl SymbolTableEntry {
