@@ -19,12 +19,14 @@ const TRACE: bool = true;
 pub struct Interpreter {
     pub had_error: bool,
     pub had_runtime_error: bool,
+	pub had_type_error: bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             had_error: false,
+			had_type_error: false,
             had_runtime_error: false,
         }
     }
@@ -38,6 +40,7 @@ impl Interpreter {
 		statements.iter().for_each(|stmt| {
 			match stmt.check_types() {
 				Err(type_error) => {
+					self.had_type_error = true;
 					eprintln!("Type error:  {:?}",&type_error.message);
 				}
 				_ => {}
@@ -49,6 +52,12 @@ impl Interpreter {
                 .iter()
                 .for_each(|stmt| println!("{}", &stmt.print()));
         }
+		
+		if self.had_type_error {
+			eprintln!("Cannot execute code with type errors.");
+			self.had_runtime_error = true;
+			return;						
+		}
 
         for mut stmt in statements {
             let mut result = stmt.execute(global_env);
