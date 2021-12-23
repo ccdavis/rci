@@ -35,6 +35,14 @@ impl Interpreter {
         let mut parser = Parser::new(tokens);
 		let mut global_symbols = symbol_table::SymbolTable::global();
         let statements = parser.parse(&mut global_symbols);
+		statements.iter().for_each(|stmt| {
+			match stmt.check_types() {
+				Err(type_error) => {
+					eprintln!("Type error:  {:?}",&type_error.message);
+				}
+				_ => {}
+			}
+		});
 		
         if TRACE {
             statements
