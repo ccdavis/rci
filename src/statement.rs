@@ -6,6 +6,7 @@ use crate::lex::TokenType;
 use crate::types::DataValue;
 use crate::types::DataType;
 use crate::types::ReturnValue;
+use crate::symbol_table::SymbolTable;
 
 
 pub struct ExecutionError {
