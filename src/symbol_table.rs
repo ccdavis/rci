@@ -4,12 +4,14 @@ use crate::types::DataValue;
 use crate::types::DeclarationType;
 use crate::lex::Token;
 
+#[derive(Clone,Debug)]
 pub struct SymbolTableEntry {
 	pub name: String,
 	// Where the symbol was declared in the source
 	location: Token, // use the col and line
 	data_type: DataType,
 	data_value: DataValue, // some will be DataValue::None
+	entry_type: DeclarationType,
 	
 	size: usize, // compile-time number of items if a collection type
 	contains_type: DataType, // type inside of collection if any
@@ -34,13 +36,14 @@ impl SymbolTableEntry {
 	}
 }
 
-
+#[derive(Clone,Debug)]
 pub struct SymbolTable {
 	pub outer: Option<Box<SymbolTable>>,
 	pub entries: HashMap<String, SymbolTableEntry>,
 }
 
-struct NotDeclaredError {
+
+pub struct NotDeclaredError {
 	message: String,
 }
 
@@ -53,10 +56,10 @@ impl SymbolTable {
 		}
 	}
 	
-	pub fn extend_from(st: SymbolTable) -> SymbolTable {
+	pub fn extend(&mut self) -> SymbolTable {
 		SymbolTable {
 			entries: HashMap::new(),
-			outer: Some(Box::new(st)),
+			outer: Some(Box::new(self.clone())),
 			
 		}
 	}
@@ -65,7 +68,7 @@ impl SymbolTable {
 		if self.entries.contains_key(&st.name) {
 			false
 		} else {
-			self.entries.insert(st.name, st);
+			self.entries.insert(st.name.to_owned(), st);
 			true
 		}
 	}

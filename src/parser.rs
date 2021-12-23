@@ -151,7 +151,7 @@ impl Parser {
     pub fn parse(&mut self, global_symbols:&mut SymbolTable) -> Vec<Stmt> {
         let mut statements = Vec::new();				
         while !self.is_finished() {
-            match self.declaration(&mut global_symbols) {
+            match self.declaration(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
             }
@@ -174,7 +174,7 @@ impl Parser {
     fn var_declaration(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
         let v: Token = self.consume_identifier("Expect variable name")?;
 		let variable_name = match v.token_type {
-			TokenType::Identifier(n) => n.clone(),
+			TokenType::Identifier(ref n) => n.clone(),
 			_ => panic!("Tried to consume identifier!"),
 		};
 		if self.matches(&[TokenType::Colon]) {
@@ -194,8 +194,9 @@ impl Parser {
 				let has_type = symbols.lookup(u);
 				if has_type.is_err(){
 					let message = format!("Type named {} not declared in this scope or an outer scope.",u);
-					Err(ParseError { 
-						t:type_name, message						
+					return Err(ParseError { 
+						t:v, 
+						message:message						
 					});
 				}				
 			}			
@@ -218,8 +219,8 @@ impl Parser {
 				
 				self.consume(TokenType::SemiColon, "expect ';'")?;
 				
-				let entry = SymbolTable::new_primitive_val(
-					v.clone(), &variable_name, &valid_type_name, &DataValue::Unresolved);
+				let entry = SymbolTableEntry::new_var(
+					&v, &variable_name, &valid_type_name, &DataValue::Unresolved);
 				if symbols.add(entry) {
 					Ok(Stmt::var_stmt(v, valid_type_name, initializer))
 				} else {
@@ -255,8 +256,8 @@ impl Parser {
 				};
 				
 				self.consume(TokenType::SemiColon, "expect ';'")?;
-				let entry = SymbolTable::new_primitive_val(
-					v.clone(), &variable_name, &inferred_type, &DataValue::Unresolved);
+				let entry = SymbolTableEntry::new_var(
+					&v, &variable_name, &inferred_type, &DataValue::Unresolved);
 				if symbols.add(entry) {
 					Ok(Stmt::var_stmt(v, inferred_type, initializer))
 				} else {
@@ -323,9 +324,9 @@ impl Parser {
     fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
-		let mut local_symbols = SymbolTable::extend_from(symbols.clone());
+		let mut local_symbols = symbols.extend();
         while !self.check(&RightBrace) && !self.is_finished() {
-            let stmt = self.declaration(&mut symbols)?;
+            let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' after block.")?;

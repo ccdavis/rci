@@ -33,7 +33,7 @@ impl Interpreter {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
-		let mut global_symbols = SymbolTable::global();
+		let mut global_symbols = symbol_table::SymbolTable::global();
         let statements = parser.parse(&mut global_symbols);
 		
         if TRACE {
