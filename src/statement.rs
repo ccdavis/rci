@@ -147,6 +147,7 @@ impl TypeChecking for ExpressionStmtNode {
 #[derive(Clone, Debug)]
 struct BlockStmtNode {
     statements: Vec<Stmt>,
+	symbols: SymbolTable,
 }
 
 impl Executable for BlockStmtNode {
@@ -303,8 +304,8 @@ impl Stmt {
         Stmt::ExpressionStmt(ExpressionStmtNode { expression })
     }
 
-    pub fn block_stmt(statements: Vec<Stmt>) -> Stmt {
-        Stmt::Block(BlockStmtNode { statements })
+    pub fn block_stmt(statements: Vec<Stmt>, symbols: SymbolTable) -> Stmt {
+        Stmt::Block(BlockStmtNode { statements, symbols })
     }
 
     pub fn if_stmt(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Stmt {

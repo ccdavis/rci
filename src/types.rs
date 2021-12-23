@@ -2,6 +2,18 @@ use std::rc::Rc;
 use std::fmt;
 use crate::lex::TokenType;
 
+// Types of declarations that can be stored in the symbol table which will
+// hold data of the different types
+
+#[derive(PartialEq,Clone,Debug)]
+pub enum DeclarationType {
+	Var, // all types
+	Val, // all types
+	Fun, // if functions aren't first class, no specific type associated
+	Class, // if classes aren't first order no specific types
+	Type, // user defined, the name in the symbol table entry will have the definition			
+}
+
 // Simple data types and values
 #[derive(Clone,Debug,PartialEq)]
 pub enum DataType {
@@ -19,6 +31,7 @@ pub enum DataValue{
 	Number(f64),
 	Bool(bool),
 	User(String), // just give the name for now
+	Unresolved, // for the type-checker to figure out later
 		
 }
 
@@ -58,6 +71,7 @@ impl DataType {
 			DataValue::Number(_) => DataType::Number,
 			DataValue::Bool(_) => DataType::Bool,
 			DataValue::User(n) =>  DataType::User(n.to_owned()),
+			DataValue::Unresolved => DataType::Unresolved,
 		}
 	}
 }
@@ -70,6 +84,7 @@ impl DataValue {
 			DataValue::Number(n) => format!("{}",n),
 			DataValue::Bool(b) => format!("{}",b),
 			DataValue::User(u) => format!("{}",u.to_string()),
+			DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
 		}
 	}
 

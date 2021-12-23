@@ -3,6 +3,7 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::statement::Stmt;
 use crate::types::*;
+use crate::symbol_table::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -147,10 +148,10 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self) -> Vec<Stmt> {
-        let mut statements = Vec::new();
+    pub fn parse(&mut self, global_symbols:&mut SymbolTable) -> Vec<Stmt> {
+        let mut statements = Vec::new();				
         while !self.is_finished() {
-            match self.declaration() {
+            match self.declaration(&mut global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
             }
@@ -158,20 +159,24 @@ impl Parser {
         statements
     }
 
-    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+    fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         if self.matches(&[TokenType::Var]) {
-            return self.var_declaration();
+            return self.var_declaration(symbols);
         }
 
-        let result = self.statement();
+        let result = self.statement(symbols);
         if result.is_err() {			
             self.synchronize();
         }
         result
     }
 
-    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+    fn var_declaration(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
         let v: Token = self.consume_identifier("Expect variable name")?;
+		let variable_name = match v.token_type {
+			TokenType::Identifier(n) => n.clone(),
+			_ => panic!("Tried to consume identifier!"),
+		};
 		if self.matches(&[TokenType::Colon]) {
 			// Type may be a built-in type or an identifier for a user-defined type			
 			let type_name = self.advance();			
@@ -186,13 +191,17 @@ impl Parser {
 			};
 			
 			if let DataType::User(ref u) = valid_type_name {
-				// Look up in a symbol table built during parsing...
-			}
-			
+				let has_type = symbols.lookup(u);
+				if has_type.is_err(){
+					let message = format!("Type named {} not declared in this scope or an outer scope.",u);
+					Err(ParseError { 
+						t:type_name, message						
+					});
+				}				
+			}			
 			
 			if self.matches(&[TokenType::Equal]) {
-				let initializer = self.expression()?;
-				
+				let initializer = self.expression()?;				
 				let inferred_type_result = initializer.expected_type();
 				match inferred_type_result {
 					Err(type_error) =>  {}, // do nothing for now
@@ -208,7 +217,16 @@ impl Parser {
 				}
 				
 				self.consume(TokenType::SemiColon, "expect ';'")?;
-				Ok(Stmt::var_stmt(v, valid_type_name, initializer))
+				
+				let entry = SymbolTable::new_primitive_val(
+					v.clone(), &variable_name, &valid_type_name, &DataValue::Unresolved);
+				if symbols.add(entry) {
+					Ok(Stmt::var_stmt(v, valid_type_name, initializer))
+				} else {
+					// Already defined
+					let message = format!("Variable already declared in this scope!");
+					Err(ParseError{t:v, message})
+				}
 			} else {
 				Err(ParseError {
 					t: v,
@@ -237,7 +255,15 @@ impl Parser {
 				};
 				
 				self.consume(TokenType::SemiColon, "expect ';'")?;
-				Ok(Stmt::var_stmt(v, inferred_type, initializer))
+				let entry = SymbolTable::new_primitive_val(
+					v.clone(), &variable_name, &inferred_type, &DataValue::Unresolved);
+				if symbols.add(entry) {
+					Ok(Stmt::var_stmt(v, inferred_type, initializer))
+				} else {
+					// Already defined
+					let message = format!("Variable already declared in this scope!");
+					Err(ParseError{t:v, message})
+				}
 			} else {
 				Err(ParseError {
 					t: v,
@@ -249,60 +275,61 @@ impl Parser {
 	
     }
 
-    fn statement(&mut self) -> Result<Stmt, ParseError> {
+    fn statement(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
 		
 		if self.matches(&[If]) {
-			return self.if_statement();
+			return self.if_statement(symbols);
 		}
 		
         if self.matches(&[Print]) {
-            return self.print_statement();
+            return self.print_statement(symbols);
         }
 
         if self.matches(&[LeftBrace]) {
-            return self.block_statement();
+            return self.block_statement(symbols);
         }
 
-        self.expression_statement()
+        self.expression_statement(symbols)
     }
 
-    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
+    fn expression_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::expression_stmt(expr))
     }
 	
-	fn if_statement(&mut self) -> Result<Stmt, ParseError> {
+	fn if_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
 		use TokenType::*;
 		let condition = self.expression()?;
 				
 		self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
-		let then_branch = self.block_statement()?;
+		let then_branch = self.block_statement(symbols)?;
 		if self.matches(&[Else]) {
 			self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
-			let else_branch = self.block_statement()?;
+			let else_branch = self.block_statement(symbols)?;
 			Ok(Stmt::if_stmt(condition, then_branch, Some(else_branch)))
 		} else {
 			Ok(Stmt::if_stmt(condition, then_branch, None))
 		}
 	}
 
-    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+    fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expected ';'")?;
         Ok(Stmt::print_stmt(expr))
     }
 
-    fn block_statement(&mut self) -> Result<Stmt, ParseError> {
+    fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
+		let mut local_symbols = SymbolTable::extend_from(symbols.clone());
         while !self.check(&RightBrace) && !self.is_finished() {
-            let stmt = self.declaration()?;
+            let stmt = self.declaration(&mut symbols)?;
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' after block.")?;
-        Ok(Stmt::block_stmt(stmt_list))
+        Ok(Stmt::block_stmt(stmt_list, local_symbols))
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
