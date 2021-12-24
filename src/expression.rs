@@ -38,6 +38,7 @@ pub trait TypeCheck {
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
+	Call(CallNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
     Literal(ReturnValue),
@@ -49,6 +50,7 @@ impl Expr {
     pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         match self {
             Expr::Binary(n) => n.evaluate(envr),
+			Expr::Call(n) => n.evaluate(envr),
             Expr::Unary(n) => n.evaluate(envr),
             Expr::Grouping(n) => n.evaluate(envr),
             Expr::Variable(n) => n.evaluate(envr),
@@ -68,12 +70,14 @@ impl Expr {
             Expr::Variable(n) => n.expected_type(),
             Expr::Assignment(n) => n.expected_type(),
             Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
+			_ => Ok(DataType::Unresolved),
         }
 	}
 	
 	pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError>{
 		match self {
             Expr::Binary(n) => n.determine_type(symbols),
+			Expr::Call(n)  => n.determine_type(symbols),
             Expr::Unary(n) => n.determine_type(symbols),
             Expr::Grouping(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
@@ -246,6 +250,36 @@ impl TypeCheck for BinaryNode {
 	}
 	
 } // impl
+
+#[derive(Clone,Debug)]
+pub struct CallNode {
+	callee: Box<Expr>,
+	paren: Token, // To locate the call in the source
+	args: Vec<Expr>,
+}
+
+impl Evaluation for CallNode {
+
+	fn print(&self) -> String {
+		format!("function call: {}",&self.callee.print())
+	}
+	
+	fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+		Ok( ReturnValue::Value(DataValue::Unresolved))
+	}
+}
+
+impl TypeCheck for CallNode {
+
+	fn expected_type(&self) -> Result<DataType, TypeError> {
+		Ok(DataType::Unresolved)
+	}
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		Ok(DataType::Unresolved)
+	}
+	
+}
 
 #[derive(Clone, Debug)]
 pub struct GroupingNode {
@@ -488,7 +522,7 @@ impl TypeCheck for AssignmentNode {
 		// TODO use symbol table
 		Ok(DataType::Empty)
 		
-	}
+	}	
 	
 	// compare assign_type with the type of the variable
 	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {		
@@ -530,6 +564,7 @@ impl TypeCheck for AssignmentNode {
 }
 
 impl Expr {
+
     pub fn binary(l: Expr, op: Token, r: Expr) -> Expr {
         let node = BinaryNode {
             left: Box::new(l),
@@ -538,6 +573,15 @@ impl Expr {
         };
         Expr::Binary(node)
     }
+	
+	pub fn call(callee:Expr, paren: Token, args: Vec<Expr>)-> Expr {
+		let node = CallNode {
+			callee: Box::new(callee),
+			paren,
+			args,
+		};
+		Expr::Call(node)
+	}
 
     pub fn unary(op: Token, e: Expr) -> Expr {
         let node = UnaryNode {

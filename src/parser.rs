@@ -400,11 +400,48 @@ impl Parser {
         if self.matches(&[TokenType::Not, TokenType::Minus]) {
             let operator = self.previous();
             let right = self.unary()?;
-            Ok(Expr::unary(operator, right))
-        } else {
-            self.primary()
-        }
+            return Ok(Expr::unary(operator, right));
+        } 
+		
+		self.call()
+		
+		//self.primary()        
     }
+	
+	fn call(&mut self) -> Result<Expr, ParseError> {
+		use TokenType::*;
+		
+		// Possibly the start of a function call or just a bare
+		// primary expression.
+		let mut expr = self.primary()?;		
+		loop {
+			if self.matches(&[LeftParen]) {
+				// replace the expression with the full function call
+				expr = self.finish_call(expr)?;
+			} else {
+				break;
+			}
+		}
+		Ok(expr)
+	}
+	
+	fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+		use TokenType::*;
+		
+		let mut args: Vec<Expr> = Vec::new();
+		
+		if !self.check(&RightParen){
+			loop {
+				let next_arg = self.expression()?;
+				args.push(next_arg);
+				if !self.matches(&[Comma]) {
+					break;
+				}									
+			}
+		}
+		let paren = self.consume(RightParen, "expect ')' after arguments.")?;
+		Ok(Expr::call(callee, paren, args))
+	}
 
     fn primary(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
