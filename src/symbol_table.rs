@@ -44,7 +44,7 @@ pub struct SymbolTable {
 
 
 pub struct NotDeclaredError {
-	message: String,
+	pub message: String,
 }
 
 impl SymbolTable {

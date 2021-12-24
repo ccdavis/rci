@@ -200,8 +200,8 @@ impl TypeCheck for BinaryNode {
 	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
 		use TokenType::*;
 		
-		let left_type = self.left.determine_type()?;
-		let right_type = self.right.determine_type()?;
+		let left_type = self.left.determine_type(symbols)?;
+		let right_type = self.right.determine_type(symbols)?;
 		
 		if self.operator.is_comparison_operator() {
 			if matches!(left_type, DataType::Number) &&
@@ -419,10 +419,10 @@ impl TypeCheck for VariableNode {
 		Ok(DataType::Unresolved)
 	}
 	
-	fn determine_type(&self) -> Result<DataType, TypeError> {
-		if let TokenType::Identifier(variable_name) = self.name.token_type {
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		if let TokenType::Identifier(variable_name) = &self.name.token_type {
 			match symbols.lookup(&variable_name) {
-				Ok(ref symbol_table_entry) => Ok(symbol_table_entry.data_type),
+				Ok(ref symbol_table_entry) => Ok(symbol_table_entry.data_type.clone()),
 				Err(declaration_error) => {
 					let message = format!("Type Error at {}, {}: {}", 
 						self.name.line,
@@ -496,13 +496,13 @@ impl TypeCheck for AssignmentNode {
 		
 		// get variable / assignee name
 		let assignee_name = match  self.name.token_type {
-			TokenType::Identifier(n) => n.clone(),
+			TokenType::Identifier(ref n) => n.clone(),
 			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
 			
 		};
 		
 		let to_type = match symbols.lookup(&assignee_name) {
-			Ok(ste) =>ste.data_type,
+			Ok(ref ste) =>ste.data_type.clone(),
 			Err(not_declared) => {
 				let message = format!("Type error at {}, {}: {}",
 					self.name.line,

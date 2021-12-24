@@ -8,6 +8,7 @@ mod types;
 mod symbol_table;
 
 use environment::*;
+use symbol_table::SymbolTable;
 use parser::*;
 
 use rustyline::error::ReadlineError;
@@ -31,14 +32,13 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self, global_env: &mut Environment, code: String) {
+    pub fn run(&mut self, global_symbols: &mut SymbolTable, global_env: &mut Environment, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
-        let mut parser = Parser::new(tokens);
-		let mut global_symbols = symbol_table::SymbolTable::global();
-        let statements = parser.parse(&mut global_symbols);
+        let mut parser = Parser::new(tokens);		
+        let statements = parser.parse(global_symbols);
 		statements.iter().for_each(|stmt| {
-			match stmt.check_types() {
+			match stmt.check_types(&global_symbols) {
 				Err(type_error) => {
 					self.had_type_error = true;
 					eprintln!("Type error:  {:?}",&type_error.message);
@@ -91,6 +91,8 @@ pub fn repl() {
 
     // The environment for the duration of the REPL session
     let mut global_env = Environment::new();
+	let mut global_symbols = symbol_table::SymbolTable::global();
+	
     let mut interpreter = Interpreter::new();
 
     loop {
@@ -99,8 +101,11 @@ pub fn repl() {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
 
-                interpreter.run(&mut global_env, line);
+                interpreter.run(&mut global_symbols, &mut global_env, line);
+				
+				// Clear errors for the next input of the REPL
                 interpreter.had_error = false;
+				interpreter.had_type_error = false;
                 interpreter.had_runtime_error = false;
 
                 //println!("=>  {}", &results);
@@ -138,8 +143,9 @@ fn main() {
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
         let mut global_env = Environment::new();
+		let mut global_symbols = symbol_table::SymbolTable::global();
         let mut interpreter = Interpreter::new();
-        interpreter.run(&mut global_env, code);
+        interpreter.run(&mut global_symbols, &mut global_env, code);
         if interpreter.had_error {
             std::process::exit(65);
         }

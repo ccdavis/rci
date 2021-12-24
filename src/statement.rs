@@ -19,7 +19,7 @@ pub trait Executable {
 }
 
 pub trait TypeChecking {
-	fn check_types(&self) -> Result<(), TypeError> ;	
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> ;	
 }
 #[derive(Clone, Debug)]
 pub enum Stmt {
@@ -61,14 +61,14 @@ impl Stmt {
         }
     }
 	
-	pub fn check_types(&self) -> Result<(),TypeError> {
+	pub fn check_types(&self, symbols: &SymbolTable) -> Result<(),TypeError> {
 		use Stmt::*;
 		match self {
-			Print(n) => n.check_types(),
-			ExpressionStmt(n) => n.check_types(),
-			Var(n) => n.check_types(),
-			Block(n) => n.check_types(),
-			If(n) => n.check_types(),
+			Print(n) => n.check_types(symbols),
+			ExpressionStmt(n) => n.check_types(symbols),
+			Var(n) => n.check_types(symbols),
+			Block(n) => n.check_types(symbols),
+			If(n) => n.check_types(symbols),
 			_ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),						
@@ -103,9 +103,9 @@ impl Executable for PrintStmtNode {
 
 impl TypeChecking for PrintStmtNode {
 
-	fn check_types(&self) -> Result<(), TypeError> {
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
 		// print can take any type
-		let expr_type = self.expression.expected_type()?;
+		let expr_type = self.expression.determine_type(symbols)?;
 				
 		Ok(())
 	}
@@ -138,9 +138,9 @@ impl Executable for ExpressionStmtNode {
 
 impl TypeChecking for ExpressionStmtNode {
 
-	fn check_types(&self) -> Result<(), TypeError> {
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
 		// Trigger type checks from the expression contained
-		let t = self.expression.expected_type()?;
+		let t = self.expression.determine_type(symbols)?;
 		Ok(())
 	}
 }
@@ -152,6 +152,7 @@ struct BlockStmtNode {
 }
 
 impl Executable for BlockStmtNode {
+
     fn print(&self) -> String {
         let stmts: String = self
             .statements
@@ -174,11 +175,13 @@ impl Executable for BlockStmtNode {
 
 impl TypeChecking for BlockStmtNode {
 
-	fn check_types(&self) -> Result<(), TypeError> {
+	// Ignore the symbols passed in for now; they will be useful when we have
+	// lambdas with parameters.
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
 		// TODO: For now just return error on the first 
 		// bad statement, but improve this to check them all.
 		for stmt in &self.statements {
-            stmt.check_types()?
+            stmt.check_types(&self.symbols)?
         }
 		Ok(())
 				
@@ -229,8 +232,8 @@ impl Executable for IfStmtNode {
 
 impl TypeChecking for IfStmtNode {
 
-	fn check_types(&self) -> Result<(), TypeError> {
-		let cond_type = self.condition.expected_type()?;
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+		let cond_type = self.condition.determine_type(symbols)?;
 		if let DataType::Bool = cond_type {
 			Ok(())
 		}else {
@@ -277,8 +280,8 @@ impl Executable for VarStmtNode {
 
 impl TypeChecking for VarStmtNode {
 
-	fn check_types(&self) -> Result<(), TypeError> {
-		let init_type = self.initializer.expected_type()?;
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+		let init_type = self.initializer.determine_type(symbols)?;
 		if self.data_type != init_type {
 			let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
