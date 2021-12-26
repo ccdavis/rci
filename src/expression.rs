@@ -678,6 +678,7 @@ impl Expr {
             Grouping(n) => n.print(),
             Variable(n) => n.print(),
             Assignment(n) => n.print(),
+			Call(n) => n.print(),
 
             _ => panic!("Not implemented"),
         };
