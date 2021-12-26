@@ -1,6 +1,9 @@
 use std::rc::Rc;
 use std::fmt;
+use dyn_clonable::*;
 use crate::lex::TokenType;
+use crate::environment::Environment;
+use crate::expression::EvaluationError;
 
 // Types of declarations that can be stored in the symbol table which will
 // hold data of the different types
@@ -104,15 +107,61 @@ impl DataValue {
 	}
 }
 
+#[clonable]
+pub trait Callable: Clone{
+	fn call(&self, envr: &mut Environment, arguments:Vec<ReturnValue>) -> Result<ReturnValue, EvaluationError>;
+	fn arity(&self) -> usize;	
+	fn print(&self) -> String;
+}
 
-#[derive(Clone, Debug)]
-pub enum ReturnValue {
+
+
+
+#[derive(Clone)]
+pub enum ReturnValue{
     Reference(Rc<DataValue>),
     Value(DataValue),
+	CallableValue(Box<dyn Callable>),
 	None, // This is for optional return of data, not 'nil' or null
 }
 
+impl fmt::Debug for ReturnValue {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let output = match self {
+			ReturnValue::Reference(ref val) =>  format!("{:?}",val),
+			ReturnValue::Value(ref val) => format!("{:?}",val),
+			ReturnValue::None => "None".to_string(),
+			ReturnValue::CallableValue(_) => "Callable".to_string(),
+		};
+		f.write_str(&output)
+	}
+}
+
+
+#[derive(Clone)]
+pub struct ClockFunc {
+	
+}
+
+impl Callable for ClockFunc{
+
+	fn print(&self) -> String {
+		"clock(): number".to_string()
+	}
+
+	fn arity(&self) -> usize {
+		0
+	}
+	
+	fn call(&self, envr:&mut Environment, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EvaluationError> {	
+		Ok(ReturnValue::Value(DataValue::Number(0.0)))
+	}
+	
+
+}
+
 impl ReturnValue {
+
     pub fn new_ref(value: DataValue) -> Self {
         ReturnValue::Reference(Rc::new(value))
     }
@@ -120,12 +169,15 @@ impl ReturnValue {
     pub fn new_val(value: DataValue) -> Self {
         ReturnValue::Value(value)
     }
+	
+	
 
     pub fn get(&self) -> &DataValue {
         match self {
             ReturnValue::Reference(v) => &*v,
             ReturnValue::Value(v) => &v,
 			ReturnValue::None => panic!("get() is for internal use and should never be called on None varient."),
+			_ => panic!("Can't retrieve other types such as Callable."),
         }
     }
 
@@ -133,6 +185,7 @@ impl ReturnValue {
         match self {
             ReturnValue::Reference(v) => ReturnValue::Reference(Rc::clone(&v)),
             ReturnValue::Value(v) => ReturnValue::Value(v.clone()),
+			ReturnValue::CallableValue(fun) =>ReturnValue::CallableValue(fun.clone()),
 			ReturnValue::None => ReturnValue::None,
         }
     }

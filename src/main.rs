@@ -10,6 +10,7 @@ mod symbol_table;
 use environment::*;
 use symbol_table::SymbolTable;
 use parser::*;
+use types::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -31,6 +32,15 @@ impl Interpreter {
             had_runtime_error: false,
         }
     }
+	
+	
+	pub fn create_global_environment() -> Environment<'static> {
+		let mut envr = Environment::new();
+		// Add standard library functions
+		let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc{}));
+		envr.define("clock".to_string(), clock_func);			
+		envr
+	}
 
     pub fn run(&mut self, global_symbols: &mut SymbolTable, global_env: &mut Environment, code: String) {
         let mut scanner = lex::Scanner::new(code);
@@ -90,7 +100,7 @@ pub fn repl() {
     }
 
     // The environment for the duration of the REPL session
-    let mut global_env = Environment::new();
+    let mut global_env = Interpreter::create_global_environment();
 	let mut global_symbols = symbol_table::SymbolTable::global();
 	
     let mut interpreter = Interpreter::new();
@@ -142,7 +152,7 @@ fn main() {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
-        let mut global_env = Environment::new();
+        let mut global_env = Interpreter::create_global_environment();
 		let mut global_symbols = symbol_table::SymbolTable::global();
         let mut interpreter = Interpreter::new();
         interpreter.run(&mut global_symbols, &mut global_env, code);

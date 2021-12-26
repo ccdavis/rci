@@ -5,6 +5,7 @@ use crate::operations;
 use crate::types::ReturnValue;
 use crate::types::DataValue;
 use crate::types::DataType;
+use crate::types::Callable;
 use crate::symbol_table::*;
 
 
@@ -33,8 +34,6 @@ pub trait TypeCheck {
 	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> ;	
 }
 
-
-
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
@@ -45,6 +44,7 @@ pub enum Expr {
     Variable(VariableNode),
     Assignment(AssignmentNode),
 }
+
 
 impl Expr {
     pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
@@ -265,7 +265,31 @@ impl Evaluation for CallNode {
 	}
 	
 	fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
-		Ok( ReturnValue::Value(DataValue::Unresolved))
+		// Look up the 'callee' expr which is currently always going to be an identifier primary 
+		// expression (which is a 'var' expression.) Evaluating it  returns the entry in the 
+		// environment associated with the identifier and we expect it to be a callable trait
+		// type.
+		let this_callee = self.callee.evaluate(envr)?;
+		if let ReturnValue::CallableValue(ref function) = this_callee {		
+			let mut arguments:Vec<ReturnValue> = Vec::new();
+			for arg_expr in &self.args {
+				let arg = arg_expr.evaluate(envr)?;
+				arguments.push(arg);
+			}
+			
+				
+			if arguments.len() != function.arity() {
+				let message = format!("Error calling {}, expected {} arguments but got {}.",
+					&this_callee.print(), function.arity(), arguments.len());				
+				let arity_error = EvaluationError { message};				
+				return Err(arity_error);
+			}
+			
+			function.call(envr, arguments)
+		} else {
+			let message = format!("Not a callable value {}",&this_callee.print());
+			Err( EvaluationError { message } )
+		}
 	}
 }
 

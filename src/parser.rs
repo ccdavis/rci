@@ -434,6 +434,12 @@ impl Parser {
 			loop {
 				let next_arg = self.expression()?;
 				args.push(next_arg);
+				if args.len() >= 255{
+					let parse_error = ParseError { 
+						t: self.previous(), 
+						message: "Exceeded maximum arguments to function.".to_string() };
+					self.error(parse_error);
+				}
 				if !self.matches(&[Comma]) {
 					break;
 				}									
