@@ -156,7 +156,9 @@ impl Callable for ClockFunc{
 	fn call(&self, envr:&mut Environment, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EvaluationError> {	
 		use std::time::{SystemTime, UNIX_EPOCH};
 		let now =  SystemTime::now();
-		Ok(ReturnValue::Value(DataValue::Number(now as f64)))
+		let since_epoch = now.duration_since(UNIX_EPOCH).expect("Impossible time difference.");
+		
+		Ok(ReturnValue::Value(DataValue::Number(since_epoch.as_millis() as f64)))
 	}
 	
 
