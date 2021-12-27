@@ -252,6 +252,13 @@ impl Token {
 	pub fn is_arithmetic_operator(&self) -> bool {
 		self.token_type.is_arithmetic_operator()
 	}
+	
+	pub fn identifier_string(&self) -> String {
+		match self.token_type {
+			TokenType::Identifier(ref i) => i.clone(),
+			_ => panic!("Should only call identifier_string() on a token you know is an identifier!"),
+		}
+	}
 }
 
 #[derive(Clone, Debug)]

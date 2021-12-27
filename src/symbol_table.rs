@@ -22,6 +22,8 @@ pub struct SymbolTableEntry {
 
 impl SymbolTableEntry {
 
+	// TODO: Change these init methods to take the Declaration / Statement Node struct types
+
 	pub fn new_var(location: &Token, name:&str, data_type: &DataType, data_value:&DataValue) -> Self {
 		Self {
 			location: location.clone(),
@@ -64,21 +66,22 @@ impl SymbolTableEntry {
 	
 	
 	
-	pub fn new_fun(location: &Token, name:&str, arg_types: Vec<(String,String,DataType)>, data_type: &DataType) -> Self {
+	pub fn new_fun(location: &Token, name:&str, arg_types: Vec<(Token,Token,DataType)>, data_type: &DataType) -> Self {
 		// The arg_types are passed in as 'param-type, name, data_type. The param-type is either nothing "", "var" 
 		// or "copy". "" is the same as "val", a read-only value; var is a mutable reference; "copy" makes a copy which
 		// is internally mutable but doesn't effect the passed in data.
 		let mut argument_definitions:Vec<Box<SymbolTableEntry>> = Vec::new();
 		for arg_def in &arg_types {
-			let param_type = &arg_def.0;
-			let arg_name = &arg_def.1;
+					
+			let param_type = &arg_def.0.token_type;			
+			let arg_name = &arg_def.1.identifier_string();
 			let arg_type = &arg_def.2;
 			
-			let arg = if param_type == "var" {
+			let arg = if matches!(param_type , TokenType::Var) {
 				SymbolTableEntry::new_var(location,arg_name,arg_type, &DataValue::Unresolved) 
-			} else if param_type== "" {
+			} else if matches!(param_type, TokenType::Val) {
 				SymbolTableEntry::new_val(location, arg_name, arg_type, &DataValue::Unresolved)
-			} else if param_type == "copy" {
+			} else if matches!(param_type,  TokenType::Copy) {
 				SymbolTableEntry::new_copy(location, arg_name, arg_type, &DataValue::Unresolved)
 			} else {
 				// It should never come to this, the parser should catch illegal param types

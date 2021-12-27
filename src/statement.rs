@@ -28,6 +28,7 @@ pub enum Stmt {
     Block(BlockStmtNode),
     If(IfStmtNode),
     Var(VarStmtNode),
+	Fun(FunStmtNode),
     While(WhileNode),
 	NoOp,
 }
@@ -41,6 +42,7 @@ impl Stmt {
             Var(stmt) => stmt.print(),
             Block(stmt) => stmt.print(),
 			If(stmt) => stmt.print(),
+			Fun(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
@@ -53,6 +55,7 @@ impl Stmt {
             Print(stmt) => stmt.execute(envr),
             ExpressionStmt(stmt) => stmt.execute(envr),
             Var(stmt) => stmt.execute(envr),
+			Fun(stmt) => stmt.execute(envr),
             Block(stmt) => stmt.execute(envr),
 			If(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
@@ -67,6 +70,7 @@ impl Stmt {
 			Print(n) => n.check_types(symbols),
 			ExpressionStmt(n) => n.check_types(symbols),
 			Var(n) => n.check_types(symbols),
+			Fun(n) => n.check_types(symbols),
 			Block(n) => n.check_types(symbols),
 			If(n) => n.check_types(symbols),
 			_ => Err(TypeError {
@@ -293,6 +297,14 @@ impl TypeChecking for VarStmtNode {
 	}
 }
 
+#[derive(Clone)]
+pub struct FunStmtNode {
+	name: Token, // name + line, column	
+	params: Vec<(Declarationtype, Token, DataType)>,
+	return_type: DataType,
+	body: Stmt,
+}
+
 #[derive(Clone, Debug)]
 struct WhileNode {
     condition: Expr,
@@ -342,6 +354,20 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
+	
+	pub fn fun_stmt(
+		name: Token, 
+		params: Vec<(DeclarationType,Token,DataType)>, 
+		return_type: DataType, 
+		body: Stmt) ->  Stmt {
+		
+			Stmt::Fun( FunStmtNode {
+				name,
+				params,			
+				return_type,
+				body,
+			})
+	}
 	
 	pub fn no_op() -> Stmt {
 		Stmt::NoOp

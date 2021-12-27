@@ -160,6 +160,11 @@ impl Parser {
     }
 
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+	
+		if self.matches(&[TokenType::Fun]) {
+			return self.function("function", symbols);
+		}
+		
         if self.matches(&[TokenType::Var]) {
             return self.var_declaration(symbols);
         }
@@ -170,7 +175,81 @@ impl Parser {
         }
         result
     }
+	
+	
+	fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+		use TokenType::*;
+		let name = self.consume_identifier(format!("expect {} name.", kind))?;
+		self.consume(LeftParen, format!("expect '(' after {} name.", kind))?;
+		let mut parameters: Vec<(DeclarationType, Token, DataType)> =Vec::new();
+		if !self.check(&RightParen) {
+			loop {
+				if params.len() >= 255 {
+					let parse_error = ParseError {
+						t: self.peek(),
+						message: "More than 255 parameters not allowed".to_string(),
+					};
+					self.error(parse_error);
+				}
+				
+				let mut declaration_type = DeclarationType::Val;
+				if self.matches(&[Var]) {
+					declaration_type = DeclarationType::Var;
+				}else if self.matches(&[Copy]) {
+					declaration_type = DeclarationType::Copy;
+				} else if self.matches(&[Val]) {
+					// same as default
+					declaration_type = DeclarationType::Val;
+				}
+				
+				let param_name = self.consume_identifier("expect parameter name.")?;
+				self.consume(Colon, "expect ':' after parameter name.")?;
+				
+				let type_name = self.advance();
+				let param_type = match DataType::from_token_type(&type_name.token_type){
+					Some(valid_type) => valid_type,
+					None => {											
+						return Err(ParseError { 
+							t:type_name, 
+							message: "Types must be built-in or user defined.".to_string() 
+						});
+					}
+				};
+				
+				parameters.push((declaration_type, param_name, param_type));
+				if !self.matches(&[Comma]) {break;}
+			} // loop
+		} // right-paren
+		self.consume(RightParen,"expect ')' after parameters.")?;
+		let mut return_type = DataType::Empty;
+		if self.matches(&[Colon]) {
+			let return_type_name = self.advance();
+			return_type = match DataType::from_token_type(&type_name.token_type){
+				Some(valid_type) => valid_type,
+				None => {											
+					return Err(ParseError { 
+						t:type_name, 
+						message: "Types must be built-in or user defined.".to_string() 
+					});
+				}
+			};												
+		}
+		
+		// get body
+		self.consume(LeftBrace, "expect '{'")?;
+		let body = block_statement(symbols)?;
+		
+		
+		
+		
+		let function_name = name.identifier_string();
+		let entry = SymbolTable::new_fun(&name, &function_name,parameters, &return_type);		
+		symbols.add(entry);		
+		Stmt::fun_stmt(name, parameters, return_type, body)		
+	}
 
+
+	// TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
         let v: Token = self.consume_identifier("Expect variable name")?;
 		let variable_name = match v.token_type {
