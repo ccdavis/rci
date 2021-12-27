@@ -154,7 +154,9 @@ impl Callable for ClockFunc{
 	}
 	
 	fn call(&self, envr:&mut Environment, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EvaluationError> {	
-		Ok(ReturnValue::Value(DataValue::Number(0.0)))
+		use std::time::{SystemTime, UNIX_EPOCH};
+		let now =  SystemTime::now();
+		Ok(ReturnValue::Value(DataValue::Number(now as f64)))
 	}
 	
 
