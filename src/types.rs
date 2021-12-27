@@ -12,6 +12,7 @@ use crate::expression::EvaluationError;
 pub enum DeclarationType {
 	Var, // all types
 	Val, // all types
+	Copy, // all types
 	Fun, // if functions aren't first class, no specific type associated
 	Class, // if classes aren't first order no specific types
 	Type, // user defined, the name in the symbol table entry will have the definition			
@@ -34,8 +35,7 @@ pub enum DataValue{
 	Number(f64),
 	Bool(bool),
 	User(String), // just give the name for now
-	Unresolved, // for the type-checker to figure out later
-		
+	Unresolved, // for the type-checker to figure out later		
 }
 
 

@@ -31,7 +31,71 @@ impl SymbolTableEntry {
 			data_value: data_value.clone(),
 			size:1,
 			contains_type: DataType::Empty,
-			fields: Vec::new(),									
+			fields:Vec::new(),
+		}
+	}
+	
+	pub fn new_val(location: &Token, name:&str, data_type: &DataType, data_value:&DataValue) -> Self {
+		Self {
+			location: location.clone(),
+			name: name.to_owned(),
+			entry_type: DeclarationType::Val,
+			data_type: data_type.clone(),
+			data_value: data_value.clone(),
+			size:1,
+			contains_type: DataType::Empty,
+			fields:Vec::new(),
+		}
+	}
+	
+	pub fn new_copy(location: &Token, name:&str, data_type: &DataType, data_value:&DataValue) -> Self {
+		Self {
+			location: location.clone(),
+			name: name.to_owned(),
+			entry_type: DeclarationType::Copy,
+			data_type: data_type.clone(),
+			data_value: data_value.clone(),
+			size:1,
+			contains_type: DataType::Empty,
+			fields:Vec::new(),
+		}
+	}
+	
+	
+	
+	
+	pub fn new_fun(location: &Token, name:&str, arg_types: Vec<(String,String,DataType)>, data_type: &DataType) -> Self {
+		// The arg_types are passed in as 'param-type, name, data_type. The param-type is either nothing "", "var" 
+		// or "copy". "" is the same as "val", a read-only value; var is a mutable reference; "copy" makes a copy which
+		// is internally mutable but doesn't effect the passed in data.
+		let mut argument_definitions:Vec<Box<SymbolTableEntry>> = Vec::new();
+		for arg_def in &arg_types {
+			let param_type = &arg_def.0;
+			let arg_name = &arg_def.1;
+			let arg_type = &arg_def.2;
+			
+			let arg = if param_type == "var" {
+				SymbolTableEntry::new_var(location,arg_name,arg_type, &DataValue::Unresolved) 
+			} else if param_type== "" {
+				SymbolTableEntry::new_val(location, arg_name, arg_type, &DataValue::Unresolved)
+			} else if param_type == "copy" {
+				SymbolTableEntry::new_copy(location, arg_name, arg_type, &DataValue::Unresolved)
+			} else {
+				// It should never come to this, the parser should catch illegal param types
+				panic!("Cannot add to symbol table, param type {} not recognized.",&arg_def.0);										
+			};
+			argument_definitions.push(Box::new(arg));
+		}
+							
+		Self {
+			location: location.clone(),
+			name: name.to_owned(),
+			entry_type: DeclarationType::Fun,			
+			data_type: data_type.clone(),			
+			data_value: DataValue::Unresolved,
+			size:1,
+			contains_type: DataType::Empty,
+			fields: argument_definitions,
 		}
 	}
 }
