@@ -64,32 +64,26 @@ impl SymbolTableEntry {
 	}
 	
 	
+	pub fn new_param(decl_type: DeclarationType, name: Token,data_type: DataType) -> SymbolTableEntry {
+		let location = name.clone();
+		let param_name = name.identifier_string();
+		
+		match decl_type {
+			DeclarationType::Var =>SymbolTableEntry::new_var(location, &param_name, data_type),
+			DeclarationType::Val =>SymbolTableEntry::new_val(location, &param_name, data_type),
+			DeclarationType::Copy => SymbolTableEntry::new_copy(location, &param_name, data_type),
+			_ => panic!("Can't use decl type '{}' in a parameter definition at {}!",
+					decl_type, &name.print()),
+		}	
+	}
+		
 	
-	
-	pub fn new_fun(location: &Token, name:&str, arg_types: Vec<(Token,Token,DataType)>, data_type: &DataType) -> Self {
-		// The arg_types are passed in as 'param-type, name, data_type. The param-type is either nothing "", "var" 
-		// or "copy". "" is the same as "val", a read-only value; var is a mutable reference; "copy" makes a copy which
-		// is internally mutable but doesn't effect the passed in data.
-		let mut argument_definitions:Vec<Box<SymbolTableEntry>> = Vec::new();
-		for arg_def in &arg_types {
-					
-			let param_type = &arg_def.0.token_type;			
-			let arg_name = &arg_def.1.identifier_string();
-			let arg_type = &arg_def.2;
-			
-			let arg = if matches!(param_type , TokenType::Var) {
-				SymbolTableEntry::new_var(location,arg_name,arg_type, &DataValue::Unresolved) 
-			} else if matches!(param_type, TokenType::Val) {
-				SymbolTableEntry::new_val(location, arg_name, arg_type, &DataValue::Unresolved)
-			} else if matches!(param_type,  TokenType::Copy) {
-				SymbolTableEntry::new_copy(location, arg_name, arg_type, &DataValue::Unresolved)
-			} else {
-				// It should never come to this, the parser should catch illegal param types
-				panic!("Cannot add to symbol table, param type {} not recognized.",&arg_def.0);										
-			};
-			argument_definitions.push(Box::new(arg));
-		}
-							
+	pub fn new_fun(
+		location: &Token, 
+		name:&str, 
+		params: Vec<Box<SymbolTableEntry>>, 
+		data_type: &DataType) -> Self {
+		
 		Self {
 			location: location.clone(),
 			name: name.to_owned(),
@@ -98,7 +92,7 @@ impl SymbolTableEntry {
 			data_value: DataValue::Unresolved,
 			size:1,
 			contains_type: DataType::Empty,
-			fields: argument_definitions,
+			fields: params,
 		}
 	}
 }

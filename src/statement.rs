@@ -300,10 +300,37 @@ impl TypeChecking for VarStmtNode {
 #[derive(Clone)]
 pub struct FunStmtNode {
 	name: Token, // name + line, column	
-	params: Vec<(Declarationtype, Token, DataType)>,
+	params: Vec<Box<SymbolTableEntry>>,
 	return_type: DataType,
-	body: Stmt,
+	body: Vec<Stmt>,
+	symbols: SymbolTable,
 }
+
+impl Evaluation for FunStmtNode {
+
+	fn print(&self) -> String {
+		format!("function: {}",&self.name.identifier_string())
+	}
+	
+	// This basically adds the function to the environment, executing the function declaration.
+	// The evaluation of the function happens in the Expression 'Call' node.
+	// which then calls back to the implementation of Callable here.
+	fn execute(&self, envr: &mut Environment) -> Result<(), EvaluationError> {
+		Ok(())
+	}
+}
+
+impl TypeChecking  for  FunStmtNode {
+
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+		// TODO: Not a complete type check yet; need to check the return type
+		for stmt in &self.body {
+            stmt.check_types(&self.symbols)?
+        }
+		Ok(())		
+	}
+	
+} // impl
 
 #[derive(Clone, Debug)]
 struct WhileNode {
@@ -357,15 +384,17 @@ impl Stmt {
 	
 	pub fn fun_stmt(
 		name: Token, 
-		params: Vec<(DeclarationType,Token,DataType)>, 
+		params: Vec<Box<SymbolTableEntry>>,
 		return_type: DataType, 
-		body: Stmt) ->  Stmt {
+		body: Vec<Stmt>,
+		symbols: SymbolTable) ->  Stmt {
 		
 			Stmt::Fun( FunStmtNode {
 				name,
 				params,			
 				return_type,
 				body,
+				symbols,
 			})
 	}
 	

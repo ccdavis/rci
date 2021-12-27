@@ -181,7 +181,8 @@ impl Parser {
 		use TokenType::*;
 		let name = self.consume_identifier(format!("expect {} name.", kind))?;
 		self.consume(LeftParen, format!("expect '(' after {} name.", kind))?;
-		let mut parameters: Vec<(DeclarationType, Token, DataType)> =Vec::new();
+		let mut parameters: Vec<Box<SymbolTableEntry>> =Vec::new();
+				
 		if !self.check(&RightParen) {
 			loop {
 				if params.len() >= 255 {
@@ -191,7 +192,7 @@ impl Parser {
 					};
 					self.error(parse_error);
 				}
-				
+																					
 				let mut declaration_type = DeclarationType::Val;
 				if self.matches(&[Var]) {
 					declaration_type = DeclarationType::Var;
@@ -216,7 +217,9 @@ impl Parser {
 					}
 				};
 				
-				parameters.push((declaration_type, param_name, param_type));
+				// Add param to local symbol table
+				let entry = SymbolTableEntry::new_param(declaration_type, param_name, param_type);										
+				parameters.push(Box::new(entry));
 				if !self.matches(&[Comma]) {break;}
 			} // loop
 		} // right-paren
@@ -234,18 +237,42 @@ impl Parser {
 				}
 			};												
 		}
+						
+		let function_name = name.identifier_string();
+		// 'name' is the token holding the location of the function name in the source, 
+		// 'function_name' has the actual str with the name.
+		// The symbol table doesn't need the body of the function.
+		let entry = SymbolTable::new_fun(&name, &function_name,parameters, &return_type);		
+		
+		// Add to parent symbol table
+		symbols.add(entry);		 // For recursion		
+		
+		// We will add symbols for params, then pass this local symbol table
+		// to the function_body() for  more eadditions and extensions.
+		let mut local_symbols = symbols.extend();				
+		
+		for param in &parameters {
+			local_symbols.add(*param.clone());
+		}
 		
 		// get body
 		self.consume(LeftBrace, "expect '{'")?;
-		let body = block_statement(symbols)?;
+		let body = function_body(&mut local_symbols)?;
 		
-		
-		
-		
-		let function_name = name.identifier_string();
-		let entry = SymbolTable::new_fun(&name, &function_name,parameters, &return_type);		
-		symbols.add(entry);		
-		Stmt::fun_stmt(name, parameters, return_type, body)		
+		Stmt::fun_stmt(name, parameters, return_type, body, local_symbols)		
+	}
+	
+	// Like a block_statement but without its own AST node or symbols -- those are owned
+	// by the function.
+	fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {		
+		use TokenType::*;
+        let mut stmt_list: Vec<Stmt> = Vec::new();		
+        while !self.check(&RightBrace) && !self.is_finished() {
+            let stmt = self.declaration(&mut local_symbols)?;
+            stmt_list.push(stmt);
+        }
+        self.consume(RightBrace, "expect '}' at the end of a function body.")?;
+		Ok(stmt_list)
 	}
 
 
