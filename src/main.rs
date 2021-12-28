@@ -4,12 +4,12 @@ mod lex;
 mod operations;
 mod parser;
 mod statement;
-mod types;
 mod symbol_table;
+mod types;
 
 use environment::*;
-use symbol_table::SymbolTable;
 use parser::*;
+use symbol_table::SymbolTable;
 use types::*;
 
 use rustyline::error::ReadlineError;
@@ -21,53 +21,57 @@ const TRACE: bool = true;
 pub struct Interpreter {
     pub had_error: bool,
     pub had_runtime_error: bool,
-	pub had_type_error: bool,
+    pub had_type_error: bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             had_error: false,
-			had_type_error: false,
+            had_type_error: false,
             had_runtime_error: false,
         }
     }
-	
-	
-	pub fn create_global_environment() -> Environment<'static> {
-		let mut envr = Environment::new();
-		// Add standard library functions
-		let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc{}));
-		envr.define("clock".to_string(), clock_func);			
-		envr
-	}
 
-    pub fn run(&mut self, global_symbols: &mut SymbolTable, global_env: &mut Environment, code: String) {
+    pub fn create_global_environment() -> Environment<'static> {
+        let mut envr = Environment::new();
+        // Add standard library functions
+        let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));
+        envr.define("clock".to_string(), clock_func);
+        envr
+    }
+
+    pub fn run(
+        &mut self,
+        global_symbols: &mut SymbolTable,
+        global_env: &mut Environment,
+        code: String,
+    ) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
-        let mut parser = Parser::new(tokens);		
+        let mut parser = Parser::new(tokens);
         let statements = parser.parse(global_symbols);
-		statements.iter().for_each(|stmt| {
-			match stmt.check_types(&global_symbols) {
-				Err(type_error) => {
-					self.had_type_error = true;
-					eprintln!("Type error:  {:?}",&type_error.message);
-				}
-				_ => {}
-			}
-		});
-		
+        statements
+            .iter()
+            .for_each(|stmt| match stmt.check_types(&global_symbols) {
+                Err(type_error) => {
+                    self.had_type_error = true;
+                    eprintln!("Type error:  {:?}", &type_error.message);
+                }
+                _ => {}
+            });
+
         if TRACE {
             statements
                 .iter()
                 .for_each(|stmt| println!("{}", &stmt.print()));
         }
-		
-		if self.had_type_error {
-			eprintln!("Cannot execute code with type errors.");
-			self.had_runtime_error = true;
-			return;						
-		}
+
+        if self.had_type_error {
+            eprintln!("Cannot execute code with type errors.");
+            self.had_runtime_error = true;
+            return;
+        }
 
         for mut stmt in statements {
             let mut result = stmt.execute(global_env);
@@ -101,8 +105,8 @@ pub fn repl() {
 
     // The environment for the duration of the REPL session
     let mut global_env = Interpreter::create_global_environment();
-	let mut global_symbols = symbol_table::SymbolTable::global();
-	
+    let mut global_symbols = symbol_table::SymbolTable::global();
+
     let mut interpreter = Interpreter::new();
 
     loop {
@@ -112,10 +116,10 @@ pub fn repl() {
                 rl.add_history_entry(line.as_str());
 
                 interpreter.run(&mut global_symbols, &mut global_env, line);
-				
-				// Clear errors for the next input of the REPL
+
+                // Clear errors for the next input of the REPL
                 interpreter.had_error = false;
-				interpreter.had_type_error = false;
+                interpreter.had_type_error = false;
                 interpreter.had_runtime_error = false;
 
                 //println!("=>  {}", &results);
@@ -153,7 +157,7 @@ fn main() {
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
         let mut global_env = Interpreter::create_global_environment();
-		let mut global_symbols = symbol_table::SymbolTable::global();
+        let mut global_symbols = symbol_table::SymbolTable::global();
         let mut interpreter = Interpreter::new();
         interpreter.run(&mut global_symbols, &mut global_env, code);
         if interpreter.had_error {

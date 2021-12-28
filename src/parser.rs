@@ -2,8 +2,8 @@ use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::statement::Stmt;
-use crate::types::*;
 use crate::symbol_table::*;
+use crate::types::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -148,8 +148,8 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self, global_symbols:&mut SymbolTable) -> Vec<Stmt> {
-        let mut statements = Vec::new();				
+    pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> Vec<Stmt> {
+        let mut statements = Vec::new();
         while !self.is_finished() {
             match self.declaration(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
@@ -160,235 +160,251 @@ impl Parser {
     }
 
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-	
-		if self.matches(&[TokenType::Fun]) {
-			return self.function("function", symbols);
-		}
-		
+        if self.matches(&[TokenType::Fun]) {
+            return self.function("function", symbols);
+        }
+
         if self.matches(&[TokenType::Var]) {
             return self.var_declaration(symbols);
         }
 
         let result = self.statement(symbols);
-        if result.is_err() {			
+        if result.is_err() {
             self.synchronize();
         }
         result
     }
-	
-	
-	fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		use TokenType::*;
-		let name = self.consume_identifier(&format!("expect {} name.", kind))?;
-		self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
-		let mut parameters: Vec<Box<SymbolTableEntry>> =Vec::new();
-				
-		if !self.check(&RightParen) {
-			loop {
-				if parameters.len() >= 255 {
-					let parse_error = ParseError {
-						t: self.peek(),
-						message: "More than 255 parameters not allowed".to_string(),
-					};
-					self.error(parse_error);
-				}
-																					
-				let mut declaration_type = DeclarationType::Val;
-				if self.matches(&[Var]) {
-					declaration_type = DeclarationType::Var;
-				}else if self.matches(&[Cpy]) {
-					declaration_type = DeclarationType::Cpy;
-				} else if self.matches(&[Val]) {
-					// same as default
-					declaration_type = DeclarationType::Val;
-				}
-				
-				let param_name = self.consume_identifier("expect parameter name.")?;
-				self.consume(Colon, "expect ':' after parameter name.")?;
-				
-				let type_name = self.advance();
-				let param_type = match DataType::from_token_type(&type_name.token_type){
-					Some(valid_type) => valid_type,
-					None => {											
-						return Err(ParseError { 
-							t:type_name, 
-							message: "Types must be built-in or user defined.".to_string() 
-						});
-					}
-				};
-				
-				// Add param to local symbol table
-				let entry = SymbolTableEntry::new_param(declaration_type, param_name, param_type);										
-				parameters.push(Box::new(entry));
-				if !self.matches(&[Comma]) {break;}
-			} // loop
-		} // right-paren
-		self.consume(RightParen,"expect ')' after parameters.")?;
-		let mut return_type = DataType::Empty;
-		if self.matches(&[Colon]) {
-			let return_type_name = self.advance();
-			return_type = match DataType::from_token_type(&return_type_name.token_type){
-				Some(valid_type) => valid_type,
-				None => {											
-					return Err(ParseError { 
-						t: return_type_name, 
-						message: "Types must be built-in or user defined.".to_string() 
-					});
-				}
-			};												
-		}
-						
-		let function_name = name.identifier_string();
-		// 'name' is the token holding the location of the function name in the source, 
-		// 'function_name' has the actual str with the name.
-		// The symbol table doesn't need the body of the function.
-		let entry = SymbolTableEntry::new_fun(&name, &function_name,parameters.clone(), &return_type);		
-		
-		// Add to parent symbol table
-		symbols.add(entry);		 // For recursion		
-		
-		// We will add symbols for params, then pass this local symbol table
-		// to the function_body() for  more eadditions and extensions.
-		let mut local_symbols = symbols.extend();				
-		
-		for param in &parameters {
-			local_symbols.add(*param.clone());
-		}
-		
-		// get body
-		self.consume(LeftBrace, "expect '{'")?;
-		let body = self.function_body(&mut local_symbols)?;
-		
-		Ok(Stmt::fun_stmt(name, parameters, return_type, body, local_symbols))
-	}
-	
-	// Like a block_statement but without its own AST node or symbols -- those are owned
-	// by the function.
-	fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {		
-		use TokenType::*;
-        let mut stmt_list: Vec<Stmt> = Vec::new();		
+
+    fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+        let name = self.consume_identifier(&format!("expect {} name.", kind))?;
+        self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
+        let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
+
+        if !self.check(&RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    let parse_error = ParseError {
+                        t: self.peek(),
+                        message: "More than 255 parameters not allowed".to_string(),
+                    };
+                    self.error(parse_error);
+                }
+
+                let mut declaration_type = DeclarationType::Val;
+                if self.matches(&[Var]) {
+                    declaration_type = DeclarationType::Var;
+                } else if self.matches(&[Cpy]) {
+                    declaration_type = DeclarationType::Cpy;
+                } else if self.matches(&[Val]) {
+                    // same as default
+                    declaration_type = DeclarationType::Val;
+                }
+
+                let param_name = self.consume_identifier("expect parameter name.")?;
+                self.consume(Colon, "expect ':' after parameter name.")?;
+
+                let type_name = self.advance();
+                let param_type = match DataType::from_token_type(&type_name.token_type) {
+                    Some(valid_type) => valid_type,
+                    None => {
+                        return Err(ParseError {
+                            t: type_name,
+                            message: "Types must be built-in or user defined.".to_string(),
+                        });
+                    }
+                };
+
+                // Add param to local symbol table
+                let entry = SymbolTableEntry::new_param(declaration_type, param_name, param_type);
+                parameters.push(Box::new(entry));
+                if !self.matches(&[Comma]) {
+                    break;
+                }
+            } // loop
+        } // right-paren
+        self.consume(RightParen, "expect ')' after parameters.")?;
+        let mut return_type = DataType::Empty;
+        if self.matches(&[Colon]) {
+            let return_type_name = self.advance();
+            return_type = match DataType::from_token_type(&return_type_name.token_type) {
+                Some(valid_type) => valid_type,
+                None => {
+                    return Err(ParseError {
+                        t: return_type_name,
+                        message: "Types must be built-in or user defined.".to_string(),
+                    });
+                }
+            };
+        }
+
+        let function_name = name.identifier_string();
+        // 'name' is the token holding the location of the function name in the source,
+        // 'function_name' has the actual str with the name.
+        // The symbol table doesn't need the body of the function.
+        let entry =
+            SymbolTableEntry::new_fun(&name, &function_name, parameters.clone(), &return_type);
+
+        // Add to parent symbol table
+        symbols.add(entry); // For recursion
+
+        // We will add symbols for params, then pass this local symbol table
+        // to the function_body() for  more eadditions and extensions.
+        let mut local_symbols = symbols.extend();
+
+        for param in &parameters {
+            local_symbols.add(*param.clone());
+        }
+
+        // get body
+        self.consume(LeftBrace, "expect '{'")?;
+        let body = self.function_body(&mut local_symbols)?;
+
+        Ok(Stmt::fun_stmt(
+            name,
+            parameters,
+            return_type,
+            body,
+            local_symbols,
+        ))
+    }
+
+    // Like a block_statement but without its own AST node or symbols -- those are owned
+    // by the function.
+    fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
+        use TokenType::*;
+        let mut stmt_list: Vec<Stmt> = Vec::new();
         while !self.check(&RightBrace) && !self.is_finished() {
             let stmt = self.declaration(local_symbols)?;
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' at the end of a function body.")?;
-		Ok(stmt_list)
-	}
-
-
-	// TODO: simplify this var_declaration() !
-    fn var_declaration(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
-        let v: Token = self.consume_identifier("Expect variable name")?;
-		let variable_name = match v.token_type {
-			TokenType::Identifier(ref n) => n.clone(),
-			_ => panic!("Tried to consume identifier!"),
-		};
-		if self.matches(&[TokenType::Colon]) {
-			// Type may be a built-in type or an identifier for a user-defined type			
-			let type_name = self.advance();			
-			let valid_type_name = match DataType::from_token_type(&type_name.token_type){
-				Some(valid_type) => valid_type,
-				None => {											
-					return Err(ParseError { 
-						t:type_name, 
-						message: "Types must be built-in or user defined.".to_string() 
-					});
-				}
-			};
-			
-			if let DataType::User(ref u) = valid_type_name {
-				let has_type = symbols.lookup(u);
-				if has_type.is_err(){
-					let message = format!("Type named {} not declared in this scope or an outer scope.",u);
-					return Err(ParseError { 
-						t:v, 
-						message:message						
-					});
-				}				
-			}			
-			
-			if self.matches(&[TokenType::Equal]) {
-				let initializer = self.expression()?;				
-				let inferred_type_result = initializer.expected_type();
-				match inferred_type_result {
-					Err(type_error) =>  {}, // do nothing for now
-					Ok(ref inferred_type) => {
-						if inferred_type != &valid_type_name {
-							let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
-								&v.print(), &valid_type_name, &inferred_type);
-							return Err(ParseError { 
-								t: type_name,
-								message });
-						}
-					}
-				}
-				
-				self.consume(TokenType::SemiColon, "expect ';'")?;
-				
-				let entry = SymbolTableEntry::new_var(
-					&v, &variable_name, &valid_type_name, &DataValue::Unresolved);
-				if symbols.add(entry) {
-					Ok(Stmt::var_stmt(v, valid_type_name, initializer))
-				} else {
-					// Already defined
-					let message = format!("Variable already declared in this scope!");
-					Err(ParseError{t:v, message})
-				}
-			} else {
-				Err(ParseError {
-					t: v,
-					message: "Variable declaration requires initial value assignment with '='."
-						.to_string(),
-				})
-			}
-													
-		} else { // infer data type
-			
-			if self.matches(&[TokenType::Equal]) {
-				let initializer = self.expression()?;
-				let inferred_type = match initializer.expected_type() {
-					Err(type_error) => {
-						self.error( ParseError { 
-							t: self.previous(),
-							message: type_error.message.clone()});
-						
-						let message = format!("Can't infer type for {}, initial value can't be resolved. Please put a specific type next to the variable name. ",&v.print());
-						
-						return  Err(ParseError { t: v, message });
-						
-						
-					},
-					Ok(data_type) => data_type,
-				};
-				
-				self.consume(TokenType::SemiColon, "expect ';'")?;
-				let entry = SymbolTableEntry::new_var(
-					&v, &variable_name, &inferred_type, &DataValue::Unresolved);
-				if symbols.add(entry) {
-					Ok(Stmt::var_stmt(v, inferred_type, initializer))
-				} else {
-					// Already defined
-					let message = format!("Variable already declared in this scope!");
-					Err(ParseError{t:v, message})
-				}
-			} else {
-				Err(ParseError {
-					t: v,
-					message: "Variable declaration requires initial value assignment with '='."
-						.to_string(),
-				})
-			}
-		}
-	
+        Ok(stmt_list)
     }
 
-    fn statement(&mut self, symbols:&mut SymbolTable) -> Result<Stmt, ParseError> {
+    // TODO: simplify this var_declaration() !
+    fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        let v: Token = self.consume_identifier("Expect variable name")?;
+        let variable_name = match v.token_type {
+            TokenType::Identifier(ref n) => n.clone(),
+            _ => panic!("Tried to consume identifier!"),
+        };
+        if self.matches(&[TokenType::Colon]) {
+            // Type may be a built-in type or an identifier for a user-defined type
+            let type_name = self.advance();
+            let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
+                Some(valid_type) => valid_type,
+                None => {
+                    return Err(ParseError {
+                        t: type_name,
+                        message: "Types must be built-in or user defined.".to_string(),
+                    });
+                }
+            };
+
+            if let DataType::User(ref u) = valid_type_name {
+                let has_type = symbols.lookup(u);
+                if has_type.is_err() {
+                    let message = format!(
+                        "Type named {} not declared in this scope or an outer scope.",
+                        u
+                    );
+                    return Err(ParseError {
+                        t: v,
+                        message: message,
+                    });
+                }
+            }
+
+            if self.matches(&[TokenType::Equal]) {
+                let initializer = self.expression()?;
+                let inferred_type_result = initializer.expected_type();
+                match inferred_type_result {
+                    Err(type_error) => {} // do nothing for now
+                    Ok(ref inferred_type) => {
+                        if inferred_type != &valid_type_name {
+                            let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
+								&v.print(), &valid_type_name, &inferred_type);
+                            return Err(ParseError {
+                                t: type_name,
+                                message,
+                            });
+                        }
+                    }
+                }
+
+                self.consume(TokenType::SemiColon, "expect ';'")?;
+
+                let entry = SymbolTableEntry::new_var(
+                    &v,
+                    &variable_name,
+                    &valid_type_name,
+                    &DataValue::Unresolved,
+                );
+                if symbols.add(entry) {
+                    Ok(Stmt::var_stmt(v, valid_type_name, initializer))
+                } else {
+                    // Already defined
+                    let message = format!("Variable already declared in this scope!");
+                    Err(ParseError { t: v, message })
+                }
+            } else {
+                Err(ParseError {
+                    t: v,
+                    message: "Variable declaration requires initial value assignment with '='."
+                        .to_string(),
+                })
+            }
+        } else {
+            // infer data type
+
+            if self.matches(&[TokenType::Equal]) {
+                let initializer = self.expression()?;
+                let inferred_type = match initializer.expected_type() {
+                    Err(type_error) => {
+                        self.error(ParseError {
+                            t: self.previous(),
+                            message: type_error.message.clone(),
+                        });
+
+                        let message = format!("Can't infer type for {}, initial value can't be resolved. Please put a specific type next to the variable name. ",&v.print());
+
+                        return Err(ParseError { t: v, message });
+                    }
+                    Ok(data_type) => data_type,
+                };
+
+                self.consume(TokenType::SemiColon, "expect ';'")?;
+                let entry = SymbolTableEntry::new_var(
+                    &v,
+                    &variable_name,
+                    &inferred_type,
+                    &DataValue::Unresolved,
+                );
+                if symbols.add(entry) {
+                    Ok(Stmt::var_stmt(v, inferred_type, initializer))
+                } else {
+                    // Already defined
+                    let message = format!("Variable already declared in this scope!");
+                    Err(ParseError { t: v, message })
+                }
+            } else {
+                Err(ParseError {
+                    t: v,
+                    message: "Variable declaration requires initial value assignment with '='."
+                        .to_string(),
+                })
+            }
+        }
+    }
+
+    fn statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-		
-		if self.matches(&[If]) {
-			return self.if_statement(symbols);
-		}
-		
+
+        if self.matches(&[If]) {
+            return self.if_statement(symbols);
+        }
+
         if self.matches(&[Print]) {
             return self.print_statement(symbols);
         }
@@ -405,21 +421,21 @@ impl Parser {
         self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::expression_stmt(expr))
     }
-	
-	fn if_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		use TokenType::*;
-		let condition = self.expression()?;
-				
-		self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
-		let then_branch = self.block_statement(symbols)?;
-		if self.matches(&[Else]) {
-			self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
-			let else_branch = self.block_statement(symbols)?;
-			Ok(Stmt::if_stmt(condition, then_branch, Some(else_branch)))
-		} else {
-			Ok(Stmt::if_stmt(condition, then_branch, None))
-		}
-	}
+
+    fn if_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+        let condition = self.expression()?;
+
+        self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
+        let then_branch = self.block_statement(symbols)?;
+        if self.matches(&[Else]) {
+            self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
+            let else_branch = self.block_statement(symbols)?;
+            Ok(Stmt::if_stmt(condition, then_branch, Some(else_branch)))
+        } else {
+            Ok(Stmt::if_stmt(condition, then_branch, None))
+        }
+    }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
@@ -430,7 +446,7 @@ impl Parser {
     fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
-		let mut local_symbols = symbols.extend();
+        let mut local_symbols = symbols.extend();
         while !self.check(&RightBrace) && !self.is_finished() {
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
@@ -507,53 +523,54 @@ impl Parser {
             let operator = self.previous();
             let right = self.unary()?;
             return Ok(Expr::unary(operator, right));
-        } 
-		
-		self.call()
-		
-		//self.primary()        
+        }
+
+        self.call()
+
+        //self.primary()
     }
-	
-	fn call(&mut self) -> Result<Expr, ParseError> {
-		use TokenType::*;
-		
-		// Possibly the start of a function call or just a bare
-		// primary expression.
-		let mut expr = self.primary()?;		
-		loop {
-			if self.matches(&[LeftParen]) {
-				// replace the expression with the full function call
-				expr = self.finish_call(expr)?;
-			} else {
-				break;
-			}
-		}
-		Ok(expr)
-	}
-	
-	fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
-		use TokenType::*;
-		
-		let mut args: Vec<Expr> = Vec::new();
-		
-		if !self.check(&RightParen){
-			loop {
-				let next_arg = self.expression()?;
-				args.push(next_arg);
-				if args.len() >= 255{
-					let parse_error = ParseError { 
-						t: self.previous(), 
-						message: "Exceeded maximum arguments to function.".to_string() };
-					self.error(parse_error);
-				}
-				if !self.matches(&[Comma]) {
-					break;
-				}									
-			}
-		}
-		let paren = self.consume(RightParen, "expect ')' after arguments.")?;
-		Ok(Expr::call(callee, paren, args))
-	}
+
+    fn call(&mut self) -> Result<Expr, ParseError> {
+        use TokenType::*;
+
+        // Possibly the start of a function call or just a bare
+        // primary expression.
+        let mut expr = self.primary()?;
+        loop {
+            if self.matches(&[LeftParen]) {
+                // replace the expression with the full function call
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+        use TokenType::*;
+
+        let mut args: Vec<Expr> = Vec::new();
+
+        if !self.check(&RightParen) {
+            loop {
+                let next_arg = self.expression()?;
+                args.push(next_arg);
+                if args.len() >= 255 {
+                    let parse_error = ParseError {
+                        t: self.previous(),
+                        message: "Exceeded maximum arguments to function.".to_string(),
+                    };
+                    self.error(parse_error);
+                }
+                if !self.matches(&[Comma]) {
+                    break;
+                }
+            }
+        }
+        let paren = self.consume(RightParen, "expect ')' after arguments.")?;
+        Ok(Expr::call(callee, paren, args))
+    }
 
     fn primary(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;

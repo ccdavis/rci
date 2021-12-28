@@ -61,8 +61,8 @@ pub enum TokenType {
     This,
     True,
     Var,
-	Val,
-	Cpy,
+    Val,
+    Cpy,
     While,
 
     ScanError(String),
@@ -133,8 +133,8 @@ impl TokenType {
             This => "this",
             True => "true",
             Var => "var",
-			Val => "val",
-			Cpy => "cpy",
+            Val => "val",
+            Cpy => "cpy",
             While => "while",
 
             // Type names
@@ -153,29 +153,22 @@ impl TokenType {
         };
         name.to_string()
     }
-	
-	
-	pub fn is_comparison_operator(&self) -> bool {
-		use TokenType::*;
-		match self {
-			LessGreater |
-			Equal |
-			Greater |
-			GreaterEqual |
-			Less |
-			LessEqual => true,
-			_ => false,			
-		}
-	}
-	
-	pub fn is_arithmetic_operator(&self) -> bool{
-		use TokenType::*;
-		match self {		
-			Plus | Minus | Slash | Star => true,
-			_ => false,
-			
-		}
-	}
+
+    pub fn is_comparison_operator(&self) -> bool {
+        use TokenType::*;
+        match self {
+            LessGreater | Equal | Greater | GreaterEqual | Less | LessEqual => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_arithmetic_operator(&self) -> bool {
+        use TokenType::*;
+        match self {
+            Plus | Minus | Slash | Star => true,
+            _ => false,
+        }
+    }
 
     // Store this in the scanner struct for quick lookup
     pub fn reserved_words() -> HashMap<String, TokenType> {
@@ -185,7 +178,7 @@ impl TokenType {
             NumberType,
             BooleanType,
             SetType,
-            Enum,            
+            Enum,
             In,
             Intersects,
             Intersection,
@@ -208,8 +201,8 @@ impl TokenType {
             This,
             True,
             Var,
-			Val,
-			Cpy,
+            Val,
+            Cpy,
             While,
         ];
 
@@ -247,22 +240,23 @@ impl Token {
     pub fn print(&self) -> String {
         format!("'{:?}' at {}, {}", &self.token_type, self.line, self.column)
     }
-	
-	
-	pub fn is_comparison_operator(&self) -> bool {
-		self.token_type.is_comparison_operator()
-	}
-	
-	pub fn is_arithmetic_operator(&self) -> bool {
-		self.token_type.is_arithmetic_operator()
-	}
-	
-	pub fn identifier_string(&self) -> String {
-		match self.token_type {
-			TokenType::Identifier(ref i) => i.clone(),
-			_ => panic!("Should only call identifier_string() on a token you know is an identifier!"),
-		}
-	}
+
+    pub fn is_comparison_operator(&self) -> bool {
+        self.token_type.is_comparison_operator()
+    }
+
+    pub fn is_arithmetic_operator(&self) -> bool {
+        self.token_type.is_arithmetic_operator()
+    }
+
+    pub fn identifier_string(&self) -> String {
+        match self.token_type {
+            TokenType::Identifier(ref i) => i.clone(),
+            _ => {
+                panic!("Should only call identifier_string() on a token you know is an identifier!")
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -516,7 +510,7 @@ impl Scanner {
         let starting_line = self.line;
         let starting_column = self.column;
 
-        let mut content = "".to_string();        
+        let mut content = "".to_string();
         while self.this_char() != '"' && !self.is_finished() {
             content.push(self.this_char());
             self.advance();

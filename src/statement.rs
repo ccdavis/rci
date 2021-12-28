@@ -3,13 +3,11 @@ use crate::expression::Expr;
 use crate::expression::TypeError;
 use crate::lex::Token;
 use crate::lex::TokenType;
-use crate::types::DataValue;
-use crate::types::DataType;
-use crate::types::ReturnValue;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
-
-
+use crate::types::DataType;
+use crate::types::DataValue;
+use crate::types::ReturnValue;
 
 pub struct ExecutionError {
     pub message: String,
@@ -21,7 +19,7 @@ pub trait Executable {
 }
 
 pub trait TypeChecking {
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> ;	
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError>;
 }
 #[derive(Clone, Debug)]
 pub enum Stmt {
@@ -30,9 +28,9 @@ pub enum Stmt {
     Block(BlockStmtNode),
     If(IfStmtNode),
     Var(VarStmtNode),
-	Fun(FunStmtNode),
+    Fun(FunStmtNode),
     While(WhileNode),
-	NoOp,
+    NoOp,
 }
 
 impl Stmt {
@@ -43,13 +41,11 @@ impl Stmt {
             ExpressionStmt(stmt) => stmt.print(),
             Var(stmt) => stmt.print(),
             Block(stmt) => stmt.print(),
-			If(stmt) => stmt.print(),
-			Fun(stmt) => stmt.print(),
+            If(stmt) => stmt.print(),
+            Fun(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
-	
-	
 
     pub fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
@@ -57,29 +53,29 @@ impl Stmt {
             Print(stmt) => stmt.execute(envr),
             ExpressionStmt(stmt) => stmt.execute(envr),
             Var(stmt) => stmt.execute(envr),
-			Fun(stmt) => stmt.execute(envr),
+            Fun(stmt) => stmt.execute(envr),
             Block(stmt) => stmt.execute(envr),
-			If(stmt) => stmt.execute(envr),
+            If(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
         }
     }
-	
-	pub fn check_types(&self, symbols: &SymbolTable) -> Result<(),TypeError> {
-		use Stmt::*;
-		match self {
-			Print(n) => n.check_types(symbols),
-			ExpressionStmt(n) => n.check_types(symbols),
-			Var(n) => n.check_types(symbols),
-			Fun(n) => n.check_types(symbols),
-			Block(n) => n.check_types(symbols),
-			If(n) => n.check_types(symbols),
-			_ => Err(TypeError {
+
+    pub fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        use Stmt::*;
+        match self {
+            Print(n) => n.check_types(symbols),
+            ExpressionStmt(n) => n.check_types(symbols),
+            Var(n) => n.check_types(symbols),
+            Fun(n) => n.check_types(symbols),
+            Block(n) => n.check_types(symbols),
+            If(n) => n.check_types(symbols),
+            _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
-            }),						
-		}
-	}
+            }),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -88,7 +84,6 @@ struct PrintStmtNode {
 }
 
 impl Executable for PrintStmtNode {
-
     fn print(&self) -> String {
         format!("print-stmt {}", &self.expression.print())
     }
@@ -108,14 +103,12 @@ impl Executable for PrintStmtNode {
 }
 
 impl TypeChecking for PrintStmtNode {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        // print can take any type
+        let expr_type = self.expression.determine_type(symbols)?;
 
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		// print can take any type
-		let expr_type = self.expression.determine_type(symbols)?;
-				
-		Ok(())
-	}
-
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -143,22 +136,20 @@ impl Executable for ExpressionStmtNode {
 }
 
 impl TypeChecking for ExpressionStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		// Trigger type checks from the expression contained
-		let t = self.expression.determine_type(symbols)?;
-		Ok(())
-	}
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        // Trigger type checks from the expression contained
+        let t = self.expression.determine_type(symbols)?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
 struct BlockStmtNode {
     statements: Vec<Stmt>,
-	symbols: SymbolTable,
+    symbols: SymbolTable,
 }
 
 impl Executable for BlockStmtNode {
-
     fn print(&self) -> String {
         let stmts: String = self
             .statements
@@ -180,85 +171,89 @@ impl Executable for BlockStmtNode {
 }
 
 impl TypeChecking for BlockStmtNode {
-
-	// Ignore the symbols passed in for now; they will be useful when we have
-	// lambdas with parameters.
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		// TODO: For now just return error on the first 
-		// bad statement, but improve this to check them all.
-		for stmt in &self.statements {
+    // Ignore the symbols passed in for now; they will be useful when we have
+    // lambdas with parameters.
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        // TODO: For now just return error on the first
+        // bad statement, but improve this to check them all.
+        for stmt in &self.statements {
             stmt.check_types(&self.symbols)?
         }
-		Ok(())
-				
-	}
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
 struct IfStmtNode {
     condition: Expr,
     then_branch: Box<Stmt>,
-	has_else: bool, // avoid Option inside else box
+    has_else: bool, // avoid Option inside else box
     else_branch: Box<Stmt>,
 }
 
 impl Executable for IfStmtNode {
-	fn print(&self) -> String {
-		let else_stmt = if self.has_else {
-			self.else_branch.print()
-		} else {
-			"None".to_string()
-		};
-		format!("if-stmt {} then {} else {}", &self.condition.print(), &*self.then_branch.print(), else_stmt)
-	}
-	
-	fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
-		let test = self.condition.evaluate(envr);
-		match test {
-			Ok(result) => {
-				let falsey = match result.get() {
-					DataValue::Bool(b) => !b,					
-					_ => false,					
-				};
-												
-				if !falsey {
-					self.then_branch.execute(envr)
-				} else if self.has_else {
-						self.else_branch.execute(envr)
-					} else {
-						Ok(())
-					}
-					
-				
-			},
-			Err(err) => Err(ExecutionError { message: err.message } ),
-		}
-	}
+    fn print(&self) -> String {
+        let else_stmt = if self.has_else {
+            self.else_branch.print()
+        } else {
+            "None".to_string()
+        };
+        format!(
+            "if-stmt {} then {} else {}",
+            &self.condition.print(),
+            &*self.then_branch.print(),
+            else_stmt
+        )
+    }
+
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        let test = self.condition.evaluate(envr);
+        match test {
+            Ok(result) => {
+                let falsey = match result.get() {
+                    DataValue::Bool(b) => !b,
+                    _ => false,
+                };
+
+                if !falsey {
+                    self.then_branch.execute(envr)
+                } else if self.has_else {
+                    self.else_branch.execute(envr)
+                } else {
+                    Ok(())
+                }
+            }
+            Err(err) => Err(ExecutionError {
+                message: err.message,
+            }),
+        }
+    }
 }
 
 impl TypeChecking for IfStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		let cond_type = self.condition.determine_type(symbols)?;
-		if let DataType::Bool = cond_type {
-			Ok(())
-		}else {
-			let message = format!("Condition in if-statement must be boolean but was {} instead.",cond_type);
-			Err( TypeError { message })
-		}				
-	}
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        let cond_type = self.condition.determine_type(symbols)?;
+        if let DataType::Bool = cond_type {
+            Ok(())
+        } else {
+            let message = format!(
+                "Condition in if-statement must be boolean but was {} instead.",
+                cond_type
+            );
+            Err(TypeError { message })
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 struct VarStmtNode {
     name: String,
-	data_type: DataType,
+    data_type: DataType,
     index: usize,
     initializer: Box<Expr>,
 }
 
 impl Executable for VarStmtNode {
-
     fn print(&self) -> String {
         format!("var-stmt = {}", &self.initializer.print())
     }
@@ -283,55 +278,50 @@ impl Executable for VarStmtNode {
     }
 }
 
-
 impl TypeChecking for VarStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		let init_type = self.initializer.determine_type(symbols)?;
-		if self.data_type != init_type {
-			let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        let init_type = self.initializer.determine_type(symbols)?;
+        if self.data_type != init_type {
+            let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
-				
-			Err( TypeError { message } )			
-		} else {		
-			Ok(())
-		}		
-	}
+
+            Err(TypeError { message })
+        } else {
+            Ok(())
+        }
+    }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct FunStmtNode {
-	name: Token, // name + line, column	
-	params: Vec<Box<SymbolTableEntry>>,
-	return_type: DataType,
-	body: Vec<Stmt>,
-	symbols: SymbolTable,
+    name: Token, // name + line, column
+    params: Vec<Box<SymbolTableEntry>>,
+    return_type: DataType,
+    body: Vec<Stmt>,
+    symbols: SymbolTable,
 }
 
 impl Executable for FunStmtNode {
+    fn print(&self) -> String {
+        format!("function: {}", &self.name.identifier_string())
+    }
 
-	fn print(&self) -> String {
-		format!("function: {}",&self.name.identifier_string())
-	}
-	
-	// This adds the function to the interpreter's environment, executing the function declaration.
-	// The evaluation of the function happens in the Expression 'Call' node.
-	// which then calls back to the implementation of Callable here.
-	fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
-		Ok(())
-	}
+    // This adds the function to the interpreter's environment, executing the function declaration.
+    // The evaluation of the function happens in the Expression 'Call' node.
+    // which then calls back to the implementation of Callable here.
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        Ok(())
+    }
 }
 
-impl TypeChecking  for  FunStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		// TODO: Not a complete type check yet; need to check the return type
-		for stmt in &self.body {
+impl TypeChecking for FunStmtNode {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        // TODO: Not a complete type check yet; need to check the return type
+        for stmt in &self.body {
             stmt.check_types(&self.symbols)?
         }
-		Ok(())		
-	}
-	
+        Ok(())
+    }
 } // impl
 
 #[derive(Clone, Debug)]
@@ -350,59 +340,60 @@ impl Stmt {
     }
 
     pub fn block_stmt(statements: Vec<Stmt>, symbols: SymbolTable) -> Stmt {
-        Stmt::Block(BlockStmtNode { statements, symbols })
+        Stmt::Block(BlockStmtNode {
+            statements,
+            symbols,
+        })
     }
 
     pub fn if_stmt(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Stmt {
-		match else_branch {
-			None => 
-			Stmt::If(IfStmtNode {
-				condition,
-				then_branch: Box::new(then_branch),
-				has_else: false,
-				else_branch: Box::new(Stmt::no_op()),
-			}),
-			Some(unwrapped_else_branch) =>
-			Stmt::If(IfStmtNode {
-				condition,
-				then_branch: Box::new(then_branch),
-				has_else: true,
-				else_branch: Box::new(unwrapped_else_branch),
-			}),			
-		}
+        match else_branch {
+            None => Stmt::If(IfStmtNode {
+                condition,
+                then_branch: Box::new(then_branch),
+                has_else: false,
+                else_branch: Box::new(Stmt::no_op()),
+            }),
+            Some(unwrapped_else_branch) => Stmt::If(IfStmtNode {
+                condition,
+                then_branch: Box::new(then_branch),
+                has_else: true,
+                else_branch: Box::new(unwrapped_else_branch),
+            }),
+        }
     }
-	
-    pub fn var_stmt(name: Token, data_type:DataType, expr: Expr) -> Stmt {
+
+    pub fn var_stmt(name: Token, data_type: DataType, expr: Expr) -> Stmt {
         match name.token_type {
             TokenType::Identifier(n) => Stmt::Var(VarStmtNode {
                 name: n,
-				data_type,
+                data_type,
                 index: 0,
                 initializer: Box::new(expr),
             }),
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
-	
-	pub fn fun_stmt(
-		name: Token, 
-		params: Vec<Box<SymbolTableEntry>>,
-		return_type: DataType, 
-		body: Vec<Stmt>,
-		symbols: SymbolTable) ->  Stmt {
-		
-			Stmt::Fun( FunStmtNode {
-				name,
-				params,			
-				return_type,
-				body,
-				symbols,
-			})
-	}
-	
-	pub fn no_op() -> Stmt {
-		Stmt::NoOp
-	}
+
+    pub fn fun_stmt(
+        name: Token,
+        params: Vec<Box<SymbolTableEntry>>,
+        return_type: DataType,
+        body: Vec<Stmt>,
+        symbols: SymbolTable,
+    ) -> Stmt {
+        Stmt::Fun(FunStmtNode {
+            name,
+            params,
+            return_type,
+            body,
+            symbols,
+        })
+    }
+
+    pub fn no_op() -> Stmt {
+        Stmt::NoOp
+    }
 
     pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
         Stmt::While(WhileNode {
