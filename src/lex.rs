@@ -61,6 +61,8 @@ pub enum TokenType {
     This,
     True,
     Var,
+	Val,
+	Cpy,
     While,
 
     ScanError(String),
@@ -131,6 +133,8 @@ impl TokenType {
             This => "this",
             True => "true",
             Var => "var",
+			Val => "val",
+			Cpy => "cpy",
             While => "while",
 
             // Type names
@@ -181,9 +185,7 @@ impl TokenType {
             NumberType,
             BooleanType,
             SetType,
-            Set,
-            Enum,
-            Bool,
+            Enum,            
             In,
             Intersects,
             Intersection,
@@ -206,6 +208,8 @@ impl TokenType {
             This,
             True,
             Var,
+			Val,
+			Cpy,
             While,
         ];
 

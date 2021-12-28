@@ -179,13 +179,13 @@ impl Parser {
 	
 	fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
 		use TokenType::*;
-		let name = self.consume_identifier(format!("expect {} name.", kind))?;
-		self.consume(LeftParen, format!("expect '(' after {} name.", kind))?;
+		let name = self.consume_identifier(&format!("expect {} name.", kind))?;
+		self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
 		let mut parameters: Vec<Box<SymbolTableEntry>> =Vec::new();
 				
 		if !self.check(&RightParen) {
 			loop {
-				if params.len() >= 255 {
+				if parameters.len() >= 255 {
 					let parse_error = ParseError {
 						t: self.peek(),
 						message: "More than 255 parameters not allowed".to_string(),
@@ -196,8 +196,8 @@ impl Parser {
 				let mut declaration_type = DeclarationType::Val;
 				if self.matches(&[Var]) {
 					declaration_type = DeclarationType::Var;
-				}else if self.matches(&[Copy]) {
-					declaration_type = DeclarationType::Copy;
+				}else if self.matches(&[Cpy]) {
+					declaration_type = DeclarationType::Cpy;
 				} else if self.matches(&[Val]) {
 					// same as default
 					declaration_type = DeclarationType::Val;
@@ -227,11 +227,11 @@ impl Parser {
 		let mut return_type = DataType::Empty;
 		if self.matches(&[Colon]) {
 			let return_type_name = self.advance();
-			return_type = match DataType::from_token_type(&type_name.token_type){
+			return_type = match DataType::from_token_type(&return_type_name.token_type){
 				Some(valid_type) => valid_type,
 				None => {											
 					return Err(ParseError { 
-						t:type_name, 
+						t: return_type_name, 
 						message: "Types must be built-in or user defined.".to_string() 
 					});
 				}
@@ -242,7 +242,7 @@ impl Parser {
 		// 'name' is the token holding the location of the function name in the source, 
 		// 'function_name' has the actual str with the name.
 		// The symbol table doesn't need the body of the function.
-		let entry = SymbolTable::new_fun(&name, &function_name,parameters, &return_type);		
+		let entry = SymbolTableEntry::new_fun(&name, &function_name,parameters.clone(), &return_type);		
 		
 		// Add to parent symbol table
 		symbols.add(entry);		 // For recursion		
@@ -257,9 +257,9 @@ impl Parser {
 		
 		// get body
 		self.consume(LeftBrace, "expect '{'")?;
-		let body = function_body(&mut local_symbols)?;
+		let body = self.function_body(&mut local_symbols)?;
 		
-		Stmt::fun_stmt(name, parameters, return_type, body, local_symbols)		
+		Ok(Stmt::fun_stmt(name, parameters, return_type, body, local_symbols))
 	}
 	
 	// Like a block_statement but without its own AST node or symbols -- those are owned
@@ -268,7 +268,7 @@ impl Parser {
 		use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();		
         while !self.check(&RightBrace) && !self.is_finished() {
-            let stmt = self.declaration(&mut local_symbols)?;
+            let stmt = self.declaration(local_symbols)?;
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' at the end of a function body.")?;

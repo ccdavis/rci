@@ -12,7 +12,7 @@ use crate::expression::EvaluationError;
 pub enum DeclarationType {
 	Var, // all types
 	Val, // all types
-	Copy, // all types
+	Cpy, // all types
 	Fun, // if functions aren't first class, no specific type associated
 	Class, // if classes aren't first order no specific types
 	Type, // user defined, the name in the symbol table entry will have the definition			

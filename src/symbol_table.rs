@@ -54,7 +54,7 @@ impl SymbolTableEntry {
 		Self {
 			location: location.clone(),
 			name: name.to_owned(),
-			entry_type: DeclarationType::Copy,
+			entry_type: DeclarationType::Cpy,
 			data_type: data_type.clone(),
 			data_value: data_value.clone(),
 			size:1,
@@ -69,10 +69,10 @@ impl SymbolTableEntry {
 		let param_name = name.identifier_string();
 		
 		match decl_type {
-			DeclarationType::Var =>SymbolTableEntry::new_var(location, &param_name, data_type),
-			DeclarationType::Val =>SymbolTableEntry::new_val(location, &param_name, data_type),
-			DeclarationType::Copy => SymbolTableEntry::new_copy(location, &param_name, data_type),
-			_ => panic!("Can't use decl type '{}' in a parameter definition at {}!",
+			DeclarationType::Var =>SymbolTableEntry::new_var(&location, &param_name, &data_type, &DataValue::Unresolved),
+			DeclarationType::Val =>SymbolTableEntry::new_val(&location, &param_name, &data_type, &DataValue::Unresolved),
+			DeclarationType::Cpy => SymbolTableEntry::new_copy(&location, &param_name, &data_type, &DataValue::Unresolved),
+			_ => panic!("Can't use decl type '{:?}' in a parameter definition at {}!",
 					decl_type, &name.print()),
 		}	
 	}

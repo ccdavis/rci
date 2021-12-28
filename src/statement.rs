@@ -7,6 +7,8 @@ use crate::types::DataValue;
 use crate::types::DataType;
 use crate::types::ReturnValue;
 use crate::symbol_table::SymbolTable;
+use crate::symbol_table::SymbolTableEntry;
+
 
 
 pub struct ExecutionError {
@@ -297,7 +299,7 @@ impl TypeChecking for VarStmtNode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct FunStmtNode {
 	name: Token, // name + line, column	
 	params: Vec<Box<SymbolTableEntry>>,
@@ -306,16 +308,16 @@ pub struct FunStmtNode {
 	symbols: SymbolTable,
 }
 
-impl Evaluation for FunStmtNode {
+impl Executable for FunStmtNode {
 
 	fn print(&self) -> String {
 		format!("function: {}",&self.name.identifier_string())
 	}
 	
-	// This basically adds the function to the environment, executing the function declaration.
+	// This adds the function to the interpreter's environment, executing the function declaration.
 	// The evaluation of the function happens in the Expression 'Call' node.
 	// which then calls back to the implementation of Callable here.
-	fn execute(&self, envr: &mut Environment) -> Result<(), EvaluationError> {
+	fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
 		Ok(())
 	}
 }
