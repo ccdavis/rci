@@ -264,8 +264,8 @@ impl Evaluation for CallNode {
         // expression (which is a 'var' expression.) Evaluating it  returns the entry in the
         // environment associated with the identifier and we expect it to be a callable trait
         // type.
-        let this_callee = self.callee.evaluate(envr)?;
-        if let ReturnValue::CallableValue(ref function) = this_callee {
+        let mut this_callee = self.callee.evaluate(envr)?;
+        if let ReturnValue::CallableValue(ref mut function) = this_callee {
             let mut arguments: Vec<ReturnValue> = Vec::new();
             for arg_expr in &self.args {
                 let arg = arg_expr.evaluate(envr)?;
@@ -275,15 +275,20 @@ impl Evaluation for CallNode {
             if arguments.len() != function.arity() {
                 let message = format!(
                     "Error calling {}, expected {} arguments but got {}.",
-                    &this_callee.print(),
-                    function.arity(),
+                    self.callee.print(),
+                    &function.arity(),
                     arguments.len()
                 );
                 let arity_error = EvaluationError { message };
                 return Err(arity_error);
             }
 
-            function.call(envr, arguments)
+			// Translate execution errors into evaluation errors
+			match function.call(envr, arguments)  {
+				Err(msg) => Err( EvaluationError { message: msg.message}),
+				Ok(result) => Ok(result),
+			}
+			
         } else {
             let message = format!("Not a callable value {}", &this_callee.print());
             Err(EvaluationError { message })

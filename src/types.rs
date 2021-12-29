@@ -1,5 +1,7 @@
 use crate::environment::Environment;
 use crate::expression::EvaluationError;
+use crate::statement::ExecutionError;
+
 use crate::lex::TokenType;
 use dyn_clonable::*;
 use std::fmt;
@@ -103,10 +105,10 @@ impl DataValue {
 #[clonable]
 pub trait Callable: Clone {
     fn call(
-        &self,
+        &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, EvaluationError>;
+    ) -> Result<ReturnValue, ExecutionError>;
     fn arity(&self) -> usize;
     fn print(&self) -> String;
 }
@@ -144,10 +146,10 @@ impl Callable for ClockFunc {
     }
 
     fn call(
-        &self,
+        &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, EvaluationError> {
+    ) -> Result<ReturnValue, ExecutionError> {
         use std::time::{SystemTime, UNIX_EPOCH};
         let now = SystemTime::now();
         let since_epoch = now

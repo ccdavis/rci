@@ -8,6 +8,7 @@ use crate::symbol_table::SymbolTableEntry;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
+use crate::types::Callable;
 
 pub struct ExecutionError {
     pub message: String,
@@ -309,8 +310,19 @@ impl Executable for FunStmtNode {
     // This adds the function to the interpreter's environment, executing the function declaration.
     // The evaluation of the function happens in the Expression 'Call' node.
     // which then calls back to the implementation of Callable here.
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
-        Ok(())
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {        				 
+		envr.define(
+			self.name.identifier_string(),
+			ReturnValue::CallableValue(
+				Box::new(
+					UserFunction::new(self.clone())
+				)
+			)
+		);
+		// The type-checker should have caught situations where we're redefining a function.
+		// No other errors should be possible at this point either.
+		Ok(())
+		
     }
 }
 
@@ -323,6 +335,52 @@ impl TypeChecking for FunStmtNode {
         Ok(())
     }
 } // impl
+
+#[derive(Clone)]
+pub struct UserFunction {
+	declaration: FunStmtNode,
+}
+
+impl UserFunction {
+
+	fn new (declaration: FunStmtNode) -> Self {
+		Self { declaration }
+	}
+}
+
+impl Callable for UserFunction {
+
+	fn print(&self) -> String {
+		self.declaration.print()
+	}
+	
+	fn arity(&self) -> usize {
+		self.declaration.params.len()
+	}
+	
+	fn call(
+		&mut self, 
+		envr: &mut Environment,
+		arguments: Vec<ReturnValue>) 
+			-> Result<ReturnValue, ExecutionError> {
+			
+		let mut local_envr = envr.extend();
+		// Add argument values to the local environment
+		for (index, arg_value) in arguments.into_iter().enumerate(){
+			let param = &self.declaration.params[index];						
+			local_envr.define(self.declaration.params[index].name.to_owned(),arg_value);			
+		}
+		
+		let mut return_value = ReturnValue::Value(DataValue::Unresolved);
+		let decl = &mut self.declaration;
+				
+		for stmt in &mut decl.body {
+            stmt.execute(&mut local_envr)?
+        }
+		Ok(return_value)
+	}
+
+}
 
 #[derive(Clone, Debug)]
 struct WhileNode {
