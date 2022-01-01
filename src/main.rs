@@ -34,7 +34,7 @@ impl Interpreter {
     }
 
     pub fn create_global_environment() -> Environment {
-        let mut envr = Environment::new();
+        let mut envr = Environment::new();	
         // Add standard library functions
         let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));
         envr.define("clock".to_string(), clock_func);

@@ -7,130 +7,142 @@ use crate::types::ReturnValue;
 
 // Consider using SlotMap here or return &ValueType instead
 #[derive(Clone, Debug)]
-pub struct Environment{
-    storage: Vec<DataValue>,
-    lookup: HashMap<String,DataValue >,
-    callable_lookup: HashMap<String, ReturnValue>,
-    parent: Option<Box<Environment>>,
+pub struct Environment{    
+	frames: Vec<HashMap<String, DataValue>>,    	
+    callable_frames: Vec<HashMap<String, ReturnValue>>,
+	current_frame: usize,	
+    //parent: Option<&'a Environment<'a>>,
+	
 }
 
-impl Environment{
-    pub fn new() -> Environment {
-        Environment {
-            storage: Vec::new(),
-            lookup: HashMap::new(),
-            callable_lookup: HashMap::new(),
-            parent: None,
-        }
+impl Environment {
+
+    pub fn new() -> Environment{		
+        let mut first_frame = Environment {            
+			frames: Vec::new(),
+			callable_frames: Vec::new(),
+            current_frame: 0,
+        };
+		first_frame.frames.push(HashMap::new());
+		first_frame.callable_frames.push(HashMap::new());
+		first_frame
     }
 
-    pub fn extend(&mut self) ->Environment {
-        Environment {
-            parent: Some(Box::new(self.clone())),
-            lookup: HashMap::new(),
-            callable_lookup: HashMap::new(),
-            storage: Vec::new(),
-        }
-    }
+    pub fn extend(&mut self) ->usize{
+		self.current_frame += 1;
+		if self.frames.len()<=self.current_frame{
+			self.frames.push(HashMap::new());
+			self.callable_frames.push(HashMap::new());
+		}
+		self.current_frame			
+	}
+	
+	pub fn retract(&mut self) -> usize {
+		if self.current_frame == 0 {
+			panic!("Can't leave the base environment!");
+		}
+		
+		self.frames[self.current_frame].clear();
+		self.callable_frames[self.current_frame].clear();
+		self.current_frame -= 1;
+		self.current_frame
+	}
+	
+	fn frame_contains(&self, frame: usize, name: &str) -> bool {
+		self.frames[frame].contains_key(name)
+	}
+	
+	
+	pub fn current_frame_contains(&self, name: &str) -> bool {
+		self.frames[self.current_frame].contains_key(name)
+	}
+	
+	pub fn current_callable_frame_contains(&self, name: &str) -> bool {
+		self.callable_frames[self.current_frame].contains_key(name)
+	}
+      
 
     pub fn define(&mut self, name: String, value: ReturnValue) -> usize {
         if let ReturnValue::CallableValue(ref callable) = value {
-            if self.callable_lookup.contains_key(&name) {
-                panic!("Function {} already defined", &name);
-            }
-            self.callable_lookup.insert(name, value);
-            return 1;
+            if self.current_callable_frame_contains(&name) {
+                panic!("Function {} already defined. The parser and type checker should have caught this.", &name);
+            }            
+			self.callable_frames[self.current_frame].insert(name, value);
+			return self.current_frame;			
         }
 
-        if self.lookup.contains_key(&name) {
+        if self.current_frame_contains(&name) {
             // TODO: Figure out something better
-			panic!("Can't redefine variables! Use assign instead.");
-            
-            
-            0
-        } else {
-            self.storage.push(value.get().clone());
-            let index = self.storage.len() - 1;
-			
-            self.lookup.insert(name, value.get().clone());
-
-            index
+			panic!("Can't redefine variables! Use assign instead. The parser and type checker should have caught this.");                       
+            self.current_frame
+        } else {            
+			self.frames[self.current_frame].insert(name, value.get().clone());            			
+			self.current_frame
         }
     }
 	
+	// This should always succeed or panic
+	fn set_value(&mut self, frame: usize, name:&str, value: ReturnValue) {
+		if frame >= self.frames.len() {
+			panic!("No stack frame {}", frame);
+		}
+		println!("assigned  {} to value {:?}",name,&value);
+		if let Some(k) = self.frames[frame].get_mut(name) {
+			*k = value.get().clone();			
+		}
+	}
+	
+	// Right now callables aren't assignable
     pub fn assign(&mut self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
-        if self.lookup.contains_key(name) {            
-			println!("assigned  {} to value {:?}",name,&value);
-			if let Some(k) = self.lookup.get_mut(name) {
-				*k = value.get().clone();
-				return Ok(())
+		let mut frame = self.current_frame;
+		loop {
+			if self.frame_contains(frame, name){
+				self.set_value(frame, name, value);
+				return Ok(());
 			}
-		}
-		
-				
-		match &mut self.parent{
-			Some(outer) =>{
-				println!("Assign to outer scope");
-				outer.assign(name, value)
-			}
-			None => {
+			
+			if 0 == frame {
 				let message = format!("Cannot find '{}' in current scope.",name);
-				Err(EvaluationError { message })
+				return Err(EvaluationError { message })
+			}			
+			frame -= 1;			
+		}			
+    }
+
+    pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {              
+		let mut frame = self.current_frame;
+		loop{
+			if let Some(callable) = self.callable_frames[frame].get(name) {
+				return Ok(callable.clone());
 			}
+			
+			if let Some(data_value) = self.frames[frame].get(name){
+				return Ok(ReturnValue::Value(data_value.clone()));
+			}
+										
+			if 0 == frame {
+				return Err(EvaluationError {
+                        message: format!("{} not defined.", name),
+                    });
+			}			
+			frame -= 1;
 		}
-    }
-
-    pub fn get_callable(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
-        match self.callable_lookup.get(name) {
-            Some(return_value) => Ok(return_value.clone()),
-            None => {
-                if let Some(enclosing) = &self.parent {
-                    enclosing.get_callable(name)
-                } else {
-                    Err(EvaluationError {
-                        message: format!("{} not defined.", name),
-                    })
-                }
-            }
-        }
-    }
-
-    pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
-        // Refactor the storage so this check isn't needed; we should be storing
-        // ReturnValue in 'storage' instead of DataValue.
-        if self.callable_lookup.contains_key(name) {
-            return self.get_callable(name);
-        }
-
-        match self.lookup.get(name) {
-            Some(data_value) => Ok(ReturnValue::Value(data_value.clone())),
-            None => {
-                if let Some(enclosing) = &self.parent {
-                    enclosing.get(name)
-                } else {
-                    Err(EvaluationError {
-                        message: format!("{} not defined.", name),
-                    })
-                }
-            }
-        }
+			
     }
 	// For  diagnostics
 	pub fn dump_content(&self) {
-		println!("Current: {:?}", self.lookup);
-		if self.parent.is_none() {
-			println!("At main::");
-		}else{
-			if let Some(enclosing) = &self.parent {
-				enclosing.dump_content();
-			}
-			
+		println!("Current: {:?}", self.current_frame);
+		let mut frame = self.current_frame;
+		loop {
+			let this_frame = &self.frames[frame];
+			println!("{}: {:?}", frame, &this_frame);
+			let this_callable = &self.callable_frames[frame];
+			println!("Callables: {:?}", &this_callable);
+			if 0 == frame { break; }
+			frame -= 1;
 		}
+		
 		
 	}
 
-    // This is only safe if you had previously gotten the index
-    pub fn get_by_index(&self, index: usize) -> ReturnValue {
-        ReturnValue::Value(self.storage[index].clone())
-    }
 }

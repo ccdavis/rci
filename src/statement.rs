@@ -167,12 +167,13 @@ impl Executable for BlockStmtNode {
 
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
 		envr.dump_content();
-        let mut local_envr = envr.extend();
+        envr.extend();
 		println!("After extension ----");
-		local_envr.dump_content();
+		envr.dump_content();
         for stmt in &mut self.statements {
-            stmt.execute(&mut local_envr)?
+            stmt.execute(envr)?
         }
+		envr.retract();
         Ok(())
     }
 }
@@ -370,19 +371,20 @@ impl Callable for UserFunction {
 		arguments: Vec<ReturnValue>) 
 			-> Result<ReturnValue, ExecutionError> {
 			
-		let mut local_envr = envr.extend();
+		envr.extend();
 		// Add argument values to the local environment
 		for (index, arg_value) in arguments.into_iter().enumerate(){
 			let param = &self.declaration.params[index];						
-			local_envr.define(self.declaration.params[index].name.to_owned(),arg_value);			
+			envr.define(self.declaration.params[index].name.to_owned(),arg_value);			
 		}
 		
 		let mut return_value = ReturnValue::Value(DataValue::Unresolved);
 		let decl = &mut self.declaration;
 				
 		for stmt in &mut decl.body {
-            stmt.execute(&mut local_envr)?
+            stmt.execute(envr)?
         }
+		envr.retract();
 		Ok(return_value)
 	}
 
