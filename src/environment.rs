@@ -6,16 +6,16 @@ use crate::types::DataValue;
 use crate::types::ReturnValue;
 
 // Consider using SlotMap here or return &ValueType instead
-#[derive(Clone)]
-pub struct Environment<'a> {
+#[derive(Clone, Debug)]
+pub struct Environment{
     storage: Vec<DataValue>,
-    lookup: HashMap<String, usize>,
+    lookup: HashMap<String,DataValue >,
     callable_lookup: HashMap<String, ReturnValue>,
-    parent: Option<&'a Environment<'a>>,
+    parent: Option<Box<Environment>>,
 }
 
-impl Environment<'_> {
-    pub fn new<'a>() -> Environment<'a> {
+impl Environment{
+    pub fn new() -> Environment {
         Environment {
             storage: Vec::new(),
             lookup: HashMap::new(),
@@ -24,9 +24,9 @@ impl Environment<'_> {
         }
     }
 
-    pub fn extend<'a>(&'a self) -> Environment<'a> {
+    pub fn extend(&mut self) ->Environment {
         Environment {
-            parent: Some(self),
+            parent: Some(Box::new(self.clone())),
             lookup: HashMap::new(),
             callable_lookup: HashMap::new(),
             storage: Vec::new(),
@@ -44,35 +44,47 @@ impl Environment<'_> {
 
         if self.lookup.contains_key(&name) {
             // TODO: Figure out something better
-            let index: usize = *self.lookup.get(&name).unwrap();
-            self.storage[index] = value.get().clone();
-            index
+			panic!("Can't redefine variables! Use assign instead.");
+            
+            
+            0
         } else {
             self.storage.push(value.get().clone());
             let index = self.storage.len() - 1;
-            self.lookup.insert(name, index);
+			
+            self.lookup.insert(name, value.get().clone());
 
             index
         }
     }
-
+	
     pub fn assign(&mut self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
-        if self.lookup.contains_key(name) {
-            // TODO: Figure out something better
-            let index: usize = *self.lookup.get(name).unwrap();
-            self.storage[index] = value.get().clone();
-            Ok(())
-        } else {
-            let message = format!("Nothing named {} found in current scope.", name);
-            Err(EvaluationError { message })
-        }
+        if self.lookup.contains_key(name) {            
+			println!("assigned  {} to value {:?}",name,&value);
+			if let Some(k) = self.lookup.get_mut(name) {
+				*k = value.get().clone();
+				return Ok(())
+			}
+		}
+		
+				
+		match &mut self.parent{
+			Some(outer) =>{
+				println!("Assign to outer scope");
+				outer.assign(name, value)
+			}
+			None => {
+				let message = format!("Cannot find '{}' in current scope.",name);
+				Err(EvaluationError { message })
+			}
+		}
     }
 
     pub fn get_callable(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
         match self.callable_lookup.get(name) {
             Some(return_value) => Ok(return_value.clone()),
             None => {
-                if let Some(enclosing) = self.parent {
+                if let Some(enclosing) = &self.parent {
                     enclosing.get_callable(name)
                 } else {
                     Err(EvaluationError {
@@ -91,9 +103,9 @@ impl Environment<'_> {
         }
 
         match self.lookup.get(name) {
-            Some(index) => Ok(ReturnValue::Value(self.storage[*index].clone())),
+            Some(data_value) => Ok(ReturnValue::Value(data_value.clone())),
             None => {
-                if let Some(enclosing) = self.parent {
+                if let Some(enclosing) = &self.parent {
                     enclosing.get(name)
                 } else {
                     Err(EvaluationError {
@@ -103,6 +115,19 @@ impl Environment<'_> {
             }
         }
     }
+	// For  diagnostics
+	pub fn dump_content(&self) {
+		println!("Current: {:?}", self.lookup);
+		if self.parent.is_none() {
+			println!("At main::");
+		}else{
+			if let Some(enclosing) = &self.parent {
+				enclosing.dump_content();
+			}
+			
+		}
+		
+	}
 
     // This is only safe if you had previously gotten the index
     pub fn get_by_index(&self, index: usize) -> ReturnValue {

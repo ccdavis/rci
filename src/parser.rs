@@ -404,6 +404,10 @@ impl Parser {
         if self.matches(&[If]) {
             return self.if_statement(symbols);
         }
+		
+		if self.matches(&[While]) {
+			return self.while_statement(symbols);
+		}
 
         if self.matches(&[Print]) {
             return self.print_statement(symbols);
@@ -436,6 +440,14 @@ impl Parser {
             Ok(Stmt::if_stmt(condition, then_branch, None))
         }
     }
+	
+	fn while_statement(&mut self, symbols: &mut SymbolTable) -> Result< Stmt, ParseError> {
+		use TokenType::*;
+        let condition = self.expression()?;
+		self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
+		let body = self.block_statement(symbols)?;
+		Ok(Stmt::while_stmt(condition, body))
+	}
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;

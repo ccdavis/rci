@@ -504,16 +504,15 @@ impl Evaluation for AssignmentNode {
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         let value_to_store = self.value.evaluate(envr)?;
+		
         let var_name = match self.name.token_type {
-            TokenType::Identifier(ref variable_name) => Ok(variable_name),
+            TokenType::Identifier(ref variable_name) => variable_name,
             _ => {
                 let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
-                Err(EvaluationError { message })
+                return Err(EvaluationError { message });
             }
-        };
-
-        let assignable_var = var_name?;
-        envr.assign(assignable_var, value_to_store)?;
+        };				
+        envr.assign(var_name, value_to_store)?;
         Ok(ReturnValue::None)
     }
 }
