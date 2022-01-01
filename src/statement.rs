@@ -5,10 +5,10 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
+use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
-use crate::types::Callable;
 
 pub struct ExecutionError {
     pub message: String,
@@ -44,7 +44,7 @@ impl Stmt {
             Block(stmt) => stmt.print(),
             If(stmt) => stmt.print(),
             Fun(stmt) => stmt.print(),
-			While(stmt) => stmt.print(),
+            While(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
@@ -58,7 +58,7 @@ impl Stmt {
             Fun(stmt) => stmt.execute(envr),
             Block(stmt) => stmt.execute(envr),
             If(stmt) => stmt.execute(envr),
-			While(stmt) => stmt.execute(envr),
+            While(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -74,7 +74,7 @@ impl Stmt {
             Fun(n) => n.check_types(symbols),
             Block(n) => n.check_types(symbols),
             If(n) => n.check_types(symbols),
-			While(n) => n.check_types(symbols),
+            While(n) => n.check_types(symbols),
             _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),
@@ -166,14 +166,14 @@ impl Executable for BlockStmtNode {
     }
 
     fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
-		envr.dump_content();
+        envr.dump_content();
         envr.extend();
-		println!("After extension ----");
-		envr.dump_content();
+        println!("After extension ----");
+        envr.dump_content();
         for stmt in &mut self.statements {
             stmt.execute(envr)?
         }
-		envr.retract();
+        envr.retract();
         Ok(())
     }
 }
@@ -317,19 +317,14 @@ impl Executable for FunStmtNode {
     // This adds the function to the interpreter's environment, executing the function declaration.
     // function happens in the Expression 'Call' node.
     // which then calls back to the implementation of Callable (UserFunction) here.
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {        				 
-		envr.define(
-			self.name.identifier_string(),
-			ReturnValue::CallableValue(
-				Box::new(
-					UserFunction::new(self.clone())
-				)
-			)
-		);
-		// The type-checker should have caught situations where we're redefining a function.
-		// No other errors should be possible at this point either.
-		Ok(())
-		
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        envr.define(
+            self.name.identifier_string(),
+            ReturnValue::CallableValue(Box::new(UserFunction::new(self.clone()))),
+        );
+        // The type-checker should have caught situations where we're redefining a function.
+        // No other errors should be possible at this point either.
+        Ok(())
     }
 }
 
@@ -345,53 +340,49 @@ impl TypeChecking for FunStmtNode {
 
 #[derive(Clone)]
 pub struct UserFunction {
-	declaration: FunStmtNode,
+    declaration: FunStmtNode,
 }
 
 impl UserFunction {
-
-	fn new (declaration: FunStmtNode) -> Self {
-		Self { declaration }
-	}
+    fn new(declaration: FunStmtNode) -> Self {
+        Self { declaration }
+    }
 }
 
 impl Callable for UserFunction {
+    fn print(&self) -> String {
+        self.declaration.print()
+    }
 
-	fn print(&self) -> String {
-		self.declaration.print()
-	}
-	
-	fn arity(&self) -> usize {
-		self.declaration.params.len()
-	}
-	
-	fn return_type(&self) -> &DataType {
-		&self.declaration.return_type
-	}
-	
-	fn call(
-		&mut self, 
-		envr: &mut Environment,
-		arguments: Vec<ReturnValue>) 
-			-> Result<ReturnValue, ExecutionError> {
-			
-		envr.extend();
-		// Add argument values to the local environment
-		for (index, arg_value) in arguments.into_iter().enumerate(){
-			let param = &self.declaration.params[index];						
-			envr.define(self.declaration.params[index].name.to_owned(),arg_value);			
-		}
-		
-		let mut return_value = ReturnValue::Value(DataValue::Unresolved);
-		let decl = &mut self.declaration;
-				
-		for stmt in &mut decl.body {
+    fn arity(&self) -> usize {
+        self.declaration.params.len()
+    }
+
+    fn return_type(&self) -> &DataType {
+        &self.declaration.return_type
+    }
+
+    fn call(
+        &mut self,
+        envr: &mut Environment,
+        arguments: Vec<ReturnValue>,
+    ) -> Result<ReturnValue, ExecutionError> {
+        envr.extend();
+        // Add argument values to the local environment
+        for (index, arg_value) in arguments.into_iter().enumerate() {
+            let param = &self.declaration.params[index];
+            envr.define(self.declaration.params[index].name.to_owned(), arg_value);
+        }
+
+        let mut return_value = ReturnValue::Value(DataValue::Unresolved);
+        let decl = &mut self.declaration;
+
+        for stmt in &mut decl.body {
             stmt.execute(envr)?
         }
-		envr.retract();
-		Ok(return_value)
-	}
-
+        envr.retract();
+        Ok(return_value)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -401,57 +392,61 @@ pub struct WhileStmtNode {
 }
 
 impl Executable for WhileStmtNode {
+    fn print(&self) -> String {
+        format!(
+            "while-loop cond: {}, body: {}",
+            &self.condition.print(),
+            &self.body.print()
+        )
+    }
 
-	fn print(&self) -> String {
-		format!("while-loop cond: {}, body: {}",
-			&self.condition.print(), &self.body.print())
-	}
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+        loop {
+            envr.dump_content();
+            match self.condition.evaluate(envr) {
+                Err(msg) => {
+                    return Err(ExecutionError {
+                        message: msg.message,
+                    })
+                }
+                Ok(cond) => {
+                    println!("while-cond: {:?}", &cond);
+                    if let DataValue::Bool(b) = cond.get() {
+                        if *b {
+                            println!("looping");
+                            self.body.execute(envr)?
+                        } else {
+                            println!("breaking!");
+                            break;
+                        }
+                    } else {
+                        // Type error in test expression
+                        let message = format!(
+                            "Expressions in a while statement must evaluate to true or false."
+                        );
+                        return Err(ExecutionError { message });
+                    }
+                }
+            };
+        }
 
-	fn execute(&mut self, envr: &mut Environment)-> Result<(), ExecutionError> {
-		loop {
-			envr.dump_content();
-			match self.condition.evaluate(envr) {
-				Err(msg) => return Err(ExecutionError { message: msg.message}),				
-				Ok(cond) =>{
-					println!("while-cond: {:?}", &cond);
-					if let DataValue::Bool(b) = cond.get() {
-						if *b { 
-							println!("looping");
-							self.body.execute(envr)? 
-						} else { 
-							println!("breaking!");
-							break;}
-					} else {
-						// Type error in test expression
-						let message = format!("Expressions in a while statement must evaluate to true or false.");
-						return Err( ExecutionError { message });				
-					}
-				}
-			};
-		}	
-		
-		Ok(())
-	}
-	
+        Ok(())
+    }
 }
 
 impl TypeChecking for WhileStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		let cond_type = self.condition.determine_type(symbols)?;
-		if matches!(cond_type, DataType::Bool){
-			self.body.check_types(symbols)
-		} else {
-			let message = format!(
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        let cond_type = self.condition.determine_type(symbols)?;
+        if matches!(cond_type, DataType::Bool) {
+            self.body.check_types(symbols)
+        } else {
+            let message = format!(
                 "Condition in while-statement must be boolean but was {} instead.",
                 cond_type
             );
             Err(TypeError { message })
-			
-		}
-		
-	}
-	
+        }
+    }
 }
 
 impl Stmt {

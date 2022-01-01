@@ -113,7 +113,7 @@ impl SymbolTableEntry {
     }
 
     pub fn new_fun(
-        location:  Option<Token>,
+        location: Option<Token>,
         name: &str,
         params: Vec<Box<SymbolTableEntry>>,
         data_type: &DataType,

@@ -242,8 +242,12 @@ impl Parser {
         // 'name' is the token holding the location of the function name in the source,
         // 'function_name' has the actual str with the name.
         // The symbol table doesn't need the body of the function.
-        let entry =
-            SymbolTableEntry::new_fun(Some(name.clone()), &function_name, parameters.clone(), &return_type);
+        let entry = SymbolTableEntry::new_fun(
+            Some(name.clone()),
+            &function_name,
+            parameters.clone(),
+            &return_type,
+        );
 
         // Add to parent symbol table
         symbols.add(entry); // For recursion
@@ -404,10 +408,10 @@ impl Parser {
         if self.matches(&[If]) {
             return self.if_statement(symbols);
         }
-		
-		if self.matches(&[While]) {
-			return self.while_statement(symbols);
-		}
+
+        if self.matches(&[While]) {
+            return self.while_statement(symbols);
+        }
 
         if self.matches(&[Print]) {
             return self.print_statement(symbols);
@@ -440,14 +444,14 @@ impl Parser {
             Ok(Stmt::if_stmt(condition, then_branch, None))
         }
     }
-	
-	fn while_statement(&mut self, symbols: &mut SymbolTable) -> Result< Stmt, ParseError> {
-		use TokenType::*;
+
+    fn while_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        use TokenType::*;
         let condition = self.expression()?;
-		self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
-		let body = self.block_statement(symbols)?;
-		Ok(Stmt::while_stmt(condition, body))
-	}
+        self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
+        let body = self.block_statement(symbols)?;
+        Ok(Stmt::while_stmt(condition, body))
+    }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;

@@ -283,12 +283,13 @@ impl Evaluation for CallNode {
                 return Err(arity_error);
             }
 
-			// Translate execution errors into evaluation errors
-			match function.call(envr, arguments)  {
-				Err(msg) => Err( EvaluationError { message: msg.message}),
-				Ok(result) => Ok(result),
-			}
-			
+            // Translate execution errors into evaluation errors
+            match function.call(envr, arguments) {
+                Err(msg) => Err(EvaluationError {
+                    message: msg.message,
+                }),
+                Ok(result) => Ok(result),
+            }
         } else {
             let message = format!("Not a callable value {}", &this_callee.print());
             Err(EvaluationError { message })
@@ -504,14 +505,14 @@ impl Evaluation for AssignmentNode {
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         let value_to_store = self.value.evaluate(envr)?;
-		
+
         let var_name = match self.name.token_type {
             TokenType::Identifier(ref variable_name) => variable_name,
             _ => {
                 let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
                 return Err(EvaluationError { message });
             }
-        };				
+        };
         envr.assign(var_name, value_to_store)?;
         Ok(ReturnValue::None)
     }
