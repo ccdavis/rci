@@ -8,7 +8,7 @@ use std::collections::HashMap;
 pub struct SymbolTableEntry {
     pub name: String,
     // Where the symbol was declared in the source
-    pub location: Token, // use the col and line
+    pub location: Option<Token>, // use the col and line
     pub data_type: DataType,
     pub data_value: DataValue, // some will be DataValue::None
     pub entry_type: DeclarationType,
@@ -30,7 +30,7 @@ impl SymbolTableEntry {
         data_value: &DataValue,
     ) -> Self {
         Self {
-            location: location.clone(),
+            location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Var,
             data_type: data_type.clone(),
@@ -48,7 +48,7 @@ impl SymbolTableEntry {
         data_value: &DataValue,
     ) -> Self {
         Self {
-            location: location.clone(),
+            location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Val,
             data_type: data_type.clone(),
@@ -66,7 +66,7 @@ impl SymbolTableEntry {
         data_value: &DataValue,
     ) -> Self {
         Self {
-            location: location.clone(),
+            location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Cpy,
             data_type: data_type.clone(),
@@ -113,13 +113,13 @@ impl SymbolTableEntry {
     }
 
     pub fn new_fun(
-        location: &Token,
+        location:  Option<Token>,
         name: &str,
         params: Vec<Box<SymbolTableEntry>>,
         data_type: &DataType,
     ) -> Self {
         Self {
-            location: location.clone(),
+            location: location,
             name: name.to_owned(),
             entry_type: DeclarationType::Fun,
             data_type: data_type.clone(),

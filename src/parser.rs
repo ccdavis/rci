@@ -243,7 +243,7 @@ impl Parser {
         // 'function_name' has the actual str with the name.
         // The symbol table doesn't need the body of the function.
         let entry =
-            SymbolTableEntry::new_fun(&name, &function_name, parameters.clone(), &return_type);
+            SymbolTableEntry::new_fun(Some(name.clone()), &function_name, parameters.clone(), &return_type);
 
         // Add to parent symbol table
         symbols.add(entry); // For recursion

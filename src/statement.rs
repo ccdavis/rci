@@ -365,6 +365,10 @@ impl Callable for UserFunction {
 		self.declaration.params.len()
 	}
 	
+	fn return_type(&self) -> &DataType {
+		&self.declaration.return_type
+	}
+	
 	fn call(
 		&mut self, 
 		envr: &mut Environment,
@@ -391,7 +395,7 @@ impl Callable for UserFunction {
 }
 
 #[derive(Clone, Debug)]
-struct WhileStmtNode {
+pub struct WhileStmtNode {
     condition: Expr,
     body: Box<Stmt>,
 }

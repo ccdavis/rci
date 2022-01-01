@@ -110,6 +110,7 @@ pub trait Callable: Clone {
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, ExecutionError>;
     fn arity(&self) -> usize;
+	fn return_type(&self) -> &DataType;
     fn print(&self) -> String;
 }
 
@@ -138,12 +139,16 @@ pub struct ClockFunc {}
 
 impl Callable for ClockFunc {
     fn print(&self) -> String {
-        "clock(): number".to_string()
+        "Library: clock(): number".to_string()
     }
 
     fn arity(&self) -> usize {
         0
     }
+	
+	fn return_type(&self) -> &DataType {
+		&DataType::Number
+	}
 
     fn call(
         &mut self,
