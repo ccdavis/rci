@@ -299,12 +299,13 @@ impl Evaluation for CallNode {
 
 impl TypeCheck for CallNode {
     fn expected_type(&self) -> Result<DataType, TypeError> {
-        Ok(DataType::Unresolved)
+		Ok(DataType::Unresolved)
     }
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
-        Ok(DataType::Unresolved)
-    }
+		let callee_return_type = self.callee.determine_type(symbols)?;
+		Ok(callee_return_type)     
+	}
 }
 
 #[derive(Clone, Debug)]
