@@ -4,6 +4,7 @@ use crate::statement::ExecutionError;
 use crate::symbol_table::SymbolTableEntry;
 use crate::lex::TokenType;
 
+
 use dyn_clonable::*;
 use std::fmt;
 use std::rc::Rc;
@@ -113,7 +114,7 @@ pub trait Callable: Clone {
     fn arity(&self) -> usize;
 	fn params(&self) -> Vec<Box<SymbolTableEntry>>;
     fn return_type(&self) -> &DataType;
-    fn print(&self) -> String;
+	fn name(&self) -> String;    
 }
 
 #[derive(Clone)]
@@ -140,10 +141,11 @@ impl fmt::Debug for ReturnValue {
 pub struct ClockFunc {}
 
 impl Callable for ClockFunc {
-    fn print(&self) -> String {
-        "Library: clock(): number".to_string()
-    }
 
+	fn name(&self) -> String {
+		"clock".to_string()
+	}
+    
     fn arity(&self) -> usize {
         0
     }

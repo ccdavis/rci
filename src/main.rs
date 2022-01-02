@@ -47,7 +47,10 @@ impl Interpreter {
         
         // Add standard library functions
         let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));		
-        envr.define("clock".to_string(), clock_func);        
+		symbols.add_library_function(&clock_func);
+        envr.define_callable(clock_func);
+		
+		
     }
 
     pub fn run(&mut self,code: String,) {

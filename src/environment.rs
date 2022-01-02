@@ -57,6 +57,15 @@ impl Environment {
     pub fn current_callable_frame_contains(&self, name: &str) -> bool {
         self.callable_frames[self.current_frame].contains_key(name)
     }
+	
+	// A minor convenience for adding callable since they respond to 'name()'
+	pub fn define_callable(&mut self,value: ReturnValue) ->usize {
+		if let ReturnValue::CallableValue(ref callable) = value {
+			self.define(callable.name(), value)			
+		} else {
+			panic!("Cannot define a callable value with a non-callable: {}",&value.print());
+		}
+	}
 
     pub fn define(&mut self, name: String, value: ReturnValue) -> usize {
         if let ReturnValue::CallableValue(ref callable) = value {

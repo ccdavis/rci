@@ -350,9 +350,12 @@ impl UserFunction {
 }
 
 impl Callable for UserFunction {
-    fn print(&self) -> String {
-        self.declaration.print()
-    }
+
+	fn name(&self) -> String {
+		self.declaration.name.identifier_string()
+	}
+	
+    
 
     fn arity(&self) -> usize {
         self.declaration.params.len()

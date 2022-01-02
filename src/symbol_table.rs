@@ -1,6 +1,7 @@
 use crate::lex::Token;
 use crate::types::DataType;
 use crate::types::DataValue;
+use crate::types::ReturnValue;
 use crate::types::DeclarationType;
 use std::collections::HashMap;
 
@@ -164,6 +165,21 @@ impl SymbolTable {
             true
         }
     }
+	
+	// A convenience method for creating a symbol table entry off a callable and adding it.
+	pub fn add_library_function(&mut self, callable: &ReturnValue) -> bool {
+		if let ReturnValue::CallableValue(function) = callable {
+		
+			let fun_entry = SymbolTableEntry::new_fun(
+				None, // no location since it is programmatically generated
+				&function.name(),
+				function.params(),
+				function.return_type());
+			self.add(fun_entry)							
+		} else {
+			panic!("Value '{}' is not a callable function!",&callable.print());
+		}
+	}
 
     pub fn lookup(&self, name: &str) -> Result<&SymbolTableEntry, NotDeclaredError> {
         match self.entries.get(name) {
