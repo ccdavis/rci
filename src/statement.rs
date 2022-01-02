@@ -88,7 +88,7 @@ impl Stmt {
 }
 
 #[derive(Clone, Debug)]
-struct PrintStmtNode {
+pub struct PrintStmtNode {
     expression: Expr,
 }
 
@@ -121,7 +121,7 @@ impl TypeChecking for PrintStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct ExpressionStmtNode {
+pub struct ExpressionStmtNode {
     expression: Expr,
 }
 
@@ -153,7 +153,7 @@ impl TypeChecking for ExpressionStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct BlockStmtNode {
+pub struct BlockStmtNode {
     statements: Vec<Stmt>,
     symbols: SymbolTable,
 }
@@ -197,7 +197,7 @@ impl TypeChecking for BlockStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct IfStmtNode {
+pub struct IfStmtNode {
     condition: Expr,
     then_branch: Box<Stmt>,
     has_else: bool, // avoid Option inside else box
@@ -259,7 +259,7 @@ impl TypeChecking for IfStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct VarStmtNode {
+pub struct VarStmtNode {
     name: String,
     data_type: DataType,
     index: usize,
@@ -348,7 +348,7 @@ impl FunStmtNode {
 		
 		if has_return == false {
 			let message = format!("Missing return statement in function {} at {}",
-				&self.name.identifier_string(), &self.name);				
+				&self.name.identifier_string(), &self.name.print());				
 			Err( TypeError { message })
 		} else {
 			Ok(())
@@ -430,7 +430,8 @@ impl Executable for ReturnStmtNode {
 		format!("return-statement: {}", &self.expr.print())
 	}
 
-	fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+	fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
+	 Ok(())
 	}
 }
 
@@ -439,8 +440,8 @@ impl TypeChecking for ReturnStmtNode {
 	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
 		let would_return_type = self.expr.determine_type(symbols)?;
 		if would_return_type != self.return_type {
-			let message = format!("Type of return statement doesn't match function return type at {:?}",
-				&self.location);
+			let message = format!("Type of return statement '{}' doesn't match function return type of '{}' at {:?}",
+				&would_return_type,&self.return_type,  &self.location);
 			Err( TypeError { message})
 		} else {
 			Ok(())

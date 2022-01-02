@@ -101,7 +101,7 @@ struct PowerFunc{}
 struct AbsFunc {}
 struct FloorFunc {}
 struct CeilingFunc {}
-struct logFunc {}
+struct LogFunc {}
 struct RoundFunc {}
 struct RandomFunc {}
 struct TostringFunc {}

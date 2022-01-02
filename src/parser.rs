@@ -237,6 +237,9 @@ impl Parser {
                 }
             };
         }
+		// Needed for the return_type symbol we'll put into the
+		// local symbols for the function. 
+		let return_type_location = self.previous();
 
         let function_name = name.identifier_string();
         // 'name' is the token holding the location of the function name in the source,
@@ -255,8 +258,8 @@ impl Parser {
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more eadditions and extensions.
         let mut local_symbols = symbols.extend();
-		let return_type_entry = SymbolTableEntry::new_param(
-			DeclarationType::Val, "return_type", &return_type);
+		let return_type_entry = SymbolTableEntry::new_var(
+			&return_type_location, "RETURN_TYPE", &return_type, &DataValue::Unresolved);
 		local_symbols.add(return_type_entry);
 
         for param in &parameters {
@@ -438,13 +441,17 @@ impl Parser {
 	
 	
 	fn return_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		// for now don't allow empty returns
 		let location = self.previous();
-		let expr_stmt = self.expression_statement(symbols)?;
-		if let Some(return_type) = symbols.get("return_type") {
-			Ok(Stmt::return_statement(expr_stmt.expr, return_type.data_type))
+		
+		// for now don't allow empty returns
+		let return_expr = self.expression()?;
+		self.consume(TokenType::SemiColon, "expect ';' after return statement.")?;
+		
+		if let Ok(ste) = symbols.lookup("RETURN_TYPE") {			
+			Ok(Stmt::return_stmt(location, return_expr, ste.data_type.clone()))
 		} else {
-			Err( ParseError { t:location, "Return statement not in a function!".to_string()})
+			Err( ParseError { t:location, 
+				message: format!("Return statement not in a function!")})
 			
 		}
 				
