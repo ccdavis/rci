@@ -326,7 +326,9 @@ impl Parser {
                 match inferred_type_result {
                     Err(type_error) => {} // do nothing for now
                     Ok(ref inferred_type) => {
-                        if inferred_type != &valid_type_name {
+                        if !matches(inferred_type &DataType::Unresolved) && 
+							inferred_type != &valid_type_name {
+							
                             let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
 								&v.print(), &valid_type_name, &inferred_type);
                             return Err(ParseError {
