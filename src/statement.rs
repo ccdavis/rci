@@ -361,6 +361,10 @@ impl Callable for UserFunction {
     fn return_type(&self) -> &DataType {
         &self.declaration.return_type
     }
+	
+	fn params(&self) -> Vec<Box<SymbolTableEntry>> {
+		self.declaration.params.clone()
+	}
 
     fn call(
         &mut self,

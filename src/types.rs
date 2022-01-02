@@ -1,8 +1,9 @@
 use crate::environment::Environment;
 use crate::expression::EvaluationError;
 use crate::statement::ExecutionError;
-
+use crate::symbol_table::SymbolTableEntry;
 use crate::lex::TokenType;
+
 use dyn_clonable::*;
 use std::fmt;
 use std::rc::Rc;
@@ -110,6 +111,7 @@ pub trait Callable: Clone {
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, ExecutionError>;
     fn arity(&self) -> usize;
+	fn params(&self) -> Vec<Box<SymbolTableEntry>>;
     fn return_type(&self) -> &DataType;
     fn print(&self) -> String;
 }
@@ -145,6 +147,10 @@ impl Callable for ClockFunc {
     fn arity(&self) -> usize {
         0
     }
+	
+	fn params(&self) -> Vec<Box<SymbolTableEntry>> {
+		Vec::new()
+	}
 
     fn return_type(&self) -> &DataType {
         &DataType::Number
