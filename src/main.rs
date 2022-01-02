@@ -49,6 +49,9 @@ impl Interpreter {
         let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));		
 		symbols.add_library_function(&clock_func);
         envr.define_callable(clock_func);
+		let sqr_func = ReturnValue::CallableValue(Box::new(SqrFunc {}));		
+		symbols.add_library_function(&sqr_func);
+        envr.define_callable(sqr_func);
 		
 		
     }

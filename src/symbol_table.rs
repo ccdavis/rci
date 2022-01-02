@@ -77,6 +77,48 @@ impl SymbolTableEntry {
             fields: Vec::new(),
         }
     }
+	
+	
+	pub fn new_stdlib_var(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
+		   Self {
+            location: None,
+            name: param_name.to_owned(),
+            entry_type: DeclarationType::Var,
+            data_type: data_type.clone(),
+            data_value: DataValue::Unresolved,
+            size: 1,
+            contains_type: DataType::Empty,
+            fields: Vec::new(),
+        }
+	}
+	
+	pub fn new_stdlib_val(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
+		   Self {
+            location: None,
+            name: param_name.to_owned(),
+            entry_type: DeclarationType::Val,
+            data_type: data_type.clone(),
+            data_value: DataValue::Unresolved,
+            size: 1,
+            contains_type: DataType::Empty,
+            fields: Vec::new(),
+        }
+	}
+	
+	pub fn new_stdlib_cpy(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
+		   Self {
+            location: None,
+            name: param_name.to_owned(),
+            entry_type: DeclarationType::Cpy,
+            data_type: data_type.clone(),
+            data_value: DataValue::Unresolved,
+            size: 1,
+            contains_type: DataType::Empty,
+            fields: Vec::new(),
+        }
+	}
+	
+	
 
     pub fn new_param(
         decl_type: DeclarationType,

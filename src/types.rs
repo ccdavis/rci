@@ -137,6 +137,22 @@ impl fmt::Debug for ReturnValue {
     }
 }
 
+fn val_prm( name:&str, data_type: DataType) -> Box<SymbolTableEntry> {
+	Box::new(
+		SymbolTableEntry::new_stdlib_val(				
+				name,
+				&data_type
+			))
+}
+
+fn var_prm(name:&str, data_type: DataType) -> Box<SymbolTableEntry> {
+	Box::new(
+		SymbolTableEntry::new_stdlib_var(				
+				name,
+				&data_type
+			))
+}
+
 #[derive(Clone)]
 pub struct ClockFunc {}
 
@@ -175,6 +191,85 @@ impl Callable for ClockFunc {
     }
 }
 
+
+#[derive(Clone)]
+pub struct SqrFunc{} 
+
+impl Callable for SqrFunc {
+
+	fn name(&self) -> String {
+		"sqr".to_string()
+	}
+    
+    fn arity(&self) -> usize {
+        1
+    }
+	
+	fn params(&self) -> Vec<Box<SymbolTableEntry>> {
+		vec![ val_prm("sqr", DataType::Number)]
+	}
+
+    fn return_type(&self) -> &DataType {
+        &DataType::Number
+    }
+
+    fn call(
+        &mut self,
+        envr: &mut Environment,
+        arguments: Vec<ReturnValue>,
+    ) -> Result<ReturnValue, ExecutionError> {
+        
+        let base = arguments[0].get_as_number()?;
+        Ok(ReturnValue::Value(DataValue::Number(
+            base * base
+        )))
+    }
+}
+
+
+
+
+
+
+struct SqrRtFunc {}
+struct PowerFunc{}
+struct AbsFunc {}
+struct FloorFunc {}
+struct CeilingFunc {}
+struct logFunc {}
+struct RoundFunc {}
+struct RandomFunc {}
+struct TostringFunc {}
+
+struct UpcaseFunc {}
+struct DowncaseFunc {}
+struct LenFunc {}
+struct ReplaceRangeFunc {}
+struct ReplacePatternFunc{}
+struct SubstringFunc {}
+struct TrimFunc {}
+struct TrimleftFunc{}
+struct TrimrightFunc {}
+struct LeftjustFunc{}
+struct RightjustFunc{}
+struct TonumberFunc{}
+
+struct TolinesFunc {}  // Keeps newlines
+struct SplitFunc {} // split on any string
+struct JoinFunc{} // Join with any string
+
+struct ReadStdinFunc{}
+struct WriteStderrFunc{}
+struct WriteStdoutFunc {}
+struct ReadTextFileFunc{}
+struct WriteTextFileFunc{}
+
+
+
+
+
+
+
 impl ReturnValue {
     pub fn new_ref(value: DataValue) -> Self {
         ReturnValue::Reference(Rc::new(value))
@@ -183,6 +278,20 @@ impl ReturnValue {
     pub fn new_val(value: DataValue) -> Self {
         ReturnValue::Value(value)
     }
+	
+	
+	// Helper for internal use in standard library
+	pub fn get_as_number(&self) -> Result<f64, ExecutionError>{
+		match self.get() {
+			DataValue::Number(n) => Ok(*n),
+			_ => {
+				let message = format!("Incorrect type -- expected number. but was {}", 
+					&self.print());
+				Err(ExecutionError { message } )
+			}
+		}		
+	}
+	
 
     pub fn get(&self) -> &DataValue {
         match self {
