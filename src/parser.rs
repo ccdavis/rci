@@ -543,9 +543,7 @@ impl Parser {
             return Ok(Expr::unary(operator, right));
         }
 
-        self.call()
-
-        //self.primary()
+        self.call()        
     }
 
     fn call(&mut self) -> Result<Expr, ParseError> {
@@ -621,6 +619,7 @@ impl Parser {
                 let type_name = self.peek().token_type.print();
                 let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
+				self.advance(); // move past the bad token
                 Err(ParseError {
                     t: self.peek(),
                     message,
