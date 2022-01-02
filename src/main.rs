@@ -6,11 +6,13 @@ mod parser;
 mod statement;
 mod symbol_table;
 mod types;
+mod stdlib;
 
 use environment::*;
 use parser::*;
 use symbol_table::SymbolTable;
 use types::*;
+use stdlib::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
