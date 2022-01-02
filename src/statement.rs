@@ -31,6 +31,7 @@ pub enum Stmt {
     Var(VarStmtNode),
     Fun(FunStmtNode),
     While(WhileStmtNode),
+	Return(ReturnStmtNode),
     NoOp,
 }
 
@@ -43,12 +44,14 @@ impl Stmt {
             Var(stmt) => stmt.print(),
             Block(stmt) => stmt.print(),
             If(stmt) => stmt.print(),
-            Fun(stmt) => stmt.print(),
+            Fun(stmt) => stmt.print(),			
             While(stmt) => stmt.print(),
+			Return(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
-
+	
+	
     pub fn execute(&mut self, envr: &mut Environment) -> Result<(), ExecutionError> {
         use Stmt::*;
         match self {
@@ -59,6 +62,7 @@ impl Stmt {
             Block(stmt) => stmt.execute(envr),
             If(stmt) => stmt.execute(envr),
             While(stmt) => stmt.execute(envr),
+			Return(stmt) => stmt.execute(envr),
             _ => Err(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             }),
@@ -75,6 +79,7 @@ impl Stmt {
             Block(n) => n.check_types(symbols),
             If(n) => n.check_types(symbols),
             While(n) => n.check_types(symbols),
+			Return(n) => n.check_types(symbols),
             _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),
@@ -328,9 +333,31 @@ impl Executable for FunStmtNode {
     }
 }
 
+
+impl FunStmtNode {
+
+	// Searches the body for a return statement and adds the 
+	// return type  to any found. If no return type, it's a 
+	// type error.
+	fn check_return_type(&mut self, return_type: &DataType) -> Result<(),TypeError> {
+		let mut has_return = false;
+		for stmt in &mut self.body {
+			
+            
+        }
+		
+		if has_return == false {
+			let message = format!("Missing return statement in function {} at {}",
+				&self.name.identifier_string(), &self.name);				
+			Err( TypeError { message })
+		} else {
+			Ok(())
+		}
+	}
+}
+
 impl TypeChecking for FunStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-        // TODO: Not a complete type check yet; need to check the return type
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
         }
@@ -355,8 +382,6 @@ impl Callable for UserFunction {
 		self.declaration.name.identifier_string()
 	}
 	
-    
-
     fn arity(&self) -> usize {
         self.declaration.params.len()
     }
@@ -392,6 +417,38 @@ impl Callable for UserFunction {
     }
 }
 
+#[derive(Clone,Debug)]
+pub struct ReturnStmtNode {
+	location: Token,
+	expr: Expr,
+	return_type: DataType,
+}
+
+impl Executable for ReturnStmtNode {
+
+	fn print(&self) -> String{
+		format!("return-statement: {}", &self.expr.print())
+	}
+
+	fn execute(&self, envr: &mut Environment) -> Result<(), ExecutionError> {
+	}
+}
+
+impl TypeChecking for ReturnStmtNode {
+
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+		let would_return_type = self.expr.determine_type(symbols)?;
+		if would_return_type != self.return_type {
+			let message = format!("Type of return statement doesn't match function return type at {:?}",
+				&self.location);
+			Err( TypeError { message})
+		} else {
+			Ok(())
+		}
+	}
+}
+
+
 #[derive(Clone, Debug)]
 pub struct WhileStmtNode {
     condition: Expr,
@@ -416,14 +473,11 @@ impl Executable for WhileStmtNode {
                         message: msg.message,
                     })
                 }
-                Ok(cond) => {
-                    println!("while-cond: {:?}", &cond);
+                Ok(cond) => {                    
                     if let DataValue::Bool(b) = cond.get() {
-                        if *b {
-                            println!("looping");
+                        if *b {                            
                             self.body.execute(envr)?
                         } else {
-                            println!("breaking!");
                             break;
                         }
                     } else {
@@ -500,6 +554,16 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
+	
+	pub fn return_stmt(location:Token, expr:Expr, return_type: DataType) -> Stmt {
+		Stmt::Return(
+			ReturnStmtNode {
+				location,
+				expr,
+				return_type
+			}
+		)
+	}
 
     pub fn fun_stmt(
         name: Token,

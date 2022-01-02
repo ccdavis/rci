@@ -255,6 +255,9 @@ impl Parser {
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more eadditions and extensions.
         let mut local_symbols = symbols.extend();
+		let return_type_entry = SymbolTableEntry::new_param(
+			DeclarationType::Val, "return_type", &return_type);
+		local_symbols.add(return_type_entry);
 
         for param in &parameters {
             local_symbols.add(*param.clone());
@@ -274,7 +277,8 @@ impl Parser {
     }
 
     // Like a block_statement but without its own AST node or symbols -- those are owned
-    // by the function.
+    // by the function. 
+	
     fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
@@ -283,6 +287,8 @@ impl Parser {
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' at the end of a function body.")?;
+		// Find any return statements and add the return type
+		// If none are found it's a parse error.
         Ok(stmt_list)
     }
 
@@ -422,9 +428,27 @@ impl Parser {
         if self.matches(&[LeftBrace]) {
             return self.block_statement(symbols);
         }
+		
+		if self.matches(&[Return]) {
+			return self.return_statement(symbols);
+		}
 
         self.expression_statement(symbols)
     }
+	
+	
+	fn return_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+		// for now don't allow empty returns
+		let location = self.previous();
+		let expr_stmt = self.expression_statement(symbols)?;
+		if let Some(return_type) = symbols.get("return_type") {
+			Ok(Stmt::return_statement(expr_stmt.expr, return_type.data_type))
+		} else {
+			Err( ParseError { t:location, "Return statement not in a function!".to_string()})
+			
+		}
+				
+	}
 
     fn expression_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
