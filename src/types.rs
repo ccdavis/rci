@@ -1,10 +1,9 @@
 use crate::environment::Environment;
 use crate::expression::EvaluationError;
-use crate::statement::ExecutionError;
-use crate::statement::EarlyReturn;
-use crate::symbol_table::SymbolTableEntry;
 use crate::lex::TokenType;
-
+use crate::statement::EarlyReturn;
+use crate::statement::ExecutionError;
+use crate::symbol_table::SymbolTableEntry;
 
 use dyn_clonable::*;
 use std::fmt;
@@ -113,11 +112,10 @@ pub trait Callable: Clone {
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn>;
     fn arity(&self) -> usize;
-	fn params(&self) -> Vec<Box<SymbolTableEntry>>;
+    fn params(&self) -> Vec<Box<SymbolTableEntry>>;
     fn return_type(&self) -> &DataType;
-	fn name(&self) -> String;    
+    fn name(&self) -> String;
 }
-
 
 // We use this both for evaluation of expressions and return values from functions. In the execution of
 // statements that are pseudo-expressions ReturnValue is also needed: "return" specifically.
@@ -141,7 +139,6 @@ impl fmt::Debug for ReturnValue {
     }
 }
 
-
 impl ReturnValue {
     pub fn new_ref(value: DataValue) -> Self {
         ReturnValue::Reference(Rc::new(value))
@@ -150,20 +147,20 @@ impl ReturnValue {
     pub fn new_val(value: DataValue) -> Self {
         ReturnValue::Value(value)
     }
-	
-	
-	// Helper for internal use in standard library
-	pub fn get_as_number(&self) -> Result<f64, ExecutionError>{
-		match self.get() {
-			DataValue::Number(n) => Ok(*n),
-			_ => {
-				let message = format!("Incorrect type -- expected number. but was {}", 
-					&self.print());
-				Err(ExecutionError { message } )
-			}
-		}		
-	}
-	
+
+    // Helper for internal use in standard library
+    pub fn get_as_number(&self) -> Result<f64, ExecutionError> {
+        match self.get() {
+            DataValue::Number(n) => Ok(*n),
+            _ => {
+                let message = format!(
+                    "Incorrect type -- expected number. but was {}",
+                    &self.print()
+                );
+                Err(ExecutionError { message })
+            }
+        }
+    }
 
     pub fn get(&self) -> &DataValue {
         match self {

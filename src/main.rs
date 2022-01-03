@@ -4,15 +4,15 @@ mod lex;
 mod operations;
 mod parser;
 mod statement;
+mod stdlib;
 mod symbol_table;
 mod types;
-mod stdlib;
 
 use environment::*;
 use parser::*;
+use stdlib::*;
 use symbol_table::SymbolTable;
 use types::*;
-use stdlib::*;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -24,41 +24,36 @@ pub struct Interpreter {
     pub had_error: bool,
     pub had_runtime_error: bool,
     pub had_type_error: bool,
-	global_symbols: SymbolTable,
-	global_env: Environment,
-	
+    global_symbols: SymbolTable,
+    global_env: Environment,
 }
 
 impl Interpreter {
+    pub fn init() -> Interpreter {
+        let mut global_symbols = symbol_table::SymbolTable::global();
+        let mut global_env = Environment::new();
+        Interpreter::add_standard_library(&mut global_symbols, &mut global_env);
 
-	pub fn init() ->Interpreter{
-		let mut global_symbols = symbol_table::SymbolTable::global();
-		let mut global_env = Environment::new();		
-		Interpreter::add_standard_library(&mut global_symbols, &mut global_env);
-		
-		Interpreter {
+        Interpreter {
             had_error: false,
             had_type_error: false,
             had_runtime_error: false,
-			global_env,
-			global_symbols,
+            global_env,
+            global_symbols,
         }
-	}
-	
-    fn add_standard_library(symbols: &mut SymbolTable, envr: &mut Environment)  {
-        
-        // Add standard library functions
-        let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));		
-		symbols.add_library_function(&clock_func);
-        envr.define_callable(clock_func);
-		let sqr_func = ReturnValue::CallableValue(Box::new(SqrFunc {}));		
-		symbols.add_library_function(&sqr_func);
-        envr.define_callable(sqr_func);
-		
-		
     }
 
-    pub fn run(&mut self,code: String,) {
+    fn add_standard_library(symbols: &mut SymbolTable, envr: &mut Environment) {
+        // Add standard library functions
+        let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));
+        symbols.add_library_function(&clock_func);
+        envr.define_callable(clock_func);
+        let sqr_func = ReturnValue::CallableValue(Box::new(SqrFunc {}));
+        symbols.add_library_function(&sqr_func);
+        envr.define_callable(sqr_func);
+    }
+
+    pub fn run(&mut self, code: String) {
         let mut scanner = lex::Scanner::new(code);
         let tokens = scanner.tokenize();
         let mut parser = Parser::new(tokens);
@@ -116,7 +111,7 @@ pub fn repl() {
     }
 
     // The environment for the duration of the REPL session
-    	
+
     let mut interpreter = Interpreter::init();
 
     loop {
@@ -166,11 +161,10 @@ fn main() {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
-        
 
         let mut interpreter = Interpreter::init();
         interpreter.run(code);
-		
+
         if interpreter.had_error {
             std::process::exit(65);
         }

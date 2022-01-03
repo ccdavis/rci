@@ -286,7 +286,7 @@ impl Evaluation for CallNode {
             // Translate execution errors into evaluation errors
             match function.call(envr, arguments) {
                 Err(msg) => Err(EvaluationError {
-                    message: msg.print()
+                    message: msg.print(),
                 }),
                 Ok(result) => Ok(result),
             }
@@ -299,13 +299,13 @@ impl Evaluation for CallNode {
 
 impl TypeCheck for CallNode {
     fn expected_type(&self) -> Result<DataType, TypeError> {
-		Ok(DataType::Unresolved)
+        Ok(DataType::Unresolved)
     }
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
-		let callee_return_type = self.callee.determine_type(symbols)?;
-		Ok(callee_return_type)     
-	}
+        let callee_return_type = self.callee.determine_type(symbols)?;
+        Ok(callee_return_type)
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -10,38 +10,34 @@ use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ExecutionError {
     pub message: String,
 }
 
-
 // Use the '?' early return mechanism to propagate results of errors similar to exceptions.
 // Also use it to abandon execution and return values when executing the 'return' statement.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum EarlyReturn {
-	ReturnStatement(ReturnValue),	
-	Error(ExecutionError),
-	Break,		
+    ReturnStatement(ReturnValue),
+    Error(ExecutionError),
+    Break,
 }
 
 impl EarlyReturn {
+    pub fn print(&self) -> String {
+        match self {
+            EarlyReturn::Error(ref e) => e.message.to_owned(),
+            EarlyReturn::Break => "break-statement".to_string(),
+            EarlyReturn::ReturnStatement(ref retval) => retval.print(),
+        }
+    }
 
-	pub fn print(&self) -> String {
-		match self {
-			EarlyReturn::Error(ref e) => e.message.to_owned(),
-			EarlyReturn::Break => "break-statement".to_string(),
-			EarlyReturn::ReturnStatement(ref retval) => retval.print(),
-		}
-	}
-
-	pub fn error(msg: String) -> EarlyReturn {
-		let exec_error = ExecutionError { message: msg};
-		EarlyReturn::Error( exec_error )
-	}
+    pub fn error(msg: String) -> EarlyReturn {
+        let exec_error = ExecutionError { message: msg };
+        EarlyReturn::Error(exec_error)
+    }
 }
-
-
 
 pub trait Executable {
     fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn>;
@@ -60,7 +56,7 @@ pub enum Stmt {
     Var(VarStmtNode),
     Fun(FunStmtNode),
     While(WhileStmtNode),
-	Return(ReturnStmtNode),
+    Return(ReturnStmtNode),
     NoOp,
 }
 
@@ -73,14 +69,13 @@ impl Stmt {
             Var(stmt) => stmt.print(),
             Block(stmt) => stmt.print(),
             If(stmt) => stmt.print(),
-            Fun(stmt) => stmt.print(),			
+            Fun(stmt) => stmt.print(),
             While(stmt) => stmt.print(),
-			Return(stmt) => stmt.print(),
+            Return(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
     }
-	
-	
+
     pub fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
         use Stmt::*;
         match self {
@@ -91,7 +86,7 @@ impl Stmt {
             Block(stmt) => stmt.execute(envr),
             If(stmt) => stmt.execute(envr),
             While(stmt) => stmt.execute(envr),
-			Return(stmt) => stmt.execute(envr),
+            Return(stmt) => stmt.execute(envr),
             _ => Err(EarlyReturn::Error(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             })),
@@ -108,7 +103,7 @@ impl Stmt {
             Block(n) => n.check_types(symbols),
             If(n) => n.check_types(symbols),
             While(n) => n.check_types(symbols),
-			Return(n) => n.check_types(symbols),
+            Return(n) => n.check_types(symbols),
             _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),
@@ -199,21 +194,19 @@ impl Executable for BlockStmtNode {
         format!("block-stmt: {}", &stmts)
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {        
-        envr.extend();                
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+        envr.extend();
         for stmt in &mut self.statements {
-            if let Err(early_return) =stmt.execute(envr) {
-				match early_return {
-					EarlyReturn::Break => break,
-					EarlyReturn::ReturnStatement(_) => {
-						envr.retract();
-						return Err(early_return);
-					},
-					EarlyReturn::Error(_) => return Err(early_return),
-					
-				}
-				
-			}
+            if let Err(early_return) = stmt.execute(envr) {
+                match early_return {
+                    EarlyReturn::Break => break,
+                    EarlyReturn::ReturnStatement(_) => {
+                        envr.retract();
+                        return Err(early_return);
+                    }
+                    EarlyReturn::Error(_) => return Err(early_return),
+                }
+            }
         }
         envr.retract();
         Ok(())
@@ -273,10 +266,9 @@ impl Executable for IfStmtNode {
                     Ok(())
                 }
             }
-            Err(err) => Err(EarlyReturn::Error(
-				ExecutionError {
-					message: err.message,
-				})),
+            Err(err) => Err(EarlyReturn::Error(ExecutionError {
+                message: err.message,
+            })),
         }
     }
 }
@@ -309,7 +301,7 @@ impl Executable for VarStmtNode {
         format!("var-stmt = {}", &self.initializer.print())
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {        
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
         let evaluated = self.initializer.evaluate(envr);
         match evaluated {
             Ok(value) => {
@@ -370,31 +362,28 @@ impl Executable for FunStmtNode {
     }
 }
 
-
 impl FunStmtNode {
+    // Searches the body for a return statement and adds the
+    // return type  to any found. If no return type, it's a
+    // type error.
+    fn check_return_type(&mut self, return_type: &DataType) -> Result<(), TypeError> {
+        let mut has_return = false;
+        for stmt in &mut self.body {}
 
-	// Searches the body for a return statement and adds the 
-	// return type  to any found. If no return type, it's a 
-	// type error.
-	fn check_return_type(&mut self, return_type: &DataType) -> Result<(),TypeError> {
-		let mut has_return = false;
-		for stmt in &mut self.body {
-			
-            
+        if has_return == false {
+            let message = format!(
+                "Missing return statement in function {} at {}",
+                &self.name.identifier_string(),
+                &self.name.print()
+            );
+            Err(TypeError { message })
+        } else {
+            Ok(())
         }
-		
-		if has_return == false {
-			let message = format!("Missing return statement in function {} at {}",
-				&self.name.identifier_string(), &self.name.print());				
-			Err( TypeError { message })
-		} else {
-			Ok(())
-		}
-	}
+    }
 }
 
 impl TypeChecking for FunStmtNode {
-
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
@@ -409,18 +398,16 @@ pub struct UserFunction {
 }
 
 impl UserFunction {
-
     fn new(declaration: FunStmtNode) -> Self {
         Self { declaration }
     }
 }
 
 impl Callable for UserFunction {
+    fn name(&self) -> String {
+        self.declaration.name.identifier_string()
+    }
 
-	fn name(&self) -> String {
-		self.declaration.name.identifier_string()
-	}
-	
     fn arity(&self) -> usize {
         self.declaration.params.len()
     }
@@ -428,16 +415,16 @@ impl Callable for UserFunction {
     fn return_type(&self) -> &DataType {
         &self.declaration.return_type
     }
-	
-	fn params(&self) -> Vec<Box<SymbolTableEntry>> {
-		self.declaration.params.clone()
-	}
+
+    fn params(&self) -> Vec<Box<SymbolTableEntry>> {
+        self.declaration.params.clone()
+    }
 
     fn call(
         &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, EarlyReturn>{
+    ) -> Result<ReturnValue, EarlyReturn> {
         envr.extend();
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
@@ -449,71 +436,70 @@ impl Callable for UserFunction {
         let decl = &mut self.declaration;
 
         for stmt in &mut decl.body {
-			// Catch any early returns from a return statement, otherwise
-			// return the error as normal.            
-			if let Err(early_return) = stmt.execute(envr){
-				match  early_return {
-					EarlyReturn::ReturnStatement(retval) => {
-						return_value = retval;
-						break;						
-					},
-					EarlyReturn::Error(_) => return  Err(early_return),
-					EarlyReturn::Break => {
-						panic!("A 'break' statement escaped its context!");
-					}				
-				}
-			}
+            // Catch any early returns from a return statement, otherwise
+            // return the error as normal.
+            if let Err(early_return) = stmt.execute(envr) {
+                match early_return {
+                    EarlyReturn::ReturnStatement(retval) => {
+                        return_value = retval;
+                        break;
+                    }
+                    EarlyReturn::Error(_) => return Err(early_return),
+                    EarlyReturn::Break => {
+                        panic!("A 'break' statement escaped its context!");
+                    }
+                }
+            }
         }
-        
-		
-		if matches!(return_value, ReturnValue::Value(DataValue::Unresolved)){
-			let message = format!("No return executed for function {} at {}",
-				&self.declaration.name.identifier_string(), &self.name());
-				
-			return Err( EarlyReturn::error(message));
-		}
-		envr.retract();
-		Ok(return_value)        
+
+        if matches!(return_value, ReturnValue::Value(DataValue::Unresolved)) {
+            let message = format!(
+                "No return executed for function {} at {}",
+                &self.declaration.name.identifier_string(),
+                &self.name()
+            );
+
+            return Err(EarlyReturn::error(message));
+        }
+        envr.retract();
+        Ok(return_value)
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ReturnStmtNode {
-	location: Token,
-	expr: Expr,
-	return_type: DataType,
+    location: Token,
+    expr: Expr,
+    return_type: DataType,
 }
 
 impl Executable for ReturnStmtNode {
+    fn print(&self) -> String {
+        format!("return-statement: {}", &self.expr.print())
+    }
 
-	fn print(&self) -> String{
-		format!("return-statement: {}", &self.expr.print())
-	}
-
-	fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {		
-		match self.expr.evaluate(envr) {
-			Ok(retval) => Err(EarlyReturn::ReturnStatement(retval)),
-			Err(eval_error) => {				
-				Err(EarlyReturn::error(eval_error.message))
-			}							
-		}	 
-	}
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+        match self.expr.evaluate(envr) {
+            Ok(retval) => Err(EarlyReturn::ReturnStatement(retval)),
+            Err(eval_error) => Err(EarlyReturn::error(eval_error.message)),
+        }
+    }
 }
 
 impl TypeChecking for ReturnStmtNode {
-
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		let would_return_type = self.expr.determine_type(symbols)?;
-		if would_return_type != self.return_type {
-			let message = format!("Type of return statement '{}' doesn't match function return type of '{}' at {:?}",
-				&would_return_type,&self.return_type,  &self.location);
-			Err( TypeError { message})
-		} else {
-			Ok(())
-		}
-	}
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        let would_return_type = self.expr.determine_type(symbols)?;
+        if would_return_type != self.return_type {
+            let message = format!(
+                "Type of return statement '{}' doesn't match function return type of '{}' at {:?}",
+                &would_return_type, &self.return_type, &self.location
+            );
+            Err(TypeError { message })
+        } else {
+            Ok(())
+        }
+    }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct WhileStmtNode {
@@ -530,19 +516,19 @@ impl Executable for WhileStmtNode {
         )
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn>{
-        loop {            
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+        loop {
             match self.condition.evaluate(envr) {
-                Err(eval_err) =>  return Err(EarlyReturn::error(eval_err.message)),                    
-                Ok(cond) => {                    
+                Err(eval_err) => return Err(EarlyReturn::error(eval_err.message)),
+                Ok(cond) => {
                     if let DataValue::Bool(b) = cond.get() {
-                        if *b {                            
-                            if let Err(early_return) =self.body.execute(envr) {
-								match early_return {
-									EarlyReturn::Break => break,									
-									_ => return Err(early_return),									
-								}
-							}
+                        if *b {
+                            if let Err(early_return) = self.body.execute(envr) {
+                                match early_return {
+                                    EarlyReturn::Break => break,
+                                    _ => return Err(early_return),
+                                }
+                            }
                         } else {
                             break;
                         }
@@ -620,16 +606,14 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
-	
-	pub fn return_stmt(location:Token, expr:Expr, return_type: DataType) -> Stmt {
-		Stmt::Return(
-			ReturnStmtNode {
-				location,
-				expr,
-				return_type
-			}
-		)
-	}
+
+    pub fn return_stmt(location: Token, expr: Expr, return_type: DataType) -> Stmt {
+        Stmt::Return(ReturnStmtNode {
+            location,
+            expr,
+            return_type,
+        })
+    }
 
     pub fn fun_stmt(
         name: Token,

@@ -1,8 +1,8 @@
 use crate::lex::Token;
 use crate::types::DataType;
 use crate::types::DataValue;
-use crate::types::ReturnValue;
 use crate::types::DeclarationType;
+use crate::types::ReturnValue;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -77,10 +77,9 @@ impl SymbolTableEntry {
             fields: Vec::new(),
         }
     }
-	
-	
-	pub fn new_stdlib_var(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
-		   Self {
+
+    pub fn new_stdlib_var(param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+        Self {
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Var,
@@ -90,10 +89,10 @@ impl SymbolTableEntry {
             contains_type: DataType::Empty,
             fields: Vec::new(),
         }
-	}
-	
-	pub fn new_stdlib_val(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
-		   Self {
+    }
+
+    pub fn new_stdlib_val(param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+        Self {
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Val,
@@ -103,10 +102,10 @@ impl SymbolTableEntry {
             contains_type: DataType::Empty,
             fields: Vec::new(),
         }
-	}
-	
-	pub fn new_stdlib_cpy(param_name: &str, data_type: &DataType) -> SymbolTableEntry{
-		   Self {
+    }
+
+    pub fn new_stdlib_cpy(param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+        Self {
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Cpy,
@@ -116,9 +115,7 @@ impl SymbolTableEntry {
             contains_type: DataType::Empty,
             fields: Vec::new(),
         }
-	}
-	
-	
+    }
 
     pub fn new_param(
         decl_type: DeclarationType,
@@ -207,21 +204,21 @@ impl SymbolTable {
             true
         }
     }
-	
-	// A convenience method for creating a symbol table entry off a callable and adding it.
-	pub fn add_library_function(&mut self, callable: &ReturnValue) -> bool {
-		if let ReturnValue::CallableValue(function) = callable {
-		
-			let fun_entry = SymbolTableEntry::new_fun(
-				None, // no location since it is programmatically generated
-				&function.name(),
-				function.params(),
-				function.return_type());
-			self.add(fun_entry)							
-		} else {
-			panic!("Value '{}' is not a callable function!",&callable.print());
-		}
-	}
+
+    // A convenience method for creating a symbol table entry off a callable and adding it.
+    pub fn add_library_function(&mut self, callable: &ReturnValue) -> bool {
+        if let ReturnValue::CallableValue(function) = callable {
+            let fun_entry = SymbolTableEntry::new_fun(
+                None, // no location since it is programmatically generated
+                &function.name(),
+                function.params(),
+                function.return_type(),
+            );
+            self.add(fun_entry)
+        } else {
+            panic!("Value '{}' is not a callable function!", &callable.print());
+        }
+    }
 
     pub fn lookup(&self, name: &str) -> Result<&SymbolTableEntry, NotDeclaredError> {
         match self.entries.get(name) {

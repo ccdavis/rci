@@ -237,9 +237,9 @@ impl Parser {
                 }
             };
         }
-		// Needed for the return_type symbol we'll put into the
-		// local symbols for the function. 
-		let return_type_location = self.previous();
+        // Needed for the return_type symbol we'll put into the
+        // local symbols for the function.
+        let return_type_location = self.previous();
 
         let function_name = name.identifier_string();
         // 'name' is the token holding the location of the function name in the source,
@@ -258,9 +258,13 @@ impl Parser {
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more eadditions and extensions.
         let mut local_symbols = symbols.extend();
-		let return_type_entry = SymbolTableEntry::new_var(
-			&return_type_location, "RETURN_TYPE", &return_type, &DataValue::Unresolved);
-		local_symbols.add(return_type_entry);
+        let return_type_entry = SymbolTableEntry::new_var(
+            &return_type_location,
+            "RETURN_TYPE",
+            &return_type,
+            &DataValue::Unresolved,
+        );
+        local_symbols.add(return_type_entry);
 
         for param in &parameters {
             local_symbols.add(*param.clone());
@@ -280,8 +284,8 @@ impl Parser {
     }
 
     // Like a block_statement but without its own AST node or symbols -- those are owned
-    // by the function. 
-	
+    // by the function.
+
     fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
@@ -290,8 +294,8 @@ impl Parser {
             stmt_list.push(stmt);
         }
         self.consume(RightBrace, "expect '}' at the end of a function body.")?;
-		// Find any return statements and add the return type
-		// If none are found it's a parse error.
+        // Find any return statements and add the return type
+        // If none are found it's a parse error.
         Ok(stmt_list)
     }
 
@@ -335,9 +339,9 @@ impl Parser {
                 match inferred_type_result {
                     Err(type_error) => {} // do nothing for now
                     Ok(ref inferred_type) => {
-                        if !matches!(inferred_type, &DataType::Unresolved) && 
-							inferred_type != &valid_type_name {
-							
+                        if !matches!(inferred_type, &DataType::Unresolved)
+                            && inferred_type != &valid_type_name
+                        {
                             let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
 								&v.print(), &valid_type_name, &inferred_type);
                             return Err(ParseError {
@@ -431,31 +435,34 @@ impl Parser {
         if self.matches(&[LeftBrace]) {
             return self.block_statement(symbols);
         }
-		
-		if self.matches(&[Return]) {
-			return self.return_statement(symbols);
-		}
+
+        if self.matches(&[Return]) {
+            return self.return_statement(symbols);
+        }
 
         self.expression_statement(symbols)
     }
-	
-	
-	fn return_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		let location = self.previous();
-		
-		// for now don't allow empty returns
-		let return_expr = self.expression()?;
-		self.consume(TokenType::SemiColon, "expect ';' after return statement.")?;
-		
-		if let Ok(ste) = symbols.lookup("RETURN_TYPE") {			
-			Ok(Stmt::return_stmt(location, return_expr, ste.data_type.clone()))
-		} else {
-			Err( ParseError { t:location, 
-				message: format!("Return statement not in a function!")})
-			
-		}
-				
-	}
+
+    fn return_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        let location = self.previous();
+
+        // for now don't allow empty returns
+        let return_expr = self.expression()?;
+        self.consume(TokenType::SemiColon, "expect ';' after return statement.")?;
+
+        if let Ok(ste) = symbols.lookup("RETURN_TYPE") {
+            Ok(Stmt::return_stmt(
+                location,
+                return_expr,
+                ste.data_type.clone(),
+            ))
+        } else {
+            Err(ParseError {
+                t: location,
+                message: format!("Return statement not in a function!"),
+            })
+        }
+    }
 
     fn expression_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
@@ -574,7 +581,7 @@ impl Parser {
             return Ok(Expr::unary(operator, right));
         }
 
-        self.call()        
+        self.call()
     }
 
     fn call(&mut self) -> Result<Expr, ParseError> {
@@ -650,7 +657,7 @@ impl Parser {
                 let type_name = self.peek().token_type.print();
                 let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
-				self.advance(); // move past the bad token
+                self.advance(); // move past the bad token
                 Err(ParseError {
                     t: self.peek(),
                     message,
