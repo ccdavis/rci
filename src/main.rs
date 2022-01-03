@@ -91,7 +91,7 @@ impl Interpreter {
                 Ok(_) => {}
                 Err(msg) => {
                     self.had_runtime_error = true;
-                    eprintln!("{}", &msg.message);
+                    eprintln!("{:?}", &msg);
                 }
             }
         } // each statement

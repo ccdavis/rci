@@ -1,6 +1,7 @@
 use crate::types::*;
 use crate::symbol_table::*;
 use crate::statement::ExecutionError;
+use crate::statement::EarlyReturn;
 use crate::environment::*;
 
 use dyn_clonable::*;
@@ -46,7 +47,7 @@ impl Callable for ClockFunc {
         &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, ExecutionError> {
+    ) -> Result<ReturnValue, EarlyReturn> {
         use std::time::{SystemTime, UNIX_EPOCH};
         let now = SystemTime::now();
         let since_epoch = now
@@ -85,12 +86,16 @@ impl Callable for SqrFunc {
         &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, ExecutionError> {
+    ) -> Result<ReturnValue, EarlyReturn> {
         
-        let base = arguments[0].get_as_number()?;
-        Ok(ReturnValue::Value(DataValue::Number(
-            base * base
-        )))
+        let base_result = arguments[0].get_as_number();
+		match base_result {
+			Ok(base) => 
+				Ok(ReturnValue::Value(DataValue::Number(
+					base * base
+				))),			
+			Err(err) => Err( EarlyReturn::Error(err)),
+		}
     }
 }
 

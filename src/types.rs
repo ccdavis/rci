@@ -1,6 +1,7 @@
 use crate::environment::Environment;
 use crate::expression::EvaluationError;
 use crate::statement::ExecutionError;
+use crate::statement::EarlyReturn;
 use crate::symbol_table::SymbolTableEntry;
 use crate::lex::TokenType;
 
@@ -110,13 +111,16 @@ pub trait Callable: Clone {
         &mut self,
         envr: &mut Environment,
         arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, ExecutionError>;
+    ) -> Result<ReturnValue, EarlyReturn>;
     fn arity(&self) -> usize;
 	fn params(&self) -> Vec<Box<SymbolTableEntry>>;
     fn return_type(&self) -> &DataType;
 	fn name(&self) -> String;    
 }
 
+
+// We use this both for evaluation of expressions and return values from functions. In the execution of
+// statements that are pseudo-expressions ReturnValue is also needed: "return" specifically.
 #[derive(Clone)]
 pub enum ReturnValue {
     Reference(Rc<DataValue>),

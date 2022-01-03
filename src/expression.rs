@@ -286,7 +286,7 @@ impl Evaluation for CallNode {
             // Translate execution errors into evaluation errors
             match function.call(envr, arguments) {
                 Err(msg) => Err(EvaluationError {
-                    message: msg.message,
+                    message: msg.print()
                 }),
                 Ok(result) => Ok(result),
             }
