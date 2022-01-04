@@ -1,4 +1,8 @@
 
+//
+// Testing out the impact of lots of function calls in the inner loop.
+//  Swapping in sqr() for everywhere we mutiply a var by itself slows things
+// down by about 10%. Not bad actually.
 
 var x_resolution = 100;
 var y_resolution = 132;
@@ -8,7 +12,7 @@ var escape_radius = 2.0;
 
 
 fun not_escaped(x:number, iy:number):boolean {
-	return (x*x + iy*iy) < 2*escape_radius; 	
+	return (sqr(x) + sqr(iy)) < 2*escape_radius; 	
 }
 
 // Check a point in the complex plane for membership
@@ -24,7 +28,7 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 			return false;
 		}
 				
-		tmp_zx := c_x + (zn_x * zn_x - zn_iy * zn_iy);
+		tmp_zx := c_x + (sqr(zn_x ) - sqr(zn_iy));
 		zn_iy := c_iy + 2.0 * zn_x * zn_iy;    
 		zn_x := tmp_zx;
 		iterations := iterations + 1;
