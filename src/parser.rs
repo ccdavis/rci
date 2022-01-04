@@ -69,9 +69,13 @@ impl Parser {
             // fn variant_eq(a: &Op, b: &Op) -> bool {
             //    std::mem::discriminant(a) == std::mem::discriminant(b)
             //	}
+			let actual = self.peek().token_type.print();
+			let expected = token_type.print();			
             self.peek().token_type.print() == token_type.print()
         }
+		
     }
+	
     fn advance(&mut self) -> Token {
         if !self.is_finished() {
             self.current += 1
@@ -95,7 +99,7 @@ impl Parser {
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, ParseError> {
-        if self.check(&token_type) {
+        if self.check(&token_type) {			
             Ok(self.advance())
         } else {
             Err(ParseError {
@@ -127,8 +131,9 @@ impl Parser {
             }
 
             match self.peek().token_type {
-                Class | Fun | Var | For | If | While | Print | Return => return,
-                _ => {}
+                Class | Fun | Var | Val | For | If | While | Print |
+				Break | Return => return,
+                _ => { self.advance();}
             }
         }
     }
@@ -516,8 +521,8 @@ impl Parser {
     }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let expr = self.expression()?;
-        self.consume(TokenType::SemiColon, "Expected ';'")?;
+        let expr = self.expression()?;		
+        self.consume(TokenType::SemiColon, "Expected ';'")?;		
         Ok(Stmt::print_stmt(expr))
     }
 
@@ -565,7 +570,8 @@ impl Parser {
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.comparison()?;
+        let mut expr = self.comparison()?;		
+		
         while self.matches(&[LessGreater, Equal]) {
             let operator: Token = self.previous();
             let right: Expr = self.comparison()?;
@@ -586,7 +592,8 @@ impl Parser {
     }
 
     fn term(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.factor()?;
+        let mut expr = self.factor()?;		
+		
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous(); // a + or  -
             let right = self.factor()?;
@@ -596,7 +603,7 @@ impl Parser {
     }
 
     fn factor(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.unary()?; // get any leading - or 'not'
+        let mut expr = self.unary()?; // get any leading - or 'not'		
         while self.matches(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous();
             let right = self.unary()?;
@@ -628,7 +635,7 @@ impl Parser {
             } else {
                 break;
             }
-        }
+        }		
         Ok(expr)
     }
 
@@ -665,7 +672,7 @@ impl Parser {
                 Ok(Expr::literal(self.previous()))
             }
             Number(value) => {
-                self.advance();
+                self.advance();				
                 Ok(Expr::literal(self.previous()))
             }
             Str(value) => {

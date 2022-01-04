@@ -8,3 +8,6 @@ edition = "2018"
 [dependencies]
 rustyline="8.2.0"
 dyn-clonable = '0.9.0'
+
+[profile.release]
+debug=1
