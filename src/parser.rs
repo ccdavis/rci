@@ -264,6 +264,7 @@ impl Parser {
             &return_type,
             &DataValue::Unresolved,
         );
+		
         local_symbols.add(return_type_entry);
 
         for param in &parameters {
@@ -439,6 +440,11 @@ impl Parser {
         if self.matches(&[Return]) {
             return self.return_statement(symbols);
         }
+		
+		if self.matches(&[Break]) {
+			return self.break_statement(symbols);
+		}
+		
 
         self.expression_statement(symbols)
     }
@@ -460,6 +466,22 @@ impl Parser {
             Err(ParseError {
                 t: location,
                 message: format!("Return statement not in a function!"),
+            })
+        }
+    }
+	
+	fn break_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        let location = self.previous();       
+        self.consume(TokenType::SemiColon, "expect ';' after 'break' statement.")?;
+
+        if let Ok(ste) = symbols.lookup("IN_BLOCK") {
+            Ok(Stmt::break_stmt(
+                location,                                
+            ))
+        } else {
+            Err(ParseError {
+                t: location,
+                message: format!("Break statement not in a block ( between '{{' and '}}')!"),
             })
         }
     }
@@ -502,7 +524,16 @@ impl Parser {
     fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
+		let block_location = self.previous();
         let mut local_symbols = symbols.extend();
+		let block_entry = SymbolTableEntry::new_val(
+            &block_location,
+            "IN_BLOCK",
+            &DataType::Empty,
+            &DataValue::Unresolved,
+        );
+		
+        local_symbols.add(block_entry);		
         while !self.check(&RightBrace) && !self.is_finished() {
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);

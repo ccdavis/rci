@@ -82,7 +82,7 @@ impl Environment {
         if self.current_frame_contains(&name) {
             // TODO: Figure out something better
             panic!("Can't redefine variables! Use assign instead. The parser and type checker should have caught this.");
-            self.current_frame
+            //self.current_frame
         } else {
             self.frames[self.current_frame].insert(name, value.get().clone());
             self.current_frame
@@ -93,8 +93,7 @@ impl Environment {
     fn set_value(&mut self, frame: usize, name: &str, value: ReturnValue) {
         if frame >= self.frames.len() {
             panic!("No stack frame {}", frame);
-        }
-        println!("assigned  {} to value {:?}", name, &value);
+        }        
         if let Some(k) = self.frames[frame].get_mut(name) {
             *k = value.get().clone();
         }

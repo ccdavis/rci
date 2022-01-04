@@ -1,0 +1,70 @@
+
+
+var x_resolution = 100;
+var y_resolution = 132;
+
+var max_iterations = 100;
+var escape_radius = 2.0;
+
+
+fun not_escaped(x:number, iy:number):boolean {
+	return (x*x + iy*iy) < 2*escape_radius; 	
+}
+
+// Check a point in the complex plane for membership
+fun in_mandelbrot(c_x:number, c_iy:number):boolean {
+	var iterations = 0;
+	var zn_x = 0.0;
+	var zn_iy = 0.0;
+	
+	var tmp_zx = 0.0;
+	
+	while not_escaped(zn_x, zn_iy) {
+		if iterations = max_iterations { 			
+			return false;
+		}
+				
+		tmp_zx := c_x + (zn_x * zn_x - zn_iy * zn_iy);
+		zn_iy := c_iy + 2.0 * zn_x * zn_iy;    
+		zn_x := tmp_zx;
+		iterations := iterations + 1;
+	}
+	return iterations < max_iterations;
+}
+
+fun calc(x1:number, y1:number, x2:number, y2:number):number {
+	var left:number = x1;
+	var right:number = x2;
+	var top:number = y1;
+	var bottom:number = y2;
+	
+	var height:number = bottom - top;
+	var width:number = right - left;
+	var x_increment:number =width / x_resolution;
+	var y_increment:number =height / y_resolution; 
+	
+	var points = 0;	
+	
+	while left < right {						
+		var line:string = "";
+		while top < bottom {
+			if in_mandelbrot(left, top) {
+				line := line + "*";
+			} else {
+				line := line + " ";
+			}
+			top := top + y_increment;
+			points := points + 1;			
+		}
+		print line;
+		top := y1;
+		left := left + x_increment;
+	}
+	
+	return points;
+}
+
+var start:number = clock();
+print calc(-1.5, -1.0, 1.0, 1.0);
+print "Timer:";
+print clock() - start;

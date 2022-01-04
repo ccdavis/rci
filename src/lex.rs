@@ -45,6 +45,7 @@ pub enum TokenType {
     Union,
     Difference,
     Complement,
+	Break,
     And,
     Class,
     Else,
@@ -116,6 +117,7 @@ impl TokenType {
             Union => "union",
             Difference => "difference",
             Complement => "complement",
+			Break => "break",
             And => "and",
             Or => "or",
             Class => "Class",
@@ -186,6 +188,7 @@ impl TokenType {
             Difference,
             Complement,
             And,
+			Break,
             Class,
             Else,
             False,
@@ -240,6 +243,10 @@ impl Token {
     pub fn print(&self) -> String {
         format!("'{:?}' at {}, {}", &self.token_type, self.line, self.column)
     }
+	
+	pub fn pos(&self) -> String {
+		format!("{}, {}",self.line, self.column)
+	}
 
     pub fn is_comparison_operator(&self) -> bool {
         self.token_type.is_comparison_operator()

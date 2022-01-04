@@ -1,0 +1,22 @@
+fun t(n:number):number {	
+print n;
+print "printed!";
+}
+
+var start:number = clock();
+
+print "Hello, world!";
+t(25);
+t(8);
+t(2.25);
+
+var finish:number = clock();
+print "Finished!";
+
+var duration:number = finish - start;
+print "got duration!";
+t(duration);
+
+
+
+

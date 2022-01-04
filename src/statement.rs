@@ -16,19 +16,20 @@ pub struct ExecutionError {
 }
 
 // Use the '?' early return mechanism to propagate results of errors similar to exceptions.
-// Also use it to abandon execution and return values when executing the 'return' statement.
+// Also use it to abandon execution in a function body and return values when executing the 
+// 'return' statement, or exit a block when executing 'break'.
 #[derive(Clone, Debug)]
 pub enum EarlyReturn {
+	BreakStatement,
     ReturnStatement(ReturnValue),
-    Error(ExecutionError),
-    Break,
+    Error(ExecutionError),    
 }
 
 impl EarlyReturn {
     pub fn print(&self) -> String {
         match self {
             EarlyReturn::Error(ref e) => e.message.to_owned(),
-            EarlyReturn::Break => "break-statement".to_string(),
+            EarlyReturn::BreakStatement => "break-statement".to_string(),
             EarlyReturn::ReturnStatement(ref retval) => retval.print(),
         }
     }
@@ -57,6 +58,7 @@ pub enum Stmt {
     Fun(FunStmtNode),
     While(WhileStmtNode),
     Return(ReturnStmtNode),
+	Break(BreakStmtNode),
     NoOp,
 }
 
@@ -87,6 +89,7 @@ impl Stmt {
             If(stmt) => stmt.execute(envr),
             While(stmt) => stmt.execute(envr),
             Return(stmt) => stmt.execute(envr),
+			Break(stmt) => stmt.execute(envr),
             _ => Err(EarlyReturn::Error(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             })),
@@ -104,6 +107,7 @@ impl Stmt {
             If(n) => n.check_types(symbols),
             While(n) => n.check_types(symbols),
             Return(n) => n.check_types(symbols),
+			Break(n) => n.check_types(symbols),
             _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),
@@ -199,7 +203,7 @@ impl Executable for BlockStmtNode {
         for stmt in &mut self.statements {
             if let Err(early_return) = stmt.execute(envr) {
                 match early_return {
-                    EarlyReturn::Break => break,
+                    EarlyReturn::BreakStatement => break,
                     EarlyReturn::ReturnStatement(_) => {
                         envr.retract();
                         return Err(early_return);
@@ -445,7 +449,7 @@ impl Callable for UserFunction {
                         break;
                     }
                     EarlyReturn::Error(_) => return Err(early_return),
-                    EarlyReturn::Break => {
+                    EarlyReturn::BreakStatement => {
                         panic!("A 'break' statement escaped its context!");
                     }
                 }
@@ -501,6 +505,33 @@ impl TypeChecking for ReturnStmtNode {
     }
 }
 
+#[derive(Clone,Debug)]
+struct BreakStmtNode {
+	location: Token,
+}
+
+impl Executable for BreakStmtNode {
+
+	fn print(&self) ->String {
+		"break-statement".to_string()
+	}
+	
+	// The parser should prevent 'break' outside of a block
+	fn execute(&mut self, envr:&mut Environment) -> Result<(), EarlyReturn> {
+		Err(EarlyReturn::BreakStatement)
+	}
+}
+
+impl TypeChecking for BreakStmtNode {
+
+
+	// We could add a special symbol to any block's symbol table and then the
+	// break statement could check if it was valid ...
+	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+		Ok(())
+	}
+}
+
 #[derive(Clone, Debug)]
 pub struct WhileStmtNode {
     condition: Expr,
@@ -525,7 +556,7 @@ impl Executable for WhileStmtNode {
                         if *b {
                             if let Err(early_return) = self.body.execute(envr) {
                                 match early_return {
-                                    EarlyReturn::Break => break,
+                                    EarlyReturn::BreakStatement => break,
                                     _ => return Err(early_return),
                                 }
                             }
@@ -614,6 +645,10 @@ impl Stmt {
             return_type,
         })
     }
+	
+	pub fn break_stmt(location: Token) -> Stmt {
+		Stmt::Break(BreakStmtNode { location })
+	}
 
     pub fn fun_stmt(
         name: Token,

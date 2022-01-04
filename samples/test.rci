@@ -1,0 +1,40 @@
+
+fun fib(n:number): number {
+	var i = 0;
+	var sum = 0;
+	var first = 0;
+	var second = 1;
+
+	while i <= n {
+		if i <= 1 {
+			sum := 1;
+		} else {
+			sum := first + second;
+			first := second;
+			second := sum;
+		}
+		i := i + 1;
+	}
+	return sum;
+}
+
+
+fun recursive_fib(n:number) : number {
+	if  n = 0 { return 0; }
+	if n = 1 { return 1; }
+	//print n;
+	return recursive_fib(n-1) + recursive_fib(n-2);
+}
+
+
+var start0:number = clock();
+print fib(55);
+print clock() - start0;
+print " ";
+
+var start:number = clock();
+print recursive_fib(27);
+print clock() - start;
+
+
+
