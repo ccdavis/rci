@@ -1,11 +1,11 @@
 # rci
-Building a statically typed, type checked language using Crafting Interpreters as a launching pad. 
+Building a statically typed language using Crafting Interpreters as a launching pad. 
 
 The language resembles "Lox" from the book with explicit types and user definable types.
 
 The interpreter has a static type checker that runs before executing code; there are some additional and redundant type checks during execution. 
 
-The type checker uses symbol tables collected during parsing. These are placed in the AST nodes for statements which introduce new environments. The interpreter dynamically creates environments that mirror these symbol tables. Currently these are independent processes but I'd like to improve the interpreter by using the symbol tables as the templates for the interpreter environments. This could improve performance and simplify the interpreter.
+The type checker uses symbol tables collected during parsing. These are placed in the AST nodes for statements which introduce new environments, namely blocks and functions. The interpreter dynamically creates environments that mirror these symbol tables. Currently these are independent processes but I'd like to improve the interpreter by using the symbol tables as the templates for the interpreter environments. This could improve performance and simplify the interpreter.
 
 To-do list:
 * Clean up the error message types by consolidating into one main error type. This would remove the need for re-enclosing messages into different types.
@@ -15,6 +15,27 @@ To-do list:
 
 Language:
 ============
+
+#### Parameter passing semantics:
+
+The caller doesn't need to annotate arguments.  Function declarations dictate how values get sent to the function.
+
+fun my_func(DECL-TYPE name: TYPE, ...): TYPE {
+	...
+	return EXPRESSION;
+}
+
+The DECL-TYPE may have three values: 'var', 'val' or 'cpy'. Parameters are 'val' by default and it doesn't need to be specified.
+
+A 'val' parameter is immutable. A 'cpy' parameter is mutable within the function scope but changes to it doen't have side-effects outside the function. A 'var' parameter is mutable and changes will be reflected outside the function scope.
+
+Most languages have 'cpy' as the default type of parameter. A 'const' parameter type -- or "const &" in C++ -- is most similar to 'val'. A 'var' parameter type is a pass-by-reference non-constant type.
+
+The idea to use 'val' as the default parameter type is to guide the program writer to a more efficient and functional style. A good compiler for the language should optimize 'val' parameters to behave like const reference parameters. The 'cpy' parameter passing style should be explicit in cases where the values are large.  Possibly it makes sense to make number and boolean types 'cpy' by default since there's no overhead in passing them by value; then again having a set of immutable variables  as arguments may lead to fewer mistakes.
+
+
+
+## RCI Language examples
 
 Strings are immutable , function parameters are always explicitly typed and functions must have a return type.  The expression taken by the "return" statement must match the return type. 
 ```
