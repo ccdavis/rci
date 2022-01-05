@@ -7,6 +7,7 @@ use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
+use crate::types::DeclarationType;
 
 use std::rc::Rc;
 
@@ -550,7 +551,16 @@ impl TypeCheck for AssignmentNode {
 		};
 
         let to_type = match symbols.lookup(&assignee_name) {
-            Ok(ref ste) => ste.data_type.clone(),
+            Ok(ref ste) =>{
+				if matches!(ste.entry_type, DeclarationType::Val) {
+					let message = format!(
+						"Type error at {}, {}: Can't assign to a 'val'. Only 'var' is mutable.",
+						self.name.line, self.name.column);
+						
+					return Err(TypeError { message });
+				}			
+				ste.data_type.clone()
+			}
             Err(not_declared) => {
                 let message = format!(
                     "Type error at {}, {}: {}",
@@ -559,7 +569,8 @@ impl TypeCheck for AssignmentNode {
                 return Err(TypeError { message });
             }
         };
-
+		
+		
         if assign_type == to_type {
             Ok(DataType::Empty)
         } else {

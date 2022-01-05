@@ -169,7 +169,7 @@ impl Parser {
             return self.function("function", symbols);
         }
 
-        if self.matches(&[TokenType::Var]) {
+        if self.matches(&[TokenType::Val, TokenType::Var]) {
             return self.var_declaration(symbols);
         }
 
@@ -307,11 +307,15 @@ impl Parser {
 
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+		let mut decl_type = DeclarationType::Val;
+		if matches!(self.previous().token_type, TokenType::Var) {
+			decl_type = DeclarationType::Var;
+		}
+		
+			
         let v: Token = self.consume_identifier("Expect variable name")?;
-        let variable_name = match v.token_type {
-            TokenType::Identifier(ref n) => n.clone(),
-            _ => panic!("Tried to consume identifier!"),
-        };
+		let variable_name = v.identifier_string();
+        
         if self.matches(&[TokenType::Colon]) {
             // Type may be a built-in type or an identifier for a user-defined type
             let type_name = self.advance();
@@ -359,13 +363,22 @@ impl Parser {
                 }
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
-
-                let entry = SymbolTableEntry::new_var(
-                    &v,
-                    &variable_name,
-                    &valid_type_name,
-                    &DataValue::Unresolved,
-                );
+				let entry = if matches!(decl_type, DeclarationType::Var){
+					SymbolTableEntry::new_var(
+						&v,
+						&variable_name,
+						&valid_type_name,
+						&DataValue::Unresolved,
+					)
+				} else {
+					SymbolTableEntry::new_val(
+						&v,
+						&variable_name,
+						&valid_type_name,
+						&DataValue::Unresolved,
+					)
+				};
+					
                 if symbols.add(entry) {
                     Ok(Stmt::var_stmt(v, valid_type_name, initializer))
                 } else {
@@ -382,7 +395,6 @@ impl Parser {
             }
         } else {
             // infer data type
-
             if self.matches(&[TokenType::Equal]) {
                 let initializer = self.expression()?;
                 let inferred_type = match initializer.expected_type() {
@@ -400,12 +412,22 @@ impl Parser {
                 };
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
-                let entry = SymbolTableEntry::new_var(
-                    &v,
-                    &variable_name,
-                    &inferred_type,
-                    &DataValue::Unresolved,
-                );
+                let entry = if matches!(decl_type, DeclarationType::Var) {
+					SymbolTableEntry::new_var(
+						&v,
+						&variable_name,
+						&inferred_type,
+						&DataValue::Unresolved,
+					)
+				} else {
+					SymbolTableEntry::new_val(
+						&v,
+						&variable_name,
+						&inferred_type,
+						&DataValue::Unresolved,
+					)
+				};
+				
                 if symbols.add(entry) {
                     Ok(Stmt::var_stmt(v, inferred_type, initializer))
                 } else {
