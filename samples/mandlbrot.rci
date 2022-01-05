@@ -4,11 +4,11 @@
 //  Swapping in sqr() for everywhere we mutiply a var by itself slows things
 // down by about 10%. Not bad actually.
 
-var x_resolution = 100;
-var y_resolution = 132;
+val x_resolution = 100;
+val y_resolution = 132;
 
-var max_iterations = 100;
-var escape_radius = 2.0;
+val max_iterations = 100;
+val escape_radius = 2.0;
 
 
 fun not_escaped(x:number, iy:number):boolean {
@@ -38,19 +38,19 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 
 fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	var left:number = x1;
-	var right:number = x2;
+	val right:number = x2;
 	var top:number = y1;
-	var bottom:number = y2;
+	val bottom:number = y2;
 	
-	var height:number = bottom - top;
-	var width:number = right - left;
-	var x_increment:number =width / x_resolution;
-	var y_increment:number =height / y_resolution; 
+	val height:number = bottom - top;
+	val width:number = right - left;
+	val x_increment:number =width / x_resolution;
+	val y_increment:number =height / y_resolution; 
 	
 	var points = 0;	
 	
 	while left < right {						
-		var line:string = "";
+		val line:string = "";
 		while top < bottom {
 			if in_mandelbrot(left, top) {
 				line := line + "*";
@@ -68,7 +68,7 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	return points;
 }
 
-var start:number = clock();
+val start:number = clock();
 print calc(-1.5, -1.0, 1.0, 1.0);
 print "Timer:";
 print clock() - start;
