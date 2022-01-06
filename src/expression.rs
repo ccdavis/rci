@@ -37,6 +37,7 @@ pub trait TypeCheck {
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
+	Logical(LogicalNode),
     Call(CallNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
@@ -49,6 +50,7 @@ impl Expr {
     pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         match self {
             Expr::Binary(n) => n.evaluate(envr),
+			Expr::Logical(n) => n.evaluate(envr),
             Expr::Call(n) => n.evaluate(envr),
             Expr::Unary(n) => n.evaluate(envr),
             Expr::Grouping(n) => n.evaluate(envr),
@@ -64,6 +66,7 @@ impl Expr {
     pub fn expected_type(&self) -> Result<DataType, TypeError> {
         match self {
             Expr::Binary(n) => n.expected_type(),
+			Expr::Logical(n) => n.expected_type(), 
             Expr::Unary(n) => n.expected_type(),
             Expr::Grouping(n) => n.expected_type(),
             Expr::Variable(n) => n.expected_type(),
@@ -76,6 +79,7 @@ impl Expr {
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
         match self {
             Expr::Binary(n) => n.determine_type(symbols),
+			Expr::Logical(n) => n.determine_type(symbols),
             Expr::Call(n) => n.determine_type(symbols),
             Expr::Unary(n) => n.determine_type(symbols),
             Expr::Grouping(n) => n.determine_type(symbols),
@@ -247,6 +251,64 @@ impl TypeCheck for BinaryNode {
         Err(TypeError { message })
     }
 } // impl
+
+#[derive(Clone,Debug)]
+pub struct LogicalNode {
+	left:Box<Expr>,
+	operator: Token,
+	right: Box<Expr>,
+}
+
+impl Evaluation for LogicalNode {
+
+	fn print(&self) -> String {
+		format!("logical-operator {}",self.operator.token_type.print())
+	}
+	
+	fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
+			let left_value = self.left.evaluate(envr)?; 			
+			let left_bool_val = match left_value.get() {
+				DataValue::Bool(b) => *b,
+				_ =>  {
+					let message = format!("{}: The 'or' operator requires boolean operands.",&self.operator.pos());
+					return Err( EvaluationError {message} );
+				}				
+			};
+			
+			if matches!(self.operator.token_type, TokenType::Or) {
+				if left_bool_val {  
+					return Ok(left_value);
+				}										
+			} else { // an 'and'
+				if left_bool_val == false {
+					return Ok(left_value);
+				}				
+			}
+			
+			self.right.evaluate(envr)					
+	}
+}
+
+impl TypeCheck for LogicalNode {
+
+	fn expected_type(&self) -> Result<DataType, TypeError> {
+		Ok(DataType::Unresolved)
+	}
+	
+	fn determine_type(&self, symbols:&SymbolTable) -> Result<DataType, TypeError> {
+		let right_type = self.right.determine_type(symbols)?;
+		let left_type = self.left.determine_type(symbols)?;
+		if matches!(left_type, DataType::Bool) &&
+			matches!(right_type, DataType::Bool) {
+				Ok(DataType::Bool)
+			}else {
+				let message = format!("{} Operands of a logical operator must be boolean. Got {}, {} instead.",
+					&self.operator.pos(), &left_type, &right_type) ;
+				Err( TypeError { message })
+			}					
+	}		
+}
+
 
 #[derive(Clone, Debug)]
 pub struct CallNode {
@@ -592,6 +654,16 @@ impl Expr {
         };
         Expr::Binary(node)
     }
+	
+	pub fn logical(l:Expr, op: Token, r:Expr) -> Expr {
+		Expr::Logical(
+			LogicalNode {
+				left: Box::new(l),
+				operator: op,
+				right: Box::new(r),
+			}
+		)
+	}
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Expr {
         let node = CallNode {
@@ -672,6 +744,7 @@ impl Expr {
             Variable(n) => n.print(),
             Assignment(n) => n.print(),
             Call(n) => n.print(),
+			Logical(n) => n.print(),
 
             _ => panic!("Not implemented"),
         };

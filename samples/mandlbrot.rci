@@ -23,10 +23,10 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 	
 	var tmp_zx = 0.0;
 	
-	while not_escaped(zn_x, zn_iy) {
-		if iterations = max_iterations { 			
-			return false;
-		}
+	while iterations < max_iterations and not_escaped(zn_x, zn_iy) {
+		//if iterations = max_iterations { 			
+		//	return false;
+		//}
 				
 		tmp_zx := c_x + (sqr(zn_x ) - sqr(zn_iy));
 		zn_iy := c_iy + 2.0 * zn_x * zn_iy;    

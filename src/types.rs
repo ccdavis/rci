@@ -147,6 +147,8 @@ impl ReturnValue {
     pub fn new_val(value: DataValue) -> Self {
         ReturnValue::Value(value)
     }
+	
+	
 
     // Helper for internal use in standard library
     pub fn get_as_number(&self) -> Result<f64, ExecutionError> {

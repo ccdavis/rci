@@ -574,7 +574,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let assignee = self.equality()?;
+        let assignee = self.or()?;
         // Check for special assignment operator
         if self.matches(&[TokenType::ColonEqual]) {
             let change = self.previous();
@@ -589,6 +589,26 @@ impl Parser {
         } // assignment operator
         Ok(assignee) // if we get here it's an r-value!
     }
+	
+	fn or(&mut self) -> Result<Expr, ParseError> {
+		let mut expr = self.and()?;
+		while self.matches(&[TokenType::Or]) {
+			let operator  = self.previous();
+			let right = self.and()?;
+			expr = Expr::logical(expr, operator, right);			
+		}
+		Ok(expr)		
+	}
+	
+	fn and(&mut self) -> Result<Expr, ParseError> {
+		let mut expr = self.equality()?;
+		while self.matches(&[TokenType::And]) {
+			let operator = self.previous();
+			let right = self.equality()?;
+			expr = Expr::logical(expr, operator, right);						
+		}
+		Ok(expr)
+	}
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         use TokenType::*;
