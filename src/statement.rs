@@ -9,7 +9,10 @@ use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
+use std::rc::Rc;
+use std::cell::RefCell;
 
+const TRACE:bool = true;
 #[derive(Clone, Debug)]
 pub struct ExecutionError {
     pub message: String,
@@ -198,21 +201,19 @@ impl Executable for BlockStmtNode {
         format!("block-stmt: {}", &stmts)
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
-        envr.extend();
+    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {        
+        let mut local_envr = envr.new_local();
         for stmt in &mut self.statements {
-            if let Err(early_return) = stmt.execute(envr) {
+            if let Err(early_return) = stmt.execute(&mut local_envr) {
                 match early_return {
                     EarlyReturn::BreakStatement => break,
-                    EarlyReturn::ReturnStatement(_) => {
-                        envr.retract();
+                    EarlyReturn::ReturnStatement(_) => {                        
                         return Err(early_return);
                     }
                     EarlyReturn::Error(_) => return Err(early_return),
                 }
             }
-        }
-        envr.retract();
+        }        
         Ok(())
     }
 }
@@ -344,7 +345,7 @@ pub struct FunStmtNode {
     params: Vec<Box<SymbolTableEntry>>,
     return_type: DataType,
     body: Vec<Stmt>,
-    symbols: SymbolTable,
+    symbols: SymbolTable,	
 }
 
 impl Executable for FunStmtNode {
@@ -356,9 +357,13 @@ impl Executable for FunStmtNode {
     // function happens in the Expression 'Call' node.
     // which then calls back to the implementation of Callable (UserFunction) here.
     fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+		if TRACE { println!("Define function {}",self.name.identifier_string());}
         envr.define(
             self.name.identifier_string(),
-            ReturnValue::CallableValue(Box::new(UserFunction::new(self.clone()))),
+            ReturnValue::CallableValue(
+				Box::new(
+					UserFunction::new(self.clone(), 
+                        Rc::new(RefCell::new(envr.clone()))))),
         );
         // The type-checker should have caught situations where we're redefining a function.
         // No other errors should be possible at this point either.
@@ -399,11 +404,13 @@ impl TypeChecking for FunStmtNode {
 #[derive(Clone)]
 pub struct UserFunction {
     declaration: FunStmtNode,
+	closure: Rc<RefCell<Environment>>,
 }
 
 impl UserFunction {
-    fn new(declaration: FunStmtNode) -> Self {
-        Self { declaration }
+
+    fn new(declaration: FunStmtNode, closure: Rc<RefCell<Environment>>) -> Self {
+        Self { declaration, closure: Rc::clone(&closure) }
     }
 }
 
@@ -425,28 +432,28 @@ impl Callable for UserFunction {
     }
 
     fn call(
-        &mut self,
-        envr: &mut Environment,
+        &mut self,        
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn> {
-        envr.extend();
+        let mut local_envr = Environment::extend(Rc::clone(&self.closure));
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
             let param = &self.declaration.params[index];
-            envr.define(self.declaration.params[index].name.to_owned(), arg_value);
+            local_envr.define(self.declaration.params[index].name.to_owned(), arg_value);
         }
 
         let mut return_value = ReturnValue::Value(DataValue::Unresolved);
+		if TRACE {println!("In function {}", self.name());}
         let decl = &mut self.declaration;
-
+		
         for stmt in &mut decl.body {
             // Catch any early returns from a return statement, otherwise
             // return the error as normal.
-            if let Err(early_return) = stmt.execute(envr) {
+            if let Err(early_return) = stmt.execute(&mut local_envr) {
                 match early_return {
                     EarlyReturn::ReturnStatement(retval) => {
-                        return_value = retval;
-                        break;
+                        return_value = retval;                        
+						return Ok(return_value);
                     }
                     EarlyReturn::Error(_) => return Err(early_return),
                     EarlyReturn::BreakStatement => {
@@ -464,8 +471,7 @@ impl Callable for UserFunction {
             );
 
             return Err(EarlyReturn::error(message));
-        }
-        envr.retract();
+        }        
         Ok(return_value)
     }
 }

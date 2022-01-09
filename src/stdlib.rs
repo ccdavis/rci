@@ -35,8 +35,7 @@ impl Callable for ClockFunc {
     }
 
     fn call(
-        &mut self,
-        envr: &mut Environment,
+        &mut self,        
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn> {
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -72,8 +71,7 @@ impl Callable for SqrFunc {
     }
 
     fn call(
-        &mut self,
-        envr: &mut Environment,
+        &mut self,        
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn> {
         let base_result = arguments[0].get_as_number();

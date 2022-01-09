@@ -3,13 +3,15 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
 use crate::symbol_table::*;
-use crate::types::Callable;
+
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
 use crate::types::DeclarationType;
 
 use std::rc::Rc;
+
+const TRACE:bool = true;
 
 pub struct EvaluationError {
     pub message: String,
@@ -347,7 +349,7 @@ impl Evaluation for CallNode {
             }
 
             // Translate execution errors into evaluation errors
-            match function.call(envr, arguments) {
+            match function.call(arguments) {
                 Err(msg) => Err(EvaluationError {
                     message: msg.print(),
                 }),
@@ -508,6 +510,7 @@ impl TypeCheck for UnaryNode {
 #[derive(Clone, Debug)]
 pub struct VariableNode {
     pub name: Token,
+	pub distance: Option<usize>,
     pub index: usize,
 }
 
@@ -518,7 +521,17 @@ impl Evaluation for VariableNode {
 
     fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
         match self.name.token_type {
-            TokenType::Identifier(ref name) => envr.get(&name),
+            TokenType::Identifier(ref name) => {
+				if let Some(dist) = self.distance {										
+					//envr.get(&name)
+					println!("Get {} with dist {}",&name, dist);
+					envr.dump_content(0);
+					envr.get_with_distance(&name,dist)
+				} else {
+					println!("Get {} without distance!",&name);
+					envr.get(&name)
+				}
+			},
             _ => Err(EvaluationError {
                 message: "Can't look up non-identifiers".to_string(),
             }),
@@ -556,6 +569,8 @@ impl TypeCheck for VariableNode {
 pub struct AssignmentNode {
     name: Token,
     value: Box<Expr>,
+	distance: Option<usize>,
+	index: usize,
 }
 
 impl Evaluation for AssignmentNode {
@@ -577,7 +592,12 @@ impl Evaluation for AssignmentNode {
                 return Err(EvaluationError { message });
             }
         };
-        envr.assign(var_name, value_to_store)?;
+		if let Some(dist) = self.distance {
+			if TRACE { println!("Assigning {} with distance {}",&var_name,dist);}
+			envr.assign_with_distance(var_name, value_to_store, dist)?;
+		} else {
+			envr.assign(var_name, value_to_store)?;
+		}
         Ok(ReturnValue::None)
     }
 }
@@ -667,7 +687,7 @@ impl Expr {
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Expr {
         let node = CallNode {
-            callee: Box::new(callee),
+            callee: Box::new(callee),						
             paren,
             args,
         };
@@ -691,13 +711,18 @@ impl Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
 
-    pub fn variable(name: Token) -> Expr {
-        Expr::Variable(VariableNode { name, index: 0 })
+    pub fn variable(name: Token, distance: Option<usize>, index: usize) -> Expr {
+        Expr::Variable(
+			VariableNode { 
+				name, distance, index,
+			})
     }
 
-    pub fn assignment(name: Token, new_value: Expr) -> Expr {
+    pub fn assignment(name: Token, new_value: Expr, distance: Option<usize>, index: usize) -> Expr {
         Expr::Assignment(AssignmentNode {
             name,
+			distance,
+			index,
             value: Box::new(new_value),
         })
     }

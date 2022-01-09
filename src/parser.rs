@@ -311,8 +311,7 @@ impl Parser {
 		if matches!(self.previous().token_type, TokenType::Var) {
 			decl_type = DeclarationType::Var;
 		}
-		
-			
+					
         let v: Token = self.consume_identifier("Expect variable name")?;
 		let variable_name = v.identifier_string();
         
@@ -344,7 +343,7 @@ impl Parser {
             }
 
             if self.matches(&[TokenType::Equal]) {
-                let initializer = self.expression()?;
+                let initializer = self.expression(symbols)?;
                 let inferred_type_result = initializer.expected_type();
                 match inferred_type_result {
                     Err(type_error) => {} // do nothing for now
@@ -396,7 +395,7 @@ impl Parser {
         } else {
             // infer data type
             if self.matches(&[TokenType::Equal]) {
-                let initializer = self.expression()?;
+                let initializer = self.expression(symbols)?;
                 let inferred_type = match initializer.expected_type() {
                     Err(type_error) => {
                         self.error(ParseError {
@@ -480,7 +479,7 @@ impl Parser {
         let location = self.previous();
 
         // for now don't allow empty returns
-        let return_expr = self.expression()?;
+        let return_expr = self.expression(symbols)?;
         self.consume(TokenType::SemiColon, "expect ';' after return statement.")?;
 
         if let Ok(ste) = symbols.lookup("RETURN_TYPE") {
@@ -514,14 +513,14 @@ impl Parser {
     }
 
     fn expression_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let expr = self.expression()?;
+        let expr = self.expression(symbols)?;
         self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::expression_stmt(expr))
     }
 
     fn if_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        let condition = self.expression()?;
+        let condition = self.expression(symbols)?;
 
         self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
         let then_branch = self.block_statement(symbols)?;
@@ -536,14 +535,14 @@ impl Parser {
 
     fn while_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        let condition = self.expression()?;
+        let condition = self.expression(symbols)?;
         self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
         let body = self.block_statement(symbols)?;
         Ok(Stmt::while_stmt(condition, body))
     }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let expr = self.expression()?;		
+        let expr = self.expression(symbols)?;		
         self.consume(TokenType::SemiColon, "Expected ';'")?;		
         Ok(Stmt::print_stmt(expr))
     }
@@ -569,18 +568,27 @@ impl Parser {
         Ok(Stmt::block_stmt(stmt_list, local_symbols))
     }
 
-    fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.assignment()
+    fn expression(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        self.assignment(symbols)
     }
 
-    fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let assignee = self.or()?;
+    fn assignment(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let assignee = self.or(symbols)?;
         // Check for special assignment operator
         if self.matches(&[TokenType::ColonEqual]) {
             let change = self.previous();
-            let new_value = self.assignment()?;
-            return match assignee {
-                Expr::Variable(ref node) => Ok(Expr::assignment(node.name.clone(), new_value)),
+            let new_value = self.assignment(symbols)?;
+            return match assignee {				
+                Expr::Variable(ref node) => {					
+					let distance = symbols.distance(&node.name.identifier_string(),0);
+					let index = 0;
+					Ok(
+						Expr::assignment(node.name.clone(), 
+							new_value, 
+							distance, 
+							index)
+					)
+				},
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(ParseError { t: change, message })
@@ -590,90 +598,90 @@ impl Parser {
         Ok(assignee) // if we get here it's an r-value!
     }
 	
-	fn or(&mut self) -> Result<Expr, ParseError> {
-		let mut expr = self.and()?;
+	fn or(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+		let mut expr = self.and(symbols)?;
 		while self.matches(&[TokenType::Or]) {
 			let operator  = self.previous();
-			let right = self.and()?;
+			let right = self.and(symbols)?;
 			expr = Expr::logical(expr, operator, right);			
 		}
 		Ok(expr)		
 	}
 	
-	fn and(&mut self) -> Result<Expr, ParseError> {
-		let mut expr = self.equality()?;
+	fn and(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+		let mut expr = self.equality(symbols)?;
 		while self.matches(&[TokenType::And]) {
 			let operator = self.previous();
-			let right = self.equality()?;
+			let right = self.equality(symbols)?;
 			expr = Expr::logical(expr, operator, right);						
 		}
 		Ok(expr)
 	}
 
-    fn equality(&mut self) -> Result<Expr, ParseError> {
+    fn equality(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.comparison()?;		
+        let mut expr = self.comparison(symbols)?;		
 		
         while self.matches(&[LessGreater, Equal]) {
             let operator: Token = self.previous();
-            let right: Expr = self.comparison()?;
+            let right: Expr = self.comparison(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, ParseError> {
+    fn comparison(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.term()?;
+        let mut expr = self.term(symbols)?;
         while self.matches(&[Less, LessEqual, Greater, GreaterEqual]) {
             let operator = self.previous();
-            let right = self.term()?;
+            let right = self.term(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.factor()?;		
+    fn term(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let mut expr = self.factor(symbols)?;
 		
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous(); // a + or  -
-            let right = self.factor()?;
+            let right = self.factor(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.unary()?; // get any leading - or 'not'		
+    fn factor(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let mut expr = self.unary(symbols)?; // get any leading - or 'not'
         while self.matches(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous();
-            let right = self.unary()?;
+            let right = self.unary(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, ParseError> {
+    fn unary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         if self.matches(&[TokenType::Not, TokenType::Minus]) {
             let operator = self.previous();
-            let right = self.unary()?;
+            let right = self.unary(symbols)?;
             return Ok(Expr::unary(operator, right));
         }
 
-        self.call()
+        self.call(symbols)
     }
 
-    fn call(&mut self) -> Result<Expr, ParseError> {
+    fn call(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
 
         // Possibly the start of a function call or just a bare
         // primary expression.
-        let mut expr = self.primary()?;
+        let mut expr = self.primary(symbols)?;
         loop {
             if self.matches(&[LeftParen]) {
                 // replace the expression with the full function call
-                expr = self.finish_call(expr)?;
+                expr = self.finish_call(expr, symbols)?;
             } else {
                 break;
             }
@@ -681,14 +689,14 @@ impl Parser {
         Ok(expr)
     }
 
-    fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+    fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
 
         let mut args: Vec<Expr> = Vec::new();
 
         if !self.check(&RightParen) {
             loop {
-                let next_arg = self.expression()?;
+                let next_arg = self.expression(symbols)?;
                 args.push(next_arg);
                 if args.len() >= 255 {
                     let parse_error = ParseError {
@@ -706,7 +714,7 @@ impl Parser {
         Ok(Expr::call(callee, paren, args))
     }
 
-    fn primary(&mut self) -> Result<Expr, ParseError> {
+    fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         match self.peek().token_type {
             True | False | Nil => {
@@ -723,11 +731,13 @@ impl Parser {
             }
             Identifier(name) => {
                 self.advance();
-                Ok(Expr::variable(self.previous()))
+				let distance = symbols.distance(&name,0);
+				let index = 0;
+                Ok(Expr::variable(self.previous(), distance, index))
             }
             LeftParen => {
                 self.advance();
-                let expr = self.expression()?;
+                let expr = self.expression(symbols)?;
                 self.consume(RightParen, "Expect ')' after expression.")?;
                 Ok(Expr::grouping(expr))
             }

@@ -1,62 +1,46 @@
 use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::expression::EvaluationError;
-use crate::statement::ExecutionError;
-use crate::types::DataValue;
-use crate::types::ReturnValue;
 
-// Consider using SlotMap here or return &ValueType instead
+
+use crate::types::ReturnValue;
+const TRACE:bool = true;
+
 #[derive(Clone, Debug)]
 pub struct Environment {
-    frames: Vec<HashMap<String, DataValue>>,
-    callable_frames: Vec<HashMap<String, ReturnValue>>,
-    current_frame: usize,
-    //parent: Option<&'a Environment<'a>>,
+    parent: Option<Rc<RefCell<Environment>>>,
+	// TODO replace this with an indexable container
+	storage: HashMap<String, ReturnValue>,    
 }
 
 impl Environment {
+
     pub fn new() -> Environment {
-        let mut first_frame = Environment {
-            frames: Vec::new(),
-            callable_frames: Vec::new(),
-            current_frame: 0,
-        };
-        first_frame.frames.push(HashMap::new());
-        first_frame.callable_frames.push(HashMap::new());
-        first_frame
+		Environment {
+			storage: HashMap::new(),
+			parent: None,
+		}        
     }
 
-    pub fn extend(&mut self) -> usize {
-        self.current_frame += 1;
-        if self.frames.len() <= self.current_frame {
-            self.frames.push(HashMap::new());
-            self.callable_frames.push(HashMap::new());
-        }
-        self.current_frame
+    pub fn extend(outer: Rc<RefCell<Environment>>) -> Self{
+		if TRACE { println!("Extending with enclosing env.");}
+		Self{
+			parent: Some(outer),
+			storage: HashMap::new(),
+		}		        
     }
 
-    pub fn retract(&mut self) -> usize {
-        if self.current_frame == 0 {
-            panic!("Can't leave the base environment!");
-        }
+	pub fn new_local(&self) -> Self {
+		Self{
+				storage: HashMap::new(),
+				parent: Some(Rc::new(RefCell::new(self.clone()))),
+		}
+		
+	}
+	
 
-        self.frames[self.current_frame].clear();
-        self.callable_frames[self.current_frame].clear();
-        self.current_frame -= 1;
-        self.current_frame
-    }
-
-    fn frame_contains(&self, frame: usize, name: &str) -> bool {
-        self.frames[frame].contains_key(name)
-    }
-
-    pub fn current_frame_contains(&self, name: &str) -> bool {
-        self.frames[self.current_frame].contains_key(name)
-    }
-
-    pub fn current_callable_frame_contains(&self, name: &str) -> bool {
-        self.callable_frames[self.current_frame].contains_key(name)
-    }
 
     // A minor convenience for adding callable since they respond to 'name()'
     pub fn define_callable(&mut self, value: ReturnValue) -> usize {
@@ -70,84 +54,94 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: String, value: ReturnValue) -> usize {
-        if let ReturnValue::CallableValue(ref callable) = value {
-            if self.current_callable_frame_contains(&name) {
-                panic!("Function {} already defined. The parser and type checker should have caught this.", &name);
-            }
-            self.callable_frames[self.current_frame].insert(name, value);
-            return self.current_frame;
-        }
-
-        if self.current_frame_contains(&name) {
-            // TODO: Figure out something better
-            panic!("Can't redefine variables! Use assign instead. The parser and type checker should have caught this.");
-            //self.current_frame
-        } else {
-            self.frames[self.current_frame].insert(name, value.get().clone());
-            self.current_frame
-        }
+    pub fn define(&mut self, name: String, value: ReturnValue) -> usize {        
+            self.storage.insert(name, value);
+			// This will be the nth thing define which should
+			// match the simple indexing scheme in the works.
+            return self.storage.len()
+        
     }
 
     // This should always succeed or panic
-    fn set_value(&mut self, frame: usize, name: &str, value: ReturnValue) {
-        if frame >= self.frames.len() {
-            panic!("No stack frame {}", frame);
-        }        
-        if let Some(k) = self.frames[frame].get_mut(name) {
-            *k = value.get().clone();
-        }
+    fn set_value(&mut self,name: &str, value: ReturnValue) {        
+        if let Some(k) = self.storage.get_mut(name) {
+            *k = value;
+        } else {
+			panic!("{} not in local environment",name);
+		}
     }
 
-    // Right now callables aren't assignable
-    pub fn assign(&mut self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
-        let mut frame = self.current_frame;
-        loop {
-            if self.frame_contains(frame, name) {
-                self.set_value(frame, name, value);
-                return Ok(());
-            }
 
-            if 0 == frame {
-                let message = format!("Cannot find '{}' in current scope.", name);
-                return Err(EvaluationError { message });
-            }
-            frame -= 1;
-        }
+    pub fn assign(&mut self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
+		if self.storage.contains_key(name) {
+			self.set_value(name, value);
+			Ok(())
+		 } else {
+			match self.parent {
+				None => {
+					let message = format!("No definition for {}", name);
+					Err( EvaluationError { message })
+				}					
+				Some(ref parent_env) => {
+					let mut env = parent_env.borrow_mut();
+					env.assign(name, value)								
+				}
+			}		
+		}
+	}
+	
+	pub fn assign_with_distance(&mut self, name: &str, value: ReturnValue, distance: usize) -> Result<(), EvaluationError> {		
+		if distance == 0 {
+			Ok(self.set_value(name, value))
+		} else {
+			if let Some(parent_env) = &self.parent{
+				let mut p = parent_env.borrow_mut();
+				p.assign_with_distance(name,value,distance-1)
+			} else {
+				panic!("Distance of {} doesn't match current environment.",distance);
+			}			
+		}		
     }
 
     pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
-        let mut frame = self.current_frame;
-        loop {
-            if let Some(callable) = self.callable_frames[frame].get(name) {
-                return Ok(callable.clone());
-            }
-
-            if let Some(data_value) = self.frames[frame].get(name) {
-                return Ok(ReturnValue::Value(data_value.clone()));
-            }
-
-            if 0 == frame {
-                return Err(EvaluationError {
-                    message: format!("{} not defined.", name),
-                });
-            }
-            frame -= 1;
-        }
+		match self.storage.get(name) {
+			None => {
+				if let Some(enclosing) = &self.parent {
+					let e = enclosing.borrow();
+					e.get(name)
+				 } else {
+					Err(EvaluationError {
+						message: format!("{} not defined.", name)})
+						
+				 }
+			}
+			Some(value) => Ok(value.clone()),
+		}				
     }
-    // For  diagnostics
-    pub fn dump_content(&self) {
-        println!("Current: {:?}", self.current_frame);
-        let mut frame = self.current_frame;
-        loop {
-            let this_frame = &self.frames[frame];
-            println!("{}: {:?}", frame, &this_frame);
-            let this_callable = &self.callable_frames[frame];
-            println!("Callables: {:?}", &this_callable);
-            if 0 == frame {
-                break;
-            }
-            frame -= 1;
-        }
+	
+	pub fn get_with_distance(&self, name: &str, distance: usize) ->Result<ReturnValue, EvaluationError> {
+		if distance == 0 {
+			if let Some(value) = self.storage.get(name) {
+				Ok(value.clone())
+			} else {
+				Err(EvaluationError { message: format!("{} not defined.", name)})
+			}			
+		} else {
+			if let Some(enclosing) = &self.parent {
+				let e = enclosing.borrow();
+				e.get_with_distance(name, distance - 1)
+			} else {
+				panic!("Environments don't match variable resolution distances!");
+			}
+		}
+				
+	}
+			    
+    pub fn dump_content(&self, dist:usize) {	
+        if dist == 0 {println!("== Current environment ----------");}
+		println!("{}: {:?}",dist, self.storage);
+		println!("");
+		if dist == 0 {println!("== Enclosing Environments: ------------");}
+		self.dump_content(dist + 1);		
     }
 }

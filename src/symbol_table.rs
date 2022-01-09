@@ -219,6 +219,23 @@ impl SymbolTable {
             panic!("Value '{}' is not a callable function!", &callable.print());
         }
     }
+	
+	// Distance in scopes from the current scope, or None if it doesn't exist.
+	// For use resolving variable scopes for assignment and variable expressions.	
+	pub fn distance(&self,name: &str, hops:usize) -> Option<usize> {
+		
+		match self.entries.get(name) {
+			Some(ste) => Some(hops),
+			None => {
+				if let Some(outer_scope) = &self.outer {
+                    outer_scope.distance(name, hops + 1)
+                } else {
+					None
+                    
+                }
+			}
+		}
+	}
 
     pub fn lookup(&self, name: &str) -> Result<&SymbolTableEntry, NotDeclaredError> {
         match self.entries.get(name) {

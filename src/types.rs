@@ -107,8 +107,7 @@ impl DataValue {
 #[clonable]
 pub trait Callable: Clone {
     fn call(
-        &mut self,
-        envr: &mut Environment,
+        &mut self,        
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn>;
     fn arity(&self) -> usize;
