@@ -12,7 +12,7 @@ use crate::types::ReturnValue;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const TRACE:bool = true;
+const TRACE:bool = false;
 #[derive(Clone, Debug)]
 pub struct ExecutionError {
     pub message: String,
@@ -202,7 +202,7 @@ impl Executable for BlockStmtNode {
     }
 
     fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {        
-        let mut local_envr = envr.new_local();
+        let mut local_envr = Environment::extend(envr);
         for stmt in &mut self.statements {
             if let Err(early_return) = stmt.execute(&mut local_envr) {
                 match early_return {
@@ -362,8 +362,9 @@ impl Executable for FunStmtNode {
             self.name.identifier_string(),
             ReturnValue::CallableValue(
 				Box::new(
-					UserFunction::new(self.clone(), 
-                        Rc::new(RefCell::new(envr.clone()))))),
+					UserFunction::new(
+						self.clone(), 
+						envr))),
         );
         // The type-checker should have caught situations where we're redefining a function.
         // No other errors should be possible at this point either.
@@ -404,13 +405,13 @@ impl TypeChecking for FunStmtNode {
 #[derive(Clone)]
 pub struct UserFunction {
     declaration: FunStmtNode,
-	closure: Rc<RefCell<Environment>>,
+	closure:&mut Environment, 
 }
 
 impl UserFunction {
 
-    fn new(declaration: FunStmtNode, closure: Rc<RefCell<Environment>>) -> Self {
-        Self { declaration, closure: Rc::clone(&closure) }
+    fn new(declaration: FunStmtNode, closure: &mut Environment) -> Self {		
+        Self { declaration, closure}
     }
 }
 
@@ -435,7 +436,8 @@ impl Callable for UserFunction {
         &mut self,        
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn> {
-        let mut local_envr = Environment::extend(Rc::clone(&self.closure));
+		
+        let mut local_envr = Environment::local_from_closure_ptr(self.closure_ptr);
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
             let param = &self.declaration.params[index];

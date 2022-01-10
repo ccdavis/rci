@@ -18,7 +18,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 pub struct Interpreter {
     pub had_error: bool,

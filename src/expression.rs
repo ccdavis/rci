@@ -11,7 +11,7 @@ use crate::types::DeclarationType;
 
 use std::rc::Rc;
 
-const TRACE:bool = true;
+const TRACE:bool = false;
 
 pub struct EvaluationError {
     pub message: String,
@@ -524,11 +524,11 @@ impl Evaluation for VariableNode {
             TokenType::Identifier(ref name) => {
 				if let Some(dist) = self.distance {										
 					//envr.get(&name)
-					println!("Get {} with dist {}",&name, dist);
-					envr.dump_content(0);
+					if TRACE {println!("Get {} with dist {}",&name, dist);}
+					if TRACE{envr.dump_content(0);}
 					envr.get_with_distance(&name,dist)
 				} else {
-					println!("Get {} without distance!",&name);
+					if TRACE{println!("Get {} without distance!",&name);}
 					envr.get(&name)
 				}
 			},

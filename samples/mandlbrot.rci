@@ -68,6 +68,7 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	return points;
 }
 
+print "Starting";
 val start:number = clock();
 calc(-1.5, -1.0, 1.0, 1.0);
 print "Timer:";

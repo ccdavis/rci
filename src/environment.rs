@@ -6,40 +6,42 @@ use crate::expression::EvaluationError;
 
 
 use crate::types::ReturnValue;
-const TRACE:bool = true;
+const TRACE:bool = false;
+
 
 #[derive(Clone, Debug)]
 pub struct Environment {
-    parent: Option<Rc<RefCell<Environment>>>,
+    parent: Option<Env>,
 	// TODO replace this with an indexable container
-	storage: HashMap<String, ReturnValue>,    
+	storage: RefCell<HashMap<String, ReturnValue>>,    
+}
+
+struct  Env(Rc<Environment>);
+
+impl Env {
+	pub fn global() -> Env {
+		let envr = Environment {
+			parent: None,
+			storage: RefCell::new(HashMap::new()),
+		};
+		Rc::new(envr)		
+    }
+
+    pub fn new(enclosing: Option<Env>) -> Env{
+		let envr = Environment {
+			parent: enclosing,
+			storage: RefCell::new(HashMap::new()),
+		};
+		Rc::new(envr)		
+    }
+	
+	pub fn extend(&self) -> Env {
+		Env::new(Some(Rc::clone(self)))
+	}
+	
 }
 
 impl Environment {
-
-    pub fn new() -> Environment {
-		Environment {
-			storage: HashMap::new(),
-			parent: None,
-		}        
-    }
-
-    pub fn extend(outer: Rc<RefCell<Environment>>) -> Self{
-		if TRACE { println!("Extending with enclosing env.");}
-		Self{
-			parent: Some(outer),
-			storage: HashMap::new(),
-		}		        
-    }
-
-	pub fn new_local(&self) -> Self {
-		Self{
-				storage: HashMap::new(),
-				parent: Some(Rc::new(RefCell::new(self.clone()))),
-		}
-		
-	}
-	
 
 
     // A minor convenience for adding callable since they respond to 'name()'
@@ -82,9 +84,8 @@ impl Environment {
 					let message = format!("No definition for {}", name);
 					Err( EvaluationError { message })
 				}					
-				Some(ref parent_env) => {
-					let mut env = parent_env.borrow_mut();
-					env.assign(name, value)								
+				Some(ref parent_env) => {					
+					parent_env.assign(name, value)								
 				}
 			}		
 		}
@@ -94,9 +95,8 @@ impl Environment {
 		if distance == 0 {
 			Ok(self.set_value(name, value))
 		} else {
-			if let Some(parent_env) = &self.parent{
-				let mut p = parent_env.borrow_mut();
-				p.assign_with_distance(name,value,distance-1)
+			if let Some(parent_env) = &self.parent{				
+				parent_env.assign_with_distance(name,value,distance-1)
 			} else {
 				panic!("Distance of {} doesn't match current environment.",distance);
 			}			
@@ -106,9 +106,8 @@ impl Environment {
     pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
 		match self.storage.get(name) {
 			None => {
-				if let Some(enclosing) = &self.parent {
-					let e = enclosing.borrow();
-					e.get(name)
+				if let Some(enclosing) = &self.parent {					
+					enclosing.get(name)
 				 } else {
 					Err(EvaluationError {
 						message: format!("{} not defined.", name)})
@@ -127,9 +126,8 @@ impl Environment {
 				Err(EvaluationError { message: format!("{} not defined.", name)})
 			}			
 		} else {
-			if let Some(enclosing) = &self.parent {
-				let e = enclosing.borrow();
-				e.get_with_distance(name, distance - 1)
+			if let Some(enclosing) = &self.parent {				
+				enclosing.get_with_distance(name, distance - 1)
 			} else {
 				panic!("Environments don't match variable resolution distances!");
 			}
@@ -142,6 +140,9 @@ impl Environment {
 		println!("{}: {:?}",dist, self.storage);
 		println!("");
 		if dist == 0 {println!("== Enclosing Environments: ------------");}
-		self.dump_content(dist + 1);		
+		if let Some(ref parent_env) = self.parent {			
+			parent_env.dump_content(dist+1);
+			
+		}
     }
 }
