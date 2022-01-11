@@ -1,6 +1,6 @@
 use crate::environment;
-use crate::environment::EnvRc;
 use crate::environment::EnvNode;
+use crate::environment::EnvRc;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
@@ -8,12 +8,12 @@ use crate::symbol_table::*;
 
 use crate::types::DataType;
 use crate::types::DataValue;
-use crate::types::ReturnValue;
 use crate::types::DeclarationType;
+use crate::types::ReturnValue;
 
 use std::rc::Rc;
 
-const TRACE:bool = false;
+const TRACE: bool = false;
 
 pub struct EvaluationError {
     pub message: String,
@@ -41,7 +41,7 @@ pub trait TypeCheck {
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
-	Logical(LogicalNode),
+    Logical(LogicalNode),
     Call(CallNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
@@ -54,7 +54,7 @@ impl Expr {
     pub fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self {
             Expr::Binary(n) => n.evaluate(envr),
-			Expr::Logical(n) => n.evaluate(envr),
+            Expr::Logical(n) => n.evaluate(envr),
             Expr::Call(n) => n.evaluate(envr),
             Expr::Unary(n) => n.evaluate(envr),
             Expr::Grouping(n) => n.evaluate(envr),
@@ -70,7 +70,7 @@ impl Expr {
     pub fn expected_type(&self) -> Result<DataType, TypeError> {
         match self {
             Expr::Binary(n) => n.expected_type(),
-			Expr::Logical(n) => n.expected_type(), 
+            Expr::Logical(n) => n.expected_type(),
             Expr::Unary(n) => n.expected_type(),
             Expr::Grouping(n) => n.expected_type(),
             Expr::Variable(n) => n.expected_type(),
@@ -83,7 +83,7 @@ impl Expr {
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
         match self {
             Expr::Binary(n) => n.determine_type(symbols),
-			Expr::Logical(n) => n.determine_type(symbols),
+            Expr::Logical(n) => n.determine_type(symbols),
             Expr::Call(n) => n.determine_type(symbols),
             Expr::Unary(n) => n.determine_type(symbols),
             Expr::Grouping(n) => n.determine_type(symbols),
@@ -256,63 +256,67 @@ impl TypeCheck for BinaryNode {
     }
 } // impl
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct LogicalNode {
-	left:Box<Expr>,
-	operator: Token,
-	right: Box<Expr>,
+    left: Box<Expr>,
+    operator: Token,
+    right: Box<Expr>,
 }
 
 impl Evaluation for LogicalNode {
+    fn print(&self) -> String {
+        format!("logical-operator {}", self.operator.token_type.print())
+    }
 
-	fn print(&self) -> String {
-		format!("logical-operator {}",self.operator.token_type.print())
-	}
-	
-	fn evaluate(&self, envr:&EnvRc) -> Result<ReturnValue, EvaluationError> {
-			let left_value = self.left.evaluate(envr)?; 			
-			let left_bool_val = match left_value.get() {
-				DataValue::Bool(b) => *b,
-				_ =>  {
-					let message = format!("{}: The 'or' operator requires boolean operands.",&self.operator.pos());
-					return Err( EvaluationError {message} );
-				}				
-			};
-			
-			if matches!(self.operator.token_type, TokenType::Or) {
-				if left_bool_val {  
-					return Ok(left_value);
-				}										
-			} else { // an 'and'
-				if left_bool_val == false {
-					return Ok(left_value);
-				}				
-			}
-			
-			self.right.evaluate(envr)					
-	}
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
+        let left_value = self.left.evaluate(envr)?;
+        let left_bool_val = match left_value.get() {
+            DataValue::Bool(b) => *b,
+            _ => {
+                let message = format!(
+                    "{}: The 'or' operator requires boolean operands.",
+                    &self.operator.pos()
+                );
+                return Err(EvaluationError { message });
+            }
+        };
+
+        if matches!(self.operator.token_type, TokenType::Or) {
+            if left_bool_val {
+                return Ok(left_value);
+            }
+        } else {
+            // an 'and'
+            if left_bool_val == false {
+                return Ok(left_value);
+            }
+        }
+
+        self.right.evaluate(envr)
+    }
 }
 
 impl TypeCheck for LogicalNode {
+    fn expected_type(&self) -> Result<DataType, TypeError> {
+        Ok(DataType::Unresolved)
+    }
 
-	fn expected_type(&self) -> Result<DataType, TypeError> {
-		Ok(DataType::Unresolved)
-	}
-	
-	fn determine_type(&self, symbols:&SymbolTable) -> Result<DataType, TypeError> {
-		let right_type = self.right.determine_type(symbols)?;
-		let left_type = self.left.determine_type(symbols)?;
-		if matches!(left_type, DataType::Bool) &&
-			matches!(right_type, DataType::Bool) {
-				Ok(DataType::Bool)
-			}else {
-				let message = format!("{} Operands of a logical operator must be boolean. Got {}, {} instead.",
-					&self.operator.pos(), &left_type, &right_type) ;
-				Err( TypeError { message })
-			}					
-	}		
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+        let right_type = self.right.determine_type(symbols)?;
+        let left_type = self.left.determine_type(symbols)?;
+        if matches!(left_type, DataType::Bool) && matches!(right_type, DataType::Bool) {
+            Ok(DataType::Bool)
+        } else {
+            let message = format!(
+                "{} Operands of a logical operator must be boolean. Got {}, {} instead.",
+                &self.operator.pos(),
+                &left_type,
+                &right_type
+            );
+            Err(TypeError { message })
+        }
+    }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct CallNode {
@@ -512,7 +516,7 @@ impl TypeCheck for UnaryNode {
 #[derive(Clone, Debug)]
 pub struct VariableNode {
     pub name: Token,
-	pub distance: Option<usize>,
+    pub distance: Option<usize>,
     pub index: usize,
 }
 
@@ -524,16 +528,22 @@ impl Evaluation for VariableNode {
     fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self.name.token_type {
             TokenType::Identifier(ref name) => {
-				if let Some(dist) = self.distance {										
-					//envr.get(&name)
-					if TRACE {println!("Get {} with dist {}",&name, dist);}
-					if TRACE{envr.dump_content(0);}
-					envr.get_with_distance(&name,dist)
-				} else {
-					if TRACE{println!("Get {} without distance!",&name);}
-					envr.get(&name)
-				}
-			},
+                if let Some(dist) = self.distance {
+                    //envr.get(&name)
+                    if TRACE {
+                        println!("Get {} with dist {}", &name, dist);
+                    }
+                    if TRACE {
+                        envr.dump_content(0);
+                    }
+                    envr.get_with_distance(&name, dist)
+                } else {
+                    if TRACE {
+                        println!("Get {} without distance!", &name);
+                    }
+                    envr.get(&name)
+                }
+            }
             _ => Err(EvaluationError {
                 message: "Can't look up non-identifiers".to_string(),
             }),
@@ -571,8 +581,8 @@ impl TypeCheck for VariableNode {
 pub struct AssignmentNode {
     name: Token,
     value: Box<Expr>,
-	distance: Option<usize>,
-	index: usize,
+    distance: Option<usize>,
+    index: usize,
 }
 
 impl Evaluation for AssignmentNode {
@@ -594,12 +604,14 @@ impl Evaluation for AssignmentNode {
                 return Err(EvaluationError { message });
             }
         };
-		if let Some(dist) = self.distance {
-			if TRACE { println!("Assigning {} with distance {}",&var_name,dist);}
-			envr.assign_with_distance(var_name, value_to_store, dist)?;
-		} else {
-			envr.assign(var_name, value_to_store)?;
-		}
+        if let Some(dist) = self.distance {
+            if TRACE {
+                println!("Assigning {} with distance {}", &var_name, dist);
+            }
+            envr.assign_with_distance(var_name, value_to_store, dist)?;
+        } else {
+            envr.assign(var_name, value_to_store)?;
+        }
         Ok(ReturnValue::None)
     }
 }
@@ -635,16 +647,17 @@ impl TypeCheck for AssignmentNode {
 		};
 
         let to_type = match symbols.lookup(&assignee_name) {
-            Ok(ref ste) =>{
-				if matches!(ste.entry_type, DeclarationType::Val) {
-					let message = format!(
-						"Type error at {}, {}: Can't assign to a 'val'. Only 'var' is mutable.",
-						self.name.line, self.name.column);
-						
-					return Err(TypeError { message });
-				}			
-				ste.data_type.clone()
-			}
+            Ok(ref ste) => {
+                if matches!(ste.entry_type, DeclarationType::Val) {
+                    let message = format!(
+                        "Type error at {}, {}: Can't assign to a 'val'. Only 'var' is mutable.",
+                        self.name.line, self.name.column
+                    );
+
+                    return Err(TypeError { message });
+                }
+                ste.data_type.clone()
+            }
             Err(not_declared) => {
                 let message = format!(
                     "Type error at {}, {}: {}",
@@ -653,8 +666,7 @@ impl TypeCheck for AssignmentNode {
                 return Err(TypeError { message });
             }
         };
-		
-		
+
         if assign_type == to_type {
             Ok(DataType::Empty)
         } else {
@@ -676,20 +688,18 @@ impl Expr {
         };
         Expr::Binary(node)
     }
-	
-	pub fn logical(l:Expr, op: Token, r:Expr) -> Expr {
-		Expr::Logical(
-			LogicalNode {
-				left: Box::new(l),
-				operator: op,
-				right: Box::new(r),
-			}
-		)
-	}
+
+    pub fn logical(l: Expr, op: Token, r: Expr) -> Expr {
+        Expr::Logical(LogicalNode {
+            left: Box::new(l),
+            operator: op,
+            right: Box::new(r),
+        })
+    }
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Expr {
         let node = CallNode {
-            callee: Box::new(callee),						
+            callee: Box::new(callee),
             paren,
             args,
         };
@@ -714,17 +724,18 @@ impl Expr {
     }
 
     pub fn variable(name: Token, distance: Option<usize>, index: usize) -> Expr {
-        Expr::Variable(
-			VariableNode { 
-				name, distance, index,
-			})
+        Expr::Variable(VariableNode {
+            name,
+            distance,
+            index,
+        })
     }
 
     pub fn assignment(name: Token, new_value: Expr, distance: Option<usize>, index: usize) -> Expr {
         Expr::Assignment(AssignmentNode {
             name,
-			distance,
-			index,
+            distance,
+            index,
             value: Box::new(new_value),
         })
     }
@@ -771,7 +782,7 @@ impl Expr {
             Variable(n) => n.print(),
             Assignment(n) => n.print(),
             Call(n) => n.print(),
-			Logical(n) => n.print(),
+            Logical(n) => n.print(),
 
             _ => panic!("Not implemented"),
         };

@@ -106,10 +106,7 @@ impl DataValue {
 
 #[clonable]
 pub trait Callable: Clone {
-    fn call(
-        &mut self,        
-        arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, EarlyReturn>;
+    fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn>;
     fn arity(&self) -> usize;
     fn params(&self) -> Vec<Box<SymbolTableEntry>>;
     fn return_type(&self) -> &DataType;
@@ -146,8 +143,6 @@ impl ReturnValue {
     pub fn new_val(value: DataValue) -> Self {
         ReturnValue::Value(value)
     }
-	
-	
 
     // Helper for internal use in standard library
     pub fn get_as_number(&self) -> Result<f64, ExecutionError> {

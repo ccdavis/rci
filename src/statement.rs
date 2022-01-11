@@ -1,6 +1,6 @@
 use crate::environment;
-use crate::environment::EnvRc;
 use crate::environment::EnvNode;
+use crate::environment::EnvRc;
 use crate::expression::Expr;
 use crate::expression::TypeError;
 use crate::lex::Token;
@@ -11,23 +11,23 @@ use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-const TRACE:bool = false;
+const TRACE: bool = false;
 #[derive(Clone, Debug)]
 pub struct ExecutionError {
     pub message: String,
 }
 
 // Use the '?' early return mechanism to propagate results of errors similar to exceptions.
-// Also use it to abandon execution in a function body and return values when executing the 
+// Also use it to abandon execution in a function body and return values when executing the
 // 'return' statement, or exit a block when executing 'break'.
 #[derive(Clone, Debug)]
 pub enum EarlyReturn {
-	BreakStatement,
+    BreakStatement,
     ReturnStatement(ReturnValue),
-    Error(ExecutionError),    
+    Error(ExecutionError),
 }
 
 impl EarlyReturn {
@@ -63,7 +63,7 @@ pub enum Stmt {
     Fun(FunStmtNode),
     While(WhileStmtNode),
     Return(ReturnStmtNode),
-	Break(BreakStmtNode),
+    Break(BreakStmtNode),
     NoOp,
 }
 
@@ -94,7 +94,7 @@ impl Stmt {
             If(stmt) => stmt.execute(envr),
             While(stmt) => stmt.execute(envr),
             Return(stmt) => stmt.execute(envr),
-			Break(stmt) => stmt.execute(envr),
+            Break(stmt) => stmt.execute(envr),
             _ => Err(EarlyReturn::Error(ExecutionError {
                 message: " Statement type not implemented.".to_string(),
             })),
@@ -112,7 +112,7 @@ impl Stmt {
             If(n) => n.check_types(symbols),
             While(n) => n.check_types(symbols),
             Return(n) => n.check_types(symbols),
-			Break(n) => n.check_types(symbols),
+            Break(n) => n.check_types(symbols),
             _ => Err(TypeError {
                 message: " Statement type not type-checked yet.".to_string(),
             }),
@@ -203,19 +203,19 @@ impl Executable for BlockStmtNode {
         format!("block-stmt: {}", &stmts)
     }
 
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {        
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         let local_envr = environment::extend(envr);
         for stmt in &mut self.statements {
             if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
                     EarlyReturn::BreakStatement => break,
-                    EarlyReturn::ReturnStatement(_) => {                        
+                    EarlyReturn::ReturnStatement(_) => {
                         return Err(early_return);
                     }
                     EarlyReturn::Error(_) => return Err(early_return),
                 }
             }
-        }        
+        }
         Ok(())
     }
 }
@@ -347,7 +347,7 @@ pub struct FunStmtNode {
     params: Vec<Box<SymbolTableEntry>>,
     return_type: DataType,
     body: Vec<Stmt>,
-    symbols: SymbolTable,	
+    symbols: SymbolTable,
 }
 
 impl Executable for FunStmtNode {
@@ -359,14 +359,12 @@ impl Executable for FunStmtNode {
     // function happens in the Expression 'Call' node.
     // which then calls back to the implementation of Callable (UserFunction) here.
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-		if TRACE { println!("Define function {}",self.name.identifier_string());}
+        if TRACE {
+            println!("Define function {}", self.name.identifier_string());
+        }
         envr.define(
             self.name.identifier_string(),
-            ReturnValue::CallableValue(
-				Box::new(
-					UserFunction::new(
-						self.clone(), 
-						Rc::clone(envr)))),
+            ReturnValue::CallableValue(Box::new(UserFunction::new(self.clone(), Rc::clone(envr)))),
         );
         // The type-checker should have caught situations where we're redefining a function.
         // No other errors should be possible at this point either.
@@ -407,13 +405,15 @@ impl TypeChecking for FunStmtNode {
 #[derive(Clone)]
 pub struct UserFunction {
     declaration: FunStmtNode,
-	closure: EnvRc, 
+    closure: EnvRc,
 }
 
 impl UserFunction {
-
-    fn new(declaration: FunStmtNode, closure: EnvRc) -> Self {		
-        Self { declaration, closure}
+    fn new(declaration: FunStmtNode, closure: EnvRc) -> Self {
+        Self {
+            declaration,
+            closure,
+        }
     }
 }
 
@@ -434,11 +434,7 @@ impl Callable for UserFunction {
         self.declaration.params.clone()
     }
 
-    fn call(
-        &mut self,        
-        arguments: Vec<ReturnValue>,
-    ) -> Result<ReturnValue, EarlyReturn> {
-		
+    fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn> {
         let local_envr = environment::extend(&self.closure);
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
@@ -447,17 +443,19 @@ impl Callable for UserFunction {
         }
 
         let mut return_value = ReturnValue::Value(DataValue::Unresolved);
-		if TRACE {println!("In function {}", self.name());}
+        if TRACE {
+            println!("In function {}", self.name());
+        }
         let decl = &mut self.declaration;
-		
+
         for stmt in &mut decl.body {
             // Catch any early returns from a return statement, otherwise
             // return the error as normal.
             if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
                     EarlyReturn::ReturnStatement(retval) => {
-                        return_value = retval;                        
-						return Ok(return_value);
+                        return_value = retval;
+                        return Ok(return_value);
                     }
                     EarlyReturn::Error(_) => return Err(early_return),
                     EarlyReturn::BreakStatement => {
@@ -475,7 +473,7 @@ impl Callable for UserFunction {
             );
 
             return Err(EarlyReturn::error(message));
-        }        
+        }
         Ok(return_value)
     }
 }
@@ -515,30 +513,28 @@ impl TypeChecking for ReturnStmtNode {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 struct BreakStmtNode {
-	location: Token,
+    location: Token,
 }
 
 impl Executable for BreakStmtNode {
+    fn print(&self) -> String {
+        "break-statement".to_string()
+    }
 
-	fn print(&self) ->String {
-		"break-statement".to_string()
-	}
-	
-	// The parser should prevent 'break' outside of a block
-	fn execute(&mut self, envr:&EnvRc) -> Result<(), EarlyReturn> {
-		Err(EarlyReturn::BreakStatement)
-	}
+    // The parser should prevent 'break' outside of a block
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
+        Err(EarlyReturn::BreakStatement)
+    }
 }
 
 impl TypeChecking for BreakStmtNode {
-
-	// We could add a special symbol to any block's symbol table and then the
-	// break statement could check if it was valid ...
-	fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
-		Ok(())
-	}
+    // We could add a special symbol to any block's symbol table and then the
+    // break statement could check if it was valid ...
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -654,10 +650,10 @@ impl Stmt {
             return_type,
         })
     }
-	
-	pub fn break_stmt(location: Token) -> Stmt {
-		Stmt::Break(BreakStmtNode { location })
-	}
+
+    pub fn break_stmt(location: Token) -> Stmt {
+        Stmt::Break(BreakStmtNode { location })
+    }
 
     pub fn fun_stmt(
         name: Token,

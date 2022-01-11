@@ -69,13 +69,12 @@ impl Parser {
             // fn variant_eq(a: &Op, b: &Op) -> bool {
             //    std::mem::discriminant(a) == std::mem::discriminant(b)
             //	}
-			let actual = self.peek().token_type.print();
-			let expected = token_type.print();			
+            let actual = self.peek().token_type.print();
+            let expected = token_type.print();
             self.peek().token_type.print() == token_type.print()
         }
-		
     }
-	
+
     fn advance(&mut self) -> Token {
         if !self.is_finished() {
             self.current += 1
@@ -99,7 +98,7 @@ impl Parser {
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, ParseError> {
-        if self.check(&token_type) {			
+        if self.check(&token_type) {
             Ok(self.advance())
         } else {
             Err(ParseError {
@@ -131,9 +130,10 @@ impl Parser {
             }
 
             match self.peek().token_type {
-                Class | Fun | Var | Val | For | If | While | Print |
-				Break | Return => return,
-                _ => { self.advance();}
+                Class | Fun | Var | Val | For | If | While | Print | Break | Return => return,
+                _ => {
+                    self.advance();
+                }
             }
         }
     }
@@ -269,7 +269,7 @@ impl Parser {
             &return_type,
             &DataValue::Unresolved,
         );
-		
+
         local_symbols.add(return_type_entry);
 
         for param in &parameters {
@@ -307,14 +307,14 @@ impl Parser {
 
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		let mut decl_type = DeclarationType::Val;
-		if matches!(self.previous().token_type, TokenType::Var) {
-			decl_type = DeclarationType::Var;
-		}
-					
+        let mut decl_type = DeclarationType::Val;
+        if matches!(self.previous().token_type, TokenType::Var) {
+            decl_type = DeclarationType::Var;
+        }
+
         let v: Token = self.consume_identifier("Expect variable name")?;
-		let variable_name = v.identifier_string();
-        
+        let variable_name = v.identifier_string();
+
         if self.matches(&[TokenType::Colon]) {
             // Type may be a built-in type or an identifier for a user-defined type
             let type_name = self.advance();
@@ -362,22 +362,22 @@ impl Parser {
                 }
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
-				let entry = if matches!(decl_type, DeclarationType::Var){
-					SymbolTableEntry::new_var(
-						&v,
-						&variable_name,
-						&valid_type_name,
-						&DataValue::Unresolved,
-					)
-				} else {
-					SymbolTableEntry::new_val(
-						&v,
-						&variable_name,
-						&valid_type_name,
-						&DataValue::Unresolved,
-					)
-				};
-					
+                let entry = if matches!(decl_type, DeclarationType::Var) {
+                    SymbolTableEntry::new_var(
+                        &v,
+                        &variable_name,
+                        &valid_type_name,
+                        &DataValue::Unresolved,
+                    )
+                } else {
+                    SymbolTableEntry::new_val(
+                        &v,
+                        &variable_name,
+                        &valid_type_name,
+                        &DataValue::Unresolved,
+                    )
+                };
+
                 if symbols.add(entry) {
                     Ok(Stmt::var_stmt(v, valid_type_name, initializer))
                 } else {
@@ -412,21 +412,21 @@ impl Parser {
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
                 let entry = if matches!(decl_type, DeclarationType::Var) {
-					SymbolTableEntry::new_var(
-						&v,
-						&variable_name,
-						&inferred_type,
-						&DataValue::Unresolved,
-					)
-				} else {
-					SymbolTableEntry::new_val(
-						&v,
-						&variable_name,
-						&inferred_type,
-						&DataValue::Unresolved,
-					)
-				};
-				
+                    SymbolTableEntry::new_var(
+                        &v,
+                        &variable_name,
+                        &inferred_type,
+                        &DataValue::Unresolved,
+                    )
+                } else {
+                    SymbolTableEntry::new_val(
+                        &v,
+                        &variable_name,
+                        &inferred_type,
+                        &DataValue::Unresolved,
+                    )
+                };
+
                 if symbols.add(entry) {
                     Ok(Stmt::var_stmt(v, inferred_type, initializer))
                 } else {
@@ -466,11 +466,10 @@ impl Parser {
         if self.matches(&[Return]) {
             return self.return_statement(symbols);
         }
-		
-		if self.matches(&[Break]) {
-			return self.break_statement(symbols);
-		}
-		
+
+        if self.matches(&[Break]) {
+            return self.break_statement(symbols);
+        }
 
         self.expression_statement(symbols)
     }
@@ -495,15 +494,13 @@ impl Parser {
             })
         }
     }
-	
-	fn break_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let location = self.previous();       
+
+    fn break_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        let location = self.previous();
         self.consume(TokenType::SemiColon, "expect ';' after 'break' statement.")?;
 
         if let Ok(ste) = symbols.lookup("IN_BLOCK") {
-            Ok(Stmt::break_stmt(
-                location,                                
-            ))
+            Ok(Stmt::break_stmt(location))
         } else {
             Err(ParseError {
                 t: location,
@@ -542,24 +539,24 @@ impl Parser {
     }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let expr = self.expression(symbols)?;		
-        self.consume(TokenType::SemiColon, "Expected ';'")?;		
+        let expr = self.expression(symbols)?;
+        self.consume(TokenType::SemiColon, "Expected ';'")?;
         Ok(Stmt::print_stmt(expr))
     }
 
     fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
-		let block_location = self.previous();
+        let block_location = self.previous();
         let mut local_symbols = symbols.extend();
-		let block_entry = SymbolTableEntry::new_val(
+        let block_entry = SymbolTableEntry::new_val(
             &block_location,
             "IN_BLOCK",
             &DataType::Empty,
             &DataValue::Unresolved,
         );
-		
-        local_symbols.add(block_entry);		
+
+        local_symbols.add(block_entry);
         while !self.check(&RightBrace) && !self.is_finished() {
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
@@ -578,17 +575,17 @@ impl Parser {
         if self.matches(&[TokenType::ColonEqual]) {
             let change = self.previous();
             let new_value = self.assignment(symbols)?;
-            return match assignee {				
-                Expr::Variable(ref node) => {					
-					let distance = symbols.distance(&node.name.identifier_string(),0);
-					let index = 0;
-					Ok(
-						Expr::assignment(node.name.clone(), 
-							new_value, 
-							distance, 
-							index)
-					)
-				},
+            return match assignee {
+                Expr::Variable(ref node) => {
+                    let distance = symbols.distance(&node.name.identifier_string(), 0);
+                    let index = 0;
+                    Ok(Expr::assignment(
+                        node.name.clone(),
+                        new_value,
+                        distance,
+                        index,
+                    ))
+                }
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(ParseError { t: change, message })
@@ -597,31 +594,31 @@ impl Parser {
         } // assignment operator
         Ok(assignee) // if we get here it's an r-value!
     }
-	
-	fn or(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-		let mut expr = self.and(symbols)?;
-		while self.matches(&[TokenType::Or]) {
-			let operator  = self.previous();
-			let right = self.and(symbols)?;
-			expr = Expr::logical(expr, operator, right);			
-		}
-		Ok(expr)		
-	}
-	
-	fn and(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-		let mut expr = self.equality(symbols)?;
-		while self.matches(&[TokenType::And]) {
-			let operator = self.previous();
-			let right = self.equality(symbols)?;
-			expr = Expr::logical(expr, operator, right);						
-		}
-		Ok(expr)
-	}
+
+    fn or(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let mut expr = self.and(symbols)?;
+        while self.matches(&[TokenType::Or]) {
+            let operator = self.previous();
+            let right = self.and(symbols)?;
+            expr = Expr::logical(expr, operator, right);
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let mut expr = self.equality(symbols)?;
+        while self.matches(&[TokenType::And]) {
+            let operator = self.previous();
+            let right = self.equality(symbols)?;
+            expr = Expr::logical(expr, operator, right);
+        }
+        Ok(expr)
+    }
 
     fn equality(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-        let mut expr = self.comparison(symbols)?;		
-		
+        let mut expr = self.comparison(symbols)?;
+
         while self.matches(&[LessGreater, Equal]) {
             let operator: Token = self.previous();
             let right: Expr = self.comparison(symbols)?;
@@ -643,7 +640,7 @@ impl Parser {
 
     fn term(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         let mut expr = self.factor(symbols)?;
-		
+
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
             let operator = self.previous(); // a + or  -
             let right = self.factor(symbols)?;
@@ -685,7 +682,7 @@ impl Parser {
             } else {
                 break;
             }
-        }		
+        }
         Ok(expr)
     }
 
@@ -722,7 +719,7 @@ impl Parser {
                 Ok(Expr::literal(self.previous()))
             }
             Number(value) => {
-                self.advance();				
+                self.advance();
                 Ok(Expr::literal(self.previous()))
             }
             Str(value) => {
@@ -731,8 +728,8 @@ impl Parser {
             }
             Identifier(name) => {
                 self.advance();
-				let distance = symbols.distance(&name,0);
-				let index = 0;
+                let distance = symbols.distance(&name, 0);
+                let index = 0;
                 Ok(Expr::variable(self.previous(), distance, index))
             }
             LeftParen => {
