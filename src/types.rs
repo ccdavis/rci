@@ -1,4 +1,4 @@
-use crate::environment::Environment;
+use crate::environment::*;
 use crate::expression::EvaluationError;
 use crate::lex::TokenType;
 use crate::statement::EarlyReturn;

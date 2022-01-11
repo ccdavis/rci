@@ -25,14 +25,14 @@ pub struct Interpreter {
     pub had_runtime_error: bool,
     pub had_type_error: bool,
     global_symbols: SymbolTable,
-    global_env: Environment,
+    global_env: environment::EnvRc,
 }
 
 impl Interpreter {
     pub fn init() -> Interpreter {
         let mut global_symbols = symbol_table::SymbolTable::global();
-        let mut global_env = Environment::new();
-        Interpreter::add_standard_library(&mut global_symbols, &mut global_env);
+        let mut global_env = environment::new_global();
+        Interpreter::add_standard_library(&mut global_symbols, &global_env);
 
         Interpreter {
             had_error: false,
@@ -43,7 +43,7 @@ impl Interpreter {
         }
     }
 
-    fn add_standard_library(symbols: &mut SymbolTable, envr: &mut Environment) {
+    fn add_standard_library(symbols: &mut SymbolTable, envr: &environment::EnvRc) {
         // Add standard library functions
         let clock_func = ReturnValue::CallableValue(Box::new(ClockFunc {}));
         symbols.add_library_function(&clock_func);
@@ -81,7 +81,7 @@ impl Interpreter {
         }
 
         for mut stmt in statements {
-            let mut result = stmt.execute(&mut self.global_env);
+            let mut result = stmt.execute(&self.global_env);
             match result {
                 Ok(_) => {}
                 Err(msg) => {

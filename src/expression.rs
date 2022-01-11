@@ -1,4 +1,6 @@
-use crate::environment::Environment;
+use crate::environment;
+use crate::environment::EnvRc;
+use crate::environment::EnvNode;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
@@ -25,7 +27,7 @@ pub trait Evaluation {
     // return the name  of the operation if any and
     // associated expressions.
     fn print(&self) -> String;
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError>;
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError>;
 }
 
 pub trait TypeCheck {
@@ -49,7 +51,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    pub fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self {
             Expr::Binary(n) => n.evaluate(envr),
 			Expr::Logical(n) => n.evaluate(envr),
@@ -109,7 +111,7 @@ impl Evaluation for BinaryNode {
         )
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         use TokenType::*;
         let left = self.left.evaluate(envr)?;
         let right = self.right.evaluate(envr)?;
@@ -267,7 +269,7 @@ impl Evaluation for LogicalNode {
 		format!("logical-operator {}",self.operator.token_type.print())
 	}
 	
-	fn evaluate(&self, envr:&mut Environment) -> Result<ReturnValue, EvaluationError> {
+	fn evaluate(&self, envr:&EnvRc) -> Result<ReturnValue, EvaluationError> {
 			let left_value = self.left.evaluate(envr)?; 			
 			let left_bool_val = match left_value.get() {
 				DataValue::Bool(b) => *b,
@@ -324,7 +326,7 @@ impl Evaluation for CallNode {
         format!("function call: {}", &self.callee.print())
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         // Look up the 'callee' expr which is currently always going to be an identifier primary
         // expression (which is a 'var' expression.) Evaluating it  returns the entry in the
         // environment associated with the identifier and we expect it to be a callable trait
@@ -383,7 +385,7 @@ impl Evaluation for GroupingNode {
         format!("Grouping: {}", &self.expr.print())
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         self.expr.evaluate(envr)
     }
 }
@@ -408,7 +410,7 @@ impl Evaluation for LiteralNode {
         self.value.print()
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         Ok(ReturnValue::Reference(Rc::clone(&self.value)))
     }
 }
@@ -434,7 +436,7 @@ impl Evaluation for UnaryNode {
         format!("{} {}", &self.operator.print(), &self.expr.print())
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         let right = &self.expr.evaluate(envr)?;
 
         match self.operator.token_type {
@@ -519,7 +521,7 @@ impl Evaluation for VariableNode {
         format!("var: {}", &self.name.print())
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self.name.token_type {
             TokenType::Identifier(ref name) => {
 				if let Some(dist) = self.distance {										
@@ -582,7 +584,7 @@ impl Evaluation for AssignmentNode {
         )
     }
 
-    fn evaluate(&self, envr: &mut Environment) -> Result<ReturnValue, EvaluationError> {
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         let value_to_store = self.value.evaluate(envr)?;
 
         let var_name = match self.name.token_type {

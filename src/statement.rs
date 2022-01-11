@@ -1,4 +1,6 @@
-use crate::environment::Environment;
+use crate::environment;
+use crate::environment::EnvRc;
+use crate::environment::EnvNode;
 use crate::expression::Expr;
 use crate::expression::TypeError;
 use crate::lex::Token;
@@ -44,7 +46,7 @@ impl EarlyReturn {
 }
 
 pub trait Executable {
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn>;
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn>;
     fn print(&self) -> String;
 }
 
@@ -81,7 +83,7 @@ impl Stmt {
         }
     }
 
-    pub fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    pub fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         use Stmt::*;
         match self {
             Print(stmt) => stmt.execute(envr),
@@ -128,7 +130,7 @@ impl Executable for PrintStmtNode {
         format!("print-stmt {}", &self.expression.print())
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         match self.expression.evaluate(envr) {
             Ok(value) => {
                 println!("{}", &value.print());
@@ -161,7 +163,7 @@ impl Executable for ExpressionStmtNode {
         format!("expr-stmt {}", &self.expression.print())
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         match self.expression.evaluate(envr) {
             Err(msg) => {
                 let message = format!(
@@ -201,10 +203,10 @@ impl Executable for BlockStmtNode {
         format!("block-stmt: {}", &stmts)
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {        
-        let mut local_envr = Environment::extend(envr);
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {        
+        let local_envr = environment::extend(envr);
         for stmt in &mut self.statements {
-            if let Err(early_return) = stmt.execute(&mut local_envr) {
+            if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
                     EarlyReturn::BreakStatement => break,
                     EarlyReturn::ReturnStatement(_) => {                        
@@ -254,7 +256,7 @@ impl Executable for IfStmtNode {
         )
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         let test = self.condition.evaluate(envr);
         match test {
             Ok(result) => {
@@ -306,7 +308,7 @@ impl Executable for VarStmtNode {
         format!("var-stmt = {}", &self.initializer.print())
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         let evaluated = self.initializer.evaluate(envr);
         match evaluated {
             Ok(value) => {
@@ -356,7 +358,7 @@ impl Executable for FunStmtNode {
     // This adds the function to the interpreter's environment, executing the function declaration.
     // function happens in the Expression 'Call' node.
     // which then calls back to the implementation of Callable (UserFunction) here.
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
 		if TRACE { println!("Define function {}",self.name.identifier_string());}
         envr.define(
             self.name.identifier_string(),
@@ -364,7 +366,7 @@ impl Executable for FunStmtNode {
 				Box::new(
 					UserFunction::new(
 						self.clone(), 
-						envr))),
+						Rc::clone(envr)))),
         );
         // The type-checker should have caught situations where we're redefining a function.
         // No other errors should be possible at this point either.
@@ -405,12 +407,12 @@ impl TypeChecking for FunStmtNode {
 #[derive(Clone)]
 pub struct UserFunction {
     declaration: FunStmtNode,
-	closure:&mut Environment, 
+	closure: EnvRc, 
 }
 
 impl UserFunction {
 
-    fn new(declaration: FunStmtNode, closure: &mut Environment) -> Self {		
+    fn new(declaration: FunStmtNode, closure: EnvRc) -> Self {		
         Self { declaration, closure}
     }
 }
@@ -437,7 +439,7 @@ impl Callable for UserFunction {
         arguments: Vec<ReturnValue>,
     ) -> Result<ReturnValue, EarlyReturn> {
 		
-        let mut local_envr = Environment::local_from_closure_ptr(self.closure_ptr);
+        let local_envr = environment::extend(&self.closure);
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
             let param = &self.declaration.params[index];
@@ -451,7 +453,7 @@ impl Callable for UserFunction {
         for stmt in &mut decl.body {
             // Catch any early returns from a return statement, otherwise
             // return the error as normal.
-            if let Err(early_return) = stmt.execute(&mut local_envr) {
+            if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
                     EarlyReturn::ReturnStatement(retval) => {
                         return_value = retval;                        
@@ -490,7 +492,7 @@ impl Executable for ReturnStmtNode {
         format!("return-statement: {}", &self.expr.print())
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         match self.expr.evaluate(envr) {
             Ok(retval) => Err(EarlyReturn::ReturnStatement(retval)),
             Err(eval_error) => Err(EarlyReturn::error(eval_error.message)),
@@ -525,13 +527,12 @@ impl Executable for BreakStmtNode {
 	}
 	
 	// The parser should prevent 'break' outside of a block
-	fn execute(&mut self, envr:&mut Environment) -> Result<(), EarlyReturn> {
+	fn execute(&mut self, envr:&EnvRc) -> Result<(), EarlyReturn> {
 		Err(EarlyReturn::BreakStatement)
 	}
 }
 
 impl TypeChecking for BreakStmtNode {
-
 
 	// We could add a special symbol to any block's symbol table and then the
 	// break statement could check if it was valid ...
@@ -555,7 +556,7 @@ impl Executable for WhileStmtNode {
         )
     }
 
-    fn execute(&mut self, envr: &mut Environment) -> Result<(), EarlyReturn> {
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         loop {
             match self.condition.evaluate(envr) {
                 Err(eval_err) => return Err(EarlyReturn::error(eval_err.message)),
