@@ -528,8 +528,7 @@ impl Evaluation for VariableNode {
     fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self.name.token_type {
             TokenType::Identifier(ref name) => {
-                if let Some(dist) = self.distance {
-                    //envr.get(&name)
+                if let Some(dist) = self.distance {                    
                     if TRACE {
                         println!("Get {} with dist {}", &name, dist);
                     }

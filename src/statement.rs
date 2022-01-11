@@ -122,32 +122,37 @@ impl Stmt {
 
 #[derive(Clone, Debug)]
 pub struct PrintStmtNode {
-    expression: Expr,
+    expressions: Vec<Expr>,
 }
 
 impl Executable for PrintStmtNode {
     fn print(&self) -> String {
-        format!("print-stmt {}", &self.expression.print())
+        format!("print-stmt {:?}", &self.expressions)
     }
 
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        match self.expression.evaluate(envr) {
-            Ok(value) => {
-                println!("{}", &value.print());
-                Ok(())
-            }
-            Err(msg) => {
-                let message = format!("Execution error on 'print' because of {}", &msg.message);
-                Err(EarlyReturn::error(message))
-            }
-        }
+		for expr in &self.expressions {
+			match expr.evaluate(envr) {
+				Ok(value) => {
+					print!("{}", &value.print());					
+				}
+				Err(msg) => {
+					let message = format!("Execution error on 'print' because of {}", &msg.message);
+					return Err(EarlyReturn::error(message));
+				}
+			}
+		}
+		println!("");
+		Ok(())
     }
 }
 
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
         // print can take any type
-        let expr_type = self.expression.determine_type(symbols)?;
+		for expr in &self.expressions{
+			let expr_type = expr.determine_type(symbols)?;
+		}
 
         Ok(())
     }
@@ -599,8 +604,8 @@ impl TypeChecking for WhileStmtNode {
 }
 
 impl Stmt {
-    pub fn print_stmt(expression: Expr) -> Stmt {
-        Stmt::Print(PrintStmtNode { expression })
+    pub fn print_stmt(expressions: Vec<Expr>) -> Stmt {
+        Stmt::Print(PrintStmtNode { expressions })
     }
 
     pub fn expression_stmt(expression: Expr) -> Stmt {

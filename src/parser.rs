@@ -539,9 +539,16 @@ impl Parser {
     }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+		let mut exprs:Vec<Expr> = Vec::new();
         let expr = self.expression(symbols)?;
+		exprs.push(expr);
+		while  self.matches(&[TokenType::Comma]) {
+			let next_expr = self.expression(symbols)?;
+			exprs.push(next_expr);		
+		}
+		
         self.consume(TokenType::SemiColon, "Expected ';'")?;
-        Ok(Stmt::print_stmt(expr))
+        Ok(Stmt::print_stmt(exprs))
     }
 
     fn block_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
