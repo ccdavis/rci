@@ -55,7 +55,7 @@ impl EnvNode {
     pub fn define(&self, name: String, value: ReturnValue) -> usize {
         let index = self.storage.borrow().len();
         self.storage.borrow_mut().push(value);
-        self.lookup.borrow_mut().insert(name, index);
+        //self.lookup.borrow_mut().insert(name, index);
         index
     }
 
