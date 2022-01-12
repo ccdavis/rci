@@ -6,12 +6,12 @@ use crate::types::*;
 
 use dyn_clonable::*;
 
-fn val_prm(name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
-    Box::new(SymbolTableEntry::new_stdlib_val(name, &data_type))
+fn val_prm(entry_num:usize, name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
+    Box::new(SymbolTableEntry::new_stdlib_val(entry_num,name, &data_type))
 }
 
-fn var_prm(name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
-    Box::new(SymbolTableEntry::new_stdlib_var(name, &data_type))
+fn var_prm(entry_num: usize, name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
+    Box::new(SymbolTableEntry::new_stdlib_var(entry_num,name, &data_type))
 }
 
 #[derive(Clone)]
@@ -60,7 +60,7 @@ impl Callable for SqrFunc {
     }
 
     fn params(&self) -> Vec<Box<SymbolTableEntry>> {
-        vec![val_prm("sqr", DataType::Number)]
+        vec![val_prm(0, "sqr", DataType::Number)]
     }
 
     fn return_type(&self) -> &DataType {

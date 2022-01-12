@@ -517,7 +517,7 @@ impl TypeCheck for UnaryNode {
 pub struct VariableNode {
     pub name: Token,
     pub distance: Option<usize>,
-    pub index: usize,
+    pub index: Option<usize>,
 }
 
 impl Evaluation for VariableNode {
@@ -581,7 +581,7 @@ pub struct AssignmentNode {
     name: Token,
     value: Box<Expr>,
     distance: Option<usize>,
-    index: usize,
+    index: Option<usize>,
 }
 
 impl Evaluation for AssignmentNode {
@@ -722,7 +722,7 @@ impl Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
 
-    pub fn variable(name: Token, distance: Option<usize>, index: usize) -> Expr {
+    pub fn variable(name: Token, distance: Option<usize>, index: Option<usize>) -> Expr {
         Expr::Variable(VariableNode {
             name,
             distance,
@@ -730,7 +730,7 @@ impl Expr {
         })
     }
 
-    pub fn assignment(name: Token, new_value: Expr, distance: Option<usize>, index: usize) -> Expr {
+    pub fn assignment(name: Token, new_value: Expr, distance: Option<usize>, index: Option<usize>) -> Expr {
         Expr::Assignment(AssignmentNode {
             name,
             distance,

@@ -17,6 +17,7 @@ pub struct ParseError {
 }
 
 impl Parser {
+
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
@@ -221,7 +222,7 @@ impl Parser {
                 };
 
                 // Add param to local symbol table
-                let entry = SymbolTableEntry::new_param(declaration_type, param_name, param_type);
+                let entry = SymbolTableEntry::new_param(parameters.len(), declaration_type, param_name, param_type);
                 parameters.push(Box::new(entry));
                 if !self.matches(&[Comma]) {
                     break;
@@ -251,6 +252,7 @@ impl Parser {
         // 'function_name' has the actual str with the name.
         // The symbol table doesn't need the body of the function.
         let entry = SymbolTableEntry::new_fun(
+			symbols.entries.len(),
             Some(name.clone()),
             &function_name,
             parameters.clone(),
@@ -263,7 +265,9 @@ impl Parser {
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more eadditions and extensions.
         let mut local_symbols = symbols.extend();
+		
         let return_type_entry = SymbolTableEntry::new_var(
+			local_symbols.entries.len(),
             &return_type_location,
             "RETURN_TYPE",
             &return_type,
@@ -273,7 +277,9 @@ impl Parser {
         local_symbols.add(return_type_entry);
 
         for param in &parameters {
-            local_symbols.add(*param.clone());
+			let mut p =  *param.clone();
+			p.entry_number = local_symbols.entries.len();			
+            local_symbols.add(p);
         }
 
         // get body
@@ -362,15 +368,19 @@ impl Parser {
                 }
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
+				let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
                     SymbolTableEntry::new_var(
+						entry_number,
                         &v,
                         &variable_name,
                         &valid_type_name,
                         &DataValue::Unresolved,
                     )
                 } else {
+					
                     SymbolTableEntry::new_val(
+						entry_number,
                         &v,
                         &variable_name,
                         &valid_type_name,
@@ -411,8 +421,10 @@ impl Parser {
                 };
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
-                let entry = if matches!(decl_type, DeclarationType::Var) {
+				let entry_number = symbols.entries.len();
+                let entry = if matches!(decl_type, DeclarationType::Var) {					
                     SymbolTableEntry::new_var(
+						entry_number,
                         &v,
                         &variable_name,
                         &inferred_type,
@@ -420,6 +432,7 @@ impl Parser {
                     )
                 } else {
                     SymbolTableEntry::new_val(
+						entry_number,
                         &v,
                         &variable_name,
                         &inferred_type,
@@ -556,7 +569,9 @@ impl Parser {
         let mut stmt_list: Vec<Stmt> = Vec::new();
         let block_location = self.previous();
         let mut local_symbols = symbols.extend();
+		let entry_number = local_symbols.entries.len();
         let block_entry = SymbolTableEntry::new_val(
+			entry_number,
             &block_location,
             "IN_BLOCK",
             &DataType::Empty,
@@ -584,8 +599,8 @@ impl Parser {
             let new_value = self.assignment(symbols)?;
             return match assignee {
                 Expr::Variable(ref node) => {
-                    let distance = symbols.distance(&node.name.identifier_string(), 0);
-                    let index = 0;
+                    let (distance, index) = symbols.distance_and_index(&node.name.identifier_string(), 0);                    
+															
                     Ok(Expr::assignment(
                         node.name.clone(),
                         new_value,
@@ -695,9 +710,7 @@ impl Parser {
 
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-
         let mut args: Vec<Expr> = Vec::new();
-
         if !self.check(&RightParen) {
             loop {
                 let next_arg = self.expression(symbols)?;
@@ -735,8 +748,7 @@ impl Parser {
             }
             Identifier(name) => {
                 self.advance();
-                let distance = symbols.distance(&name, 0);
-                let index = 0;
+                let (distance, index) = symbols.distance_and_index(&name, 0);                
                 Ok(Expr::variable(self.previous(), distance, index))
             }
             LeftParen => {

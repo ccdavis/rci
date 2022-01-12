@@ -1,3 +1,5 @@
+
+#[allow(dead_code)]
 use crate::environment;
 use crate::environment::EnvNode;
 use crate::environment::EnvRc;
@@ -352,7 +354,7 @@ pub struct FunStmtNode {
     params: Vec<Box<SymbolTableEntry>>,
     return_type: DataType,
     body: Vec<Stmt>,
-    symbols: SymbolTable,
+    symbols: SymbolTable,	
 }
 
 impl Executable for FunStmtNode {
