@@ -12,8 +12,7 @@ pub struct EnvNode {
     parent: Option<EnvRc>,
     // TODO replace this with an indexable container
     lookup: RefCell<HashMap<String, usize>>,
-	storage: RefCell<Vec<ReturnValue>>,
-	
+    storage: RefCell<Vec<ReturnValue>>,
 }
 
 pub type EnvRc = Rc<EnvNode>;
@@ -22,8 +21,7 @@ pub fn new_global() -> EnvRc {
     let env_node = EnvNode {
         parent: None,
         lookup: RefCell::new(HashMap::new()),
-		storage: RefCell::new(Vec::new()),
-		
+        storage: RefCell::new(Vec::new()),
     };
     Rc::new(env_node)
 }
@@ -32,8 +30,7 @@ pub fn new_envrc(enclosing: Option<EnvRc>) -> EnvRc {
     let env_node = EnvNode {
         parent: enclosing,
         lookup: RefCell::new(HashMap::new()),
-		storage: RefCell::new(Vec::new()),
-		
+        storage: RefCell::new(Vec::new()),
     };
     Rc::new(env_node)
 }
@@ -56,44 +53,42 @@ impl EnvNode {
     }
 
     pub fn define(&self, name: String, value: ReturnValue) -> usize {
-		let index = self.storage.borrow().len();
+        let index = self.storage.borrow().len();
         self.storage.borrow_mut().push(value);
-		self.lookup.borrow_mut().insert(name,index);
-		index
+        self.lookup.borrow_mut().insert(name, index);
+        index
     }
 
     // This should always succeed or panic
     fn set_value(&self, name: &str, value: ReturnValue) {
         if let Some(k) = self.lookup.borrow().get(name) {
-			let index = *k;
-			self.storage.borrow_mut()[index] = value;			            
+            let index = *k;
+            self.storage.borrow_mut()[index] = value;
         } else {
             panic!("{} not in local environment", name);
         }
     }
-	
-	fn set_with_index(&self, index: usize, value: ReturnValue) {
-		self.storage.borrow_mut()[index] = value;
-	}
-	
-	pub fn assign_with_index_and_distance(&self, 
-		index: usize, 
-		value: ReturnValue,
-		dist: usize 
-	) -> Result<(), EvaluationError> {
-		if dist == 0 {
+
+    fn set_with_index(&self, index: usize, value: ReturnValue) {
+        self.storage.borrow_mut()[index] = value;
+    }
+
+    pub fn assign_with_index_and_distance(
+        &self,
+        index: usize,
+        value: ReturnValue,
+        dist: usize,
+    ) -> Result<(), EvaluationError> {
+        if dist == 0 {
             Ok(self.set_with_index(index, value))
         } else {
             if let Some(parent_env) = &self.parent {
                 parent_env.assign_with_index_and_distance(index, value, dist - 1)
             } else {
-                panic!(
-                    "Distance of {} doesn't match current environment.",
-                    dist
-                );
-            }        
-		}
-	}
+                panic!("Distance of {} doesn't match current environment.", dist);
+            }
+        }
+    }
 
     pub fn assign(&self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
         if self.lookup.borrow().contains_key(name) {
@@ -166,20 +161,22 @@ impl EnvNode {
             }
         }
     }
-	
-	pub fn get_with_index_and_distance(&self, index: usize, distance: usize) -> Result<ReturnValue, EvaluationError> {
-		if distance == 0 {
-		
-			Ok(self.storage.borrow()[index].clone())
-			
-		} else {
+
+    pub fn get_with_index_and_distance(
+        &self,
+        index: usize,
+        distance: usize,
+    ) -> Result<ReturnValue, EvaluationError> {
+        if distance == 0 {
+            Ok(self.storage.borrow()[index].clone())
+        } else {
             if let Some(enclosing) = &self.parent {
                 enclosing.get_with_index_and_distance(index, distance - 1)
             } else {
                 panic!("Environments don't match variable resolution distances!");
             }
         }
-	}
+    }
 
     pub fn dump_content(&self, dist: usize) {
         if dist == 0 {

@@ -6,12 +6,16 @@ use crate::types::*;
 
 use dyn_clonable::*;
 
-fn val_prm(entry_num:usize, name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
-    Box::new(SymbolTableEntry::new_stdlib_val(entry_num,name, &data_type))
+fn val_prm(entry_num: usize, name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
+    Box::new(SymbolTableEntry::new_stdlib_val(
+        entry_num, name, &data_type,
+    ))
 }
 
 fn var_prm(entry_num: usize, name: &str, data_type: DataType) -> Box<SymbolTableEntry> {
-    Box::new(SymbolTableEntry::new_stdlib_var(entry_num,name, &data_type))
+    Box::new(SymbolTableEntry::new_stdlib_var(
+        entry_num, name, &data_type,
+    ))
 }
 
 #[derive(Clone)]

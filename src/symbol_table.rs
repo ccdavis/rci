@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct SymbolTableEntry {
-	pub entry_number: usize,  // The entry in the current table when this entry was added
+    pub entry_number: usize, // The entry in the current table when this entry was added
     pub name: String,
     // Where the symbol was declared in the source
     pub location: Option<Token>, // use the col and line
@@ -26,14 +26,14 @@ impl SymbolTableEntry {
     // TODO: Change these init methods to take the Declaration / Statement Node struct types
 
     pub fn new_var(
-		entry_number: usize,
+        entry_number: usize,
         location: &Token,
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
     ) -> Self {
         Self {
-			entry_number,
+            entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Var,
@@ -46,14 +46,14 @@ impl SymbolTableEntry {
     }
 
     pub fn new_val(
-		entry_number: usize,
+        entry_number: usize,
         location: &Token,
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
     ) -> Self {
         Self {
-			entry_number,
+            entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Val,
@@ -66,14 +66,14 @@ impl SymbolTableEntry {
     }
 
     pub fn new_copy(
-		entry_number: usize,
+        entry_number: usize,
         location: &Token,
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
     ) -> Self {
         Self {
-			entry_number,
+            entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
             entry_type: DeclarationType::Cpy,
@@ -85,9 +85,13 @@ impl SymbolTableEntry {
         }
     }
 
-    pub fn new_stdlib_var(entry_number: usize, param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+    pub fn new_stdlib_var(
+        entry_number: usize,
+        param_name: &str,
+        data_type: &DataType,
+    ) -> SymbolTableEntry {
         Self {
-			entry_number,
+            entry_number,
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Var,
@@ -99,9 +103,13 @@ impl SymbolTableEntry {
         }
     }
 
-    pub fn new_stdlib_val(entry_number: usize, param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+    pub fn new_stdlib_val(
+        entry_number: usize,
+        param_name: &str,
+        data_type: &DataType,
+    ) -> SymbolTableEntry {
         Self {
-			entry_number,
+            entry_number,
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Val,
@@ -113,9 +121,13 @@ impl SymbolTableEntry {
         }
     }
 
-    pub fn new_stdlib_cpy(entry_number: usize, param_name: &str, data_type: &DataType) -> SymbolTableEntry {
+    pub fn new_stdlib_cpy(
+        entry_number: usize,
+        param_name: &str,
+        data_type: &DataType,
+    ) -> SymbolTableEntry {
         Self {
-			entry_number,
+            entry_number,
             location: None,
             name: param_name.to_owned(),
             entry_type: DeclarationType::Cpy,
@@ -128,7 +140,7 @@ impl SymbolTableEntry {
     }
 
     pub fn new_param(
-		entry_number: usize,
+        entry_number: usize,
         decl_type: DeclarationType,
         name: Token,
         data_type: DataType,
@@ -138,21 +150,21 @@ impl SymbolTableEntry {
 
         match decl_type {
             DeclarationType::Var => SymbolTableEntry::new_var(
-				entry_number,
+                entry_number,
                 &location,
                 &param_name,
                 &data_type,
                 &DataValue::Unresolved,
             ),
             DeclarationType::Val => SymbolTableEntry::new_val(
-				entry_number,
+                entry_number,
                 &location,
                 &param_name,
                 &data_type,
                 &DataValue::Unresolved,
             ),
             DeclarationType::Cpy => SymbolTableEntry::new_copy(
-				entry_number,
+                entry_number,
                 &location,
                 &param_name,
                 &data_type,
@@ -167,14 +179,14 @@ impl SymbolTableEntry {
     }
 
     pub fn new_fun(
-		entry_number: usize,
+        entry_number: usize,
         location: Option<Token>,
         name: &str,
         params: Vec<Box<SymbolTableEntry>>,
         data_type: &DataType,
     ) -> Self {
         Self {
-			entry_number,
+            entry_number,
             location: location,
             name: name.to_owned(),
             entry_type: DeclarationType::Fun,
@@ -211,7 +223,7 @@ impl SymbolTable {
             outer: Some(Box::new(self.clone())),
         }
     }
-    
+
     pub fn add(&mut self, st: SymbolTableEntry) -> bool {
         if self.entries.contains_key(&st.name) {
             false
@@ -224,9 +236,9 @@ impl SymbolTable {
     // A convenience method for creating a symbol table entry off a callable and adding it.
     pub fn add_library_function(&mut self, callable: &ReturnValue) -> bool {
         if let ReturnValue::CallableValue(function) = callable {
-			let entry_number = self.entries.len();
+            let entry_number = self.entries.len();
             let fun_entry = SymbolTableEntry::new_fun(
-				entry_number,
+                entry_number,
                 None, // no location since it is programmatically generated
                 &function.name(),
                 function.params(),
@@ -237,20 +249,16 @@ impl SymbolTable {
             panic!("Value '{}' is not a callable function!", &callable.print());
         }
     }
-	
-	
-	
+
     // Distance in scopes from the current scope, or None if it doesn't exist.
     // For use resolving variable scopes for assignment and variable expressions.
-	// Also returns the index of the variable at that scope.
-	//
-	// It's possible to return None if the variable was in global scope but the parser
-	// hasn't reached it yet.
-    pub fn distance_and_index(&self, name: &str, hops: usize) -> (Option<usize>,Option<usize>) {
+    // Also returns the index of the variable at that scope.
+    //
+    // It's possible to return None if the variable was in global scope but the parser
+    // hasn't reached it yet.
+    pub fn distance_and_index(&self, name: &str, hops: usize) -> (Option<usize>, Option<usize>) {
         match self.entries.get(name) {
-            Some(ref ste) =>{
-				(Some(hops), Some(ste.entry_number))
-			}
+            Some(ref ste) => (Some(hops), Some(ste.entry_number)),
             None => {
                 if let Some(outer_scope) = &self.outer {
                     outer_scope.distance_and_index(name, hops + 1)

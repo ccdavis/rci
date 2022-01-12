@@ -528,9 +528,14 @@ impl Evaluation for VariableNode {
     fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         match self.name.token_type {
             TokenType::Identifier(ref name) => {
-                if let Some(dist) = self.distance {                    
+                if let Some(dist) = self.distance {
                     if TRACE {
-                        println!("Get {} with index {} and dist {}", &name, self.index.unwrap(),dist);
+                        println!(
+                            "Get {} with index {} and dist {}",
+                            &name,
+                            self.index.unwrap(),
+                            dist
+                        );
                     }
                     if TRACE {
                         envr.dump_content(0);
@@ -730,7 +735,12 @@ impl Expr {
         })
     }
 
-    pub fn assignment(name: Token, new_value: Expr, distance: Option<usize>, index: Option<usize>) -> Expr {
+    pub fn assignment(
+        name: Token,
+        new_value: Expr,
+        distance: Option<usize>,
+        index: Option<usize>,
+    ) -> Expr {
         Expr::Assignment(AssignmentNode {
             name,
             distance,

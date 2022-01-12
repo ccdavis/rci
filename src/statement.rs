@@ -1,4 +1,3 @@
-
 #[allow(dead_code)]
 use crate::environment;
 use crate::environment::EnvNode;
@@ -133,28 +132,28 @@ impl Executable for PrintStmtNode {
     }
 
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-		for expr in &self.expressions {
-			match expr.evaluate(envr) {
-				Ok(value) => {
-					print!("{}", &value.print());					
-				}
-				Err(msg) => {
-					let message = format!("Execution error on 'print' because of {}", &msg.message);
-					return Err(EarlyReturn::error(message));
-				}
-			}
-		}
-		println!("");
-		Ok(())
+        for expr in &self.expressions {
+            match expr.evaluate(envr) {
+                Ok(value) => {
+                    print!("{}", &value.print());
+                }
+                Err(msg) => {
+                    let message = format!("Execution error on 'print' because of {}", &msg.message);
+                    return Err(EarlyReturn::error(message));
+                }
+            }
+        }
+        println!("");
+        Ok(())
     }
 }
 
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
         // print can take any type
-		for expr in &self.expressions{
-			let expr_type = expr.determine_type(symbols)?;
-		}
+        for expr in &self.expressions {
+            let expr_type = expr.determine_type(symbols)?;
+        }
 
         Ok(())
     }
@@ -212,11 +211,11 @@ impl Executable for BlockStmtNode {
 
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         let local_envr = environment::extend(envr);
-		// To keep the live environment indexes in sync withthe parsed symbol
-		// table which inserts IN_BLOCK and RETURNTYPE in blocks and functions
-		// for parse-time type checking._
-		local_envr.define("IN_BLOCK".to_string(),ReturnValue::None );
-		
+        // To keep the live environment indexes in sync withthe parsed symbol
+        // table which inserts IN_BLOCK and RETURNTYPE in blocks and functions
+        // for parse-time type checking._
+        local_envr.define("IN_BLOCK".to_string(), ReturnValue::None);
+
         for stmt in &mut self.statements {
             if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
@@ -359,7 +358,7 @@ pub struct FunStmtNode {
     params: Vec<Box<SymbolTableEntry>>,
     return_type: DataType,
     body: Vec<Stmt>,
-    symbols: SymbolTable,	
+    symbols: SymbolTable,
 }
 
 impl Executable for FunStmtNode {
@@ -448,9 +447,9 @@ impl Callable for UserFunction {
 
     fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn> {
         let local_envr = environment::extend(&self.closure);
-		// To keep in sync with the symbol table indexes
-		local_envr.define("RETURN_TYPE".to_string(),ReturnValue::None);
-		
+        // To keep in sync with the symbol table indexes
+        local_envr.define("RETURN_TYPE".to_string(), ReturnValue::None);
+
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
             let param = &self.declaration.params[index];
