@@ -212,6 +212,11 @@ impl Executable for BlockStmtNode {
 
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         let local_envr = environment::extend(envr);
+		// To keep the live environment indexes in sync withthe parsed symbol
+		// table which inserts IN_BLOCK and RETURNTYPE in blocks and functions
+		// for parse-time type checking._
+		local_envr.define("IN_BLOCK".to_string(),ReturnValue::None );
+		
         for stmt in &mut self.statements {
             if let Err(early_return) = stmt.execute(&local_envr) {
                 match early_return {
@@ -443,6 +448,9 @@ impl Callable for UserFunction {
 
     fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn> {
         let local_envr = environment::extend(&self.closure);
+		// To keep in sync with the symbol table indexes
+		local_envr.define("RETURN_TYPE".to_string(),ReturnValue::None);
+		
         // Add argument values to the local environment
         for (index, arg_value) in arguments.into_iter().enumerate() {
             let param = &self.declaration.params[index];

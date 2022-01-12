@@ -169,7 +169,9 @@ impl EnvNode {
 	
 	pub fn get_with_index_and_distance(&self, index: usize, distance: usize) -> Result<ReturnValue, EvaluationError> {
 		if distance == 0 {
+		
 			Ok(self.storage.borrow()[index].clone())
+			
 		} else {
             if let Some(enclosing) = &self.parent {
                 enclosing.get_with_index_and_distance(index, distance - 1)

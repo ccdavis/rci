@@ -530,12 +530,12 @@ impl Evaluation for VariableNode {
             TokenType::Identifier(ref name) => {
                 if let Some(dist) = self.distance {                    
                     if TRACE {
-                        println!("Get {} with dist {}", &name, dist);
+                        println!("Get {} with index {} and dist {}", &name, self.index.unwrap(),dist);
                     }
                     if TRACE {
                         envr.dump_content(0);
                     }
-                    envr.get_with_distance(&name, dist)
+                    envr.get_with_index_and_distance(self.index.unwrap(), dist)
                 } else {
                     if TRACE {
                         println!("Get {} without distance!", &name);
@@ -607,7 +607,7 @@ impl Evaluation for AssignmentNode {
             if TRACE {
                 println!("Assigning {} with distance {}", &var_name, dist);
             }
-            envr.assign_with_distance(var_name, value_to_store, dist)?;
+            envr.assign_with_index_and_distance(self.index.unwrap(), value_to_store, dist)?;
         } else {
             envr.assign(var_name, value_to_store)?;
         }
