@@ -1,16 +1,33 @@
 # rci
+
 Building a statically typed language using Crafting Interpreters as a launching pad. 
 
-The language resembles "Lox" from the book with explicit types and user definable types.
+The language somewhat resembles "Lox" from the book, but with explicit types and user definable types.
 
 The interpreter has a static type checker that runs before executing code; there are some additional and redundant type checks during execution. 
 
 The type checker uses symbol tables collected during parsing. These are placed in the AST nodes for statements which introduce new environments, namely blocks and functions. The interpreter dynamically creates environments that mirror these symbol tables. Currently these are independent processes but I'd like to improve the interpreter by using the symbol tables as the templates for the interpreter environments. This could improve performance and simplify the interpreter.
 
-To-do list:
+### Language to-do list:
+
+* Add classes following the book
+* Support set and enumeration types
+* A few more basic statements like 'case' or 'switch' and 'for'.
+* File I/O for lines of text (strings) and directly to and from other built-in types
+* Standard containers: vectors and hash tables, maybe ordered maps, arrays and matrices
+* Devise a few statements that take and produce the container types, like map, for-each
+* Simple record /struct types
+* Table types made of records supporting special table-like operations (think Pandas-light)
+* Add user-definable types including newtype types
+
+###Engineering to-do list:
+
 * Clean up the error message types by consolidating into one main error type. This would remove the need for re-enclosing messages into different types.
 * Clean up error reporting to always include the location in the source; the capability exists, I was just lazy about crafting the error messages in places.
 * Add a basic module system to load libraries.
+* Expand standard library
+* Auto formatter
+* Compile to bytecode
 
 
 Language:
