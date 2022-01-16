@@ -8,6 +8,7 @@ The interpreter has a static type checker that runs before executing code; there
 
 The type checker uses symbol tables collected during parsing. These are placed in the AST nodes for statements which introduce new environments, namely blocks and functions. The interpreter dynamically creates environments that mirror these symbol tables. Currently these are independent processes but I'd like to improve the interpreter by using the symbol tables as the templates for the interpreter environments. This could improve performance and simplify the interpreter.
 
+
 ### Language to-do list:
 
 * Add classes following the book
@@ -30,6 +31,41 @@ The type checker uses symbol tables collected during parsing. These are placed i
 * Compile to bytecode
 
 
+## Performance
+
+The tree-walk approach won't ever produce great results. But I was interested in how to get something decent before moving on to building the compiler.  I was curious about various approaches to using Rust to mimic what had been done in Java for the book. 
+
+One version closely following the book's architecture that can't run the Mandelbrot program, but can run recursive fib took three times longer to compute fib(25) compared to RCI. It has a bug with variable scoping.
+
+
+
+I compared several implementations of Lox in Rust. At least two of them are broken for any real programs so I couldn't test
+
+Using a naive Mandelbrot set renderer as a benchmark:
+
+Performance with 1600 x 1600 50 iterations
+
+	RCI  -- strictly typed Lox -- (mine) 162 seconds
+
+Other versions of Lox with the same program:
+	
+	Rust Tree-walk version: Took 331 seconds. The bytecode compiled version didn't work.  :  https://github.com/tdp2110/crafting-interpreters-rs
+	
+	Rust tree-walk interpreter: this one took 74 seconds : https://github.com/julioolvr/rlox
+	
+	JLox: 30.8 seconds This is on Java, right from the Crafting Interpreters book
+
+Other languages. All were similar naive approaches with single threading.
+
+	Similar Ruby  program on JRuby 9000: 48 seconds
+	
+	Python 2 and Ruby 1.x would probably be similar to the JRuby results
+	
+	Ruby 2.7: 6.5 seconds	
+	Similar Rust: 0.1 seconds
+	Free Pascal 0.33 seconds
+//
+ 
 Language:
 ============
 

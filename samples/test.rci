@@ -20,7 +20,7 @@ fun fib(n:number): number {
 
 
 fun recursive_fib(n:number) : number {
-	if  n = 0 or n = 1{ return 0; }		
+	if n < 2 { return n;}
 	return recursive_fib(n-1) + recursive_fib(n-2);
 }
 
