@@ -20,9 +20,7 @@ fun fib(n:number): number {
 
 
 fun recursive_fib(n:number) : number {
-	if  n = 0 { return 0; }
-	if n = 1 { return 1; }
-	//print n;
+	if  n = 0 or n = 1{ return 0; }		
 	return recursive_fib(n-1) + recursive_fib(n-2);
 }
 
@@ -33,7 +31,7 @@ print clock() - start0;
 print " ";
 
 var start:number = clock();
-print recursive_fib(27);
+print recursive_fib(25);
 print clock() - start;
 
 

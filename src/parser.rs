@@ -55,23 +55,8 @@ impl Parser {
     fn check(&self, token_type: &TokenType) -> bool {
         if self.is_finished() {
             false
-        } else {
-            // Using print() isn't the most efficient but it's convenient for now.
-            //You can't simply compare the token types directly because some carry
-            // data and the comparison will fail if the data differs. But, we only
-            // care about the varient part, not the data.
-            //
-            // The pure Rust solution would have you make methods on TokenType
-            // like "is_number(), is_left_brace() etc which works but is pretty
-            // verbose. The other solution is to use the Strum crate and pull
-            // out the enum discriminant value only.
-            // NOTE: looks like this works now too:
-            // fn variant_eq(a: &Op, b: &Op) -> bool {
-            //    std::mem::discriminant(a) == std::mem::discriminant(b)
-            //	}
-            let actual = self.peek().token_type.print();
-            let expected = token_type.print();
-            self.peek().token_type.print() == token_type.print()
+        } else {            
+            &self.peek().token_type ==  token_type
         }
     }
 

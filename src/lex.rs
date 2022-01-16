@@ -1,7 +1,7 @@
 use core::str::Chars;
 
 use std::collections::HashMap;
-#[derive(Clone, Debug)]
+#[derive(PartialEq,Clone, Debug)]
 pub enum TokenType {
     LeftParen,
     RightParen,
@@ -84,8 +84,7 @@ impl TokenType {
         }
     }
 
-    // Prints only the name of the token type. Can be used to
-    // compare TokenType instances if performance isn't a concern.
+    // Prints only the name of the token type.     
     pub fn print(&self) -> String {
         use TokenType::*;
         let name = match self {

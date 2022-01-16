@@ -1,7 +1,19 @@
-
+// Performance with 1600 x 1600 50 iterations
+// RCI  -- strictly typed Lox -- (mine) 162 seconds
+//
+// Other versions of Lox with the same program:
+// Rust Tree-walk version: Took 331 seconds. The bytecode compiled version didn't work.  :  https://github.com/tdp2110/crafting-interpreters-rs
+//  Rust tree-walk interpreter: this one took 74 seconds : https://github.com/julioolvr/rlox
+// JLox: 30.8 seconds This is on Java, right from the Crafting Interpreters book
+//
+// Other languages. All were similar naive approaches with single threading.
+// Similar JRuby 9.1 program: 48 seconds
+// Python 2 and Ruby 1.x would probably be similar to the JRuby results
+// Similar Rust: 0.1 seconds
+// Free Pascal 0.33 seconds
 //
 // Testing out the impact of lots of function calls in the inner loop.
-//  Swapping in sqr() for everywhere we mutiply a var by itself slows things
+//  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
 val x_resolution = 100;
@@ -48,13 +60,16 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	val y_increment:number =height / y_resolution; 
 	
 	var points = 0;	
+	var inside = 0;
 	
 	while left < right {						
 		val line:string = "";
 		while top < bottom {
 			if in_mandelbrot(left, top) {
 				line := line + "*";
-			} else {
+				inside := inside +1;
+			} 
+			else {
 				line := line + " ";
 			}
 			top := top + y_increment;
