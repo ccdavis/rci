@@ -11,6 +11,7 @@ pub struct Parser {
     errors: Vec<ParseError>,
 }
 
+#[derive(Clone)]
 pub struct ParseError {
     t: Token,
     message: String,
@@ -195,7 +196,7 @@ impl Parser {
                 self.consume(Colon, "expect ':' after parameter name.")?;
 
                 let type_name = self.advance();
-                let param_type = match DataType::from_token_type(&type_name.token_type) {
+                let mut param_type = match DataType::from_token_type(&type_name.token_type) {
                     Some(valid_type) => valid_type,
                     None => {
                         return Err(ParseError {
@@ -204,6 +205,31 @@ impl Parser {
                         });
                     }
                 };
+				
+				if let DataType::Array(_) = param_type{
+					self.consume(Less, "expect '<' after 'array' to complete type signature.");
+					let array_type_name = self.advance();
+					if matches!(array_type_name.token_type, TokenType::ArrayType) {
+						return Err(ParseError {
+								t: array_type_name,
+								message: "Can't nest arrays in function parameters.".to_string()
+							});
+					}
+					
+					let array_type = match DataType::from_token_type(&array_type_name.token_type) {
+						Some(valid_type) => valid_type,
+						None => {
+							return Err(ParseError {
+								t: array_type_name,
+								message: "Can't make an array of this type. Types must be built-in or user defined.".to_string(),
+							});
+						}
+					};
+					
+										
+					self.consume(Greater, "expect '>' after array member type.");
+					param_type = DataType::Array(Box::new(array_type))										
+				}
 
                 // Add param to local symbol table
                 let entry = SymbolTableEntry::new_param(
@@ -685,17 +711,38 @@ impl Parser {
 
         // Possibly the start of a function call or just a bare
         // primary expression.
-        let mut expr = self.primary(symbols)?;
+        let mut expr = self.primary(symbols)?;		
+		
         loop {
             if self.matches(&[LeftParen]) {
                 // replace the expression with the full function call
                 expr = self.finish_call(expr, symbols)?;
+			} else if self.matches(&[LeftBracket]) {
+				// An array or hash lookup
+				expr = self.finish_lookup(expr, symbols)?;
             } else {
                 break;
             }
         }
         Ok(expr)
     }
+	
+	fn finish_lookup(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+		use TokenType::*;
+		if !self.check(&RightBracket) {
+			let index = self.expression(symbols)?;
+			let right_bracket = self.consume(RightBracket,"expect ']' to complete lookup expression.")?;
+			Ok(Expr::lookup(callee, right_bracket, index))
+		} else {
+			let parse_error = ParseError {
+				t: self.previous(),
+				message: "Lookup expression needs an index but was empty.".to_string()
+			};
+			self.error(parse_error.clone());
+			Err(parse_error)
+		}
+				
+	}
 
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
@@ -709,7 +756,8 @@ impl Parser {
                         t: self.previous(),
                         message: "Exceeded maximum arguments to function.".to_string(),
                     };
-                    self.error(parse_error);
+                    self.error(parse_error.clone());
+					return Err(parse_error);
                 }
                 if !self.matches(&[Comma]) {
                     break;
@@ -745,7 +793,21 @@ impl Parser {
                 let expr = self.expression(symbols)?;
                 self.consume(RightParen, "Expect ')' after expression.")?;
                 Ok(Expr::grouping(expr))
-            }
+            },
+			LeftBracket => {
+				self.advance();
+				let mut elements = Vec::new();
+				self.consume(LeftBracket,"expect '['");
+				let mut expr = self.expression(symbols)?;
+				elements.push(expr);
+				while self.matches(&[Comma]) {
+					expr = self.expression(symbols)?;
+					elements.push(expr);
+				}
+				let right_bracket =self.consume(RightBracket, "expect ']' to close an array literal.")?;
+				Ok(Expr::array(right_bracket, elements))			
+												
+			},
             _ => {
                 let l = self.peek().line;
                 let c = self.peek().column;

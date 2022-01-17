@@ -28,6 +28,7 @@ pub enum DataType {
     Str,
     Number,
     Bool,
+	Array(Box<DataType>),
     User(String),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
@@ -38,6 +39,7 @@ pub enum DataValue {
     Str(String),
     Number(f64),
     Bool(bool),
+	Array(Vec<DataValue>),
     User(String), // just give the name for now
     Unresolved,   // for the type-checker to figure out later
 }
@@ -45,14 +47,15 @@ pub enum DataValue {
 impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {
-            DataType::Number => "number",
-            DataType::Str => "string",
-            DataType::Bool => "boolean",
-            DataType::Empty => "empty",
-            DataType::User(u) => u.as_str(),
-            DataType::Unresolved => "UNRESOLVED",
+            DataType::Number => "number".to_string(),
+            DataType::Str => "string".to_string(),
+            DataType::Bool => "boolean".to_string(),
+			DataType::Array(ref dt) => format!("Array[{}]",&dt), 
+            DataType::Empty => "empty".to_string(),
+            DataType::User(u) => u.as_str().to_string(),
+            DataType::Unresolved => "UNRESOLVED".to_string(),
         };
-        write!(f, "{}", name)
+        write!(f, "{}", &name)
     }
 }
 
@@ -72,6 +75,14 @@ impl DataType {
             DataValue::Str(_) => DataType::Str,
             DataValue::Number(_) => DataType::Number,
             DataValue::Bool(_) => DataType::Bool,
+			DataValue::Array(ref value) => {
+				let element_type =if value.len() == 0 {
+					Box::new(DataType::Unresolved)
+				} else {
+					Box::new(DataType::from_data_value(&value[0]))					
+				};
+				DataType::Array(element_type)
+			}
             DataValue::User(n) => DataType::User(n.to_owned()),
             DataValue::Unresolved => DataType::Unresolved,
         }
@@ -84,6 +95,7 @@ impl DataValue {
             DataValue::Str(s) => s.to_string(),
             DataValue::Number(n) => format!("{}", n),
             DataValue::Bool(b) => format!("{}", b),
+			DataValue::Array(ref data) => format!("{:?}",data),
             DataValue::User(u) => format!("{}", u.to_string()),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
         }

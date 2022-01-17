@@ -31,7 +31,7 @@ print clock() - start0;
 print " ";
 
 var start:number = clock();
-print recursive_fib(25);
+print recursive_fib(40);
 print clock() - start;
 
 

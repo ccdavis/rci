@@ -7,6 +7,8 @@ pub enum TokenType {
     RightParen,
     LeftBrace,
     RightBrace,
+	LeftBracket,
+	RightBracket,
     Comma,
     Dot,
     Minus,
@@ -31,10 +33,12 @@ pub enum TokenType {
     Bool,
 
     Comment(String),
+	
     NumberType,
     StringType,
     BooleanType,
     SetType,
+	ArrayType,
 
     // keywords
     Set,
@@ -92,6 +96,8 @@ impl TokenType {
             RightParen => ")",
             LeftBrace => "{",
             RightBrace => "}",
+			LeftBracket => "[",
+			RightBracket => "]",
             Comma => ",",
             Plus => "+",
             Minus => "-",
@@ -143,6 +149,7 @@ impl TokenType {
             StringType => "string",
             BooleanType => "boolean",
             SetType => "set",
+			ArrayType => "array",
 
             // literals
             Number(_) => "Number",
@@ -179,6 +186,7 @@ impl TokenType {
             NumberType,
             BooleanType,
             SetType,
+			ArrayType,
             Enum,
             In,
             Intersects,
@@ -366,6 +374,8 @@ impl Scanner {
             ')' => TokenType::RightParen,
             '{' => TokenType::LeftBrace,
             '}' => TokenType::RightBrace,
+			'[' => TokenType::LeftBracket,
+			']' => TokenType::RightBracket,
             ',' => TokenType::Comma,
             '.' => TokenType::Dot,
             '-' => TokenType::Minus,

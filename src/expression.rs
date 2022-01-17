@@ -19,6 +19,7 @@ pub struct EvaluationError {
     pub message: String,
 }
 
+#[derive(Debug)]
 pub struct TypeError {
     pub message: String,
 }
@@ -43,8 +44,10 @@ pub enum Expr {
     Binary(BinaryNode),
     Logical(LogicalNode),
     Call(CallNode),
+	Lookup(LookupNode),
     Unary(UnaryNode),
     Grouping(GroupingNode),
+	Array(ArrayNode),
     Literal(ReturnValue),
     Variable(VariableNode),
     Assignment(AssignmentNode),
@@ -56,8 +59,10 @@ impl Expr {
             Expr::Binary(n) => n.evaluate(envr),
             Expr::Logical(n) => n.evaluate(envr),
             Expr::Call(n) => n.evaluate(envr),
+			Expr::Lookup(n) => n.evaluate(envr),
             Expr::Unary(n) => n.evaluate(envr),
             Expr::Grouping(n) => n.evaluate(envr),
+			Expr::Array(n) => n.evaluate(envr),
             Expr::Variable(n) => n.evaluate(envr),
             Expr::Assignment(n) => n.evaluate(envr),
             Expr::Literal(ref value) => Ok(value.clone_or_increment_count()),
@@ -73,6 +78,7 @@ impl Expr {
             Expr::Logical(n) => n.expected_type(),
             Expr::Unary(n) => n.expected_type(),
             Expr::Grouping(n) => n.expected_type(),
+			Expr::Array(n) => n.expected_type(),
             Expr::Variable(n) => n.expected_type(),
             Expr::Assignment(n) => n.expected_type(),
             Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
@@ -85,8 +91,10 @@ impl Expr {
             Expr::Binary(n) => n.determine_type(symbols),
             Expr::Logical(n) => n.determine_type(symbols),
             Expr::Call(n) => n.determine_type(symbols),
+			Expr::Lookup(n) => n.determine_type(symbols),
             Expr::Unary(n) => n.determine_type(symbols),
             Expr::Grouping(n) => n.determine_type(symbols),
+			Expr::Array(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
@@ -360,7 +368,7 @@ impl Evaluation for CallNode {
                     message: msg.print(),
                 }),
                 Ok(result) => Ok(result),
-            }
+            }					
         } else {
             let message = format!("Not a callable value {}", &this_callee.print());
             Err(EvaluationError { message })
@@ -378,6 +386,62 @@ impl TypeCheck for CallNode {
         Ok(callee_return_type)
     }
 }
+
+
+#[derive(Clone,Debug)]
+pub struct LookupNode {
+    callee: Box<Expr>,
+    bracket: Token, // To locate the lookup in the source
+    index: Box<Expr>,
+}
+
+impl Evaluation for LookupNode {
+    fn print(&self) -> String {
+        format!("Lookup: {}", &self.callee.print())
+    }
+
+    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
+	// Look up the 'callee' expr which is currently always going to be an identifier primary
+	// expression (which is a 'var' expression.) Evaluating it  returns the entry in the
+	// environment associated with the identifier and we expect it to be an array or hashtable.
+	// type.
+		let mut this_callee = self.callee.evaluate(envr)?;
+		if let ReturnValue::Value(DataValue::Array(ref array_data)) = this_callee {
+			let index_value =  self.index.evaluate(envr)?;
+			if let ReturnValue::Value(DataValue::Number(n))= index_value{
+				let int_index:usize = n as usize;
+				if array_data.len() <= int_index{
+					let message = format!("Index {} out of bounds on array  {} at {}", 
+						int_index, self.callee.print(), &self.bracket.pos());
+					Err(EvaluationError{ message })
+				} else { 
+					let item = array_data[int_index].clone();						
+					Ok(ReturnValue::Value(item))
+				}
+			
+			} else {
+				let message = format!("Array lookup at {} requires an integer value as an index.", &self.bracket.pos());
+				Err(EvaluationError { message })
+			}            
+		} else {
+			let message = format!("Only array lookups supported but was {} at {}",  &this_callee.print(), &self.bracket.pos());
+			Err( EvaluationError { message })		
+		}
+	}
+}
+
+impl TypeCheck for LookupNode {
+    fn expected_type(&self) -> Result<DataType, TypeError> {
+        Ok(DataType::Unresolved)
+    }
+
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+        let callee_return_type = self.callee.determine_type(symbols)?;
+        Ok(callee_return_type)
+    }
+}
+
+
 
 #[derive(Clone, Debug)]
 pub struct GroupingNode {
@@ -405,11 +469,39 @@ impl TypeCheck for GroupingNode {
 }
 
 #[derive(Clone, Debug)]
+pub struct ArrayNode {
+	location: Token,
+	elements: Vec<Expr>,	
+}
+
+impl Evaluation for ArrayNode {
+
+	fn print(&self) -> String {
+		let element_strs = self.elements.iter()
+			.map(|e| e.print())
+			.collect::<Vec<String>>()
+			.join(",");
+		"array:[".to_string() + &element_strs
+	}
+	
+	fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
+		// TODO this could be streamlined, 
+		let mut final_array = Vec::new();
+		for e in &self.elements {
+			let return_value = e.evaluate(envr)?;
+			final_array.push(return_value.get().clone());
+		}
+		Ok(ReturnValue::Value( DataValue::Array(final_array)))					
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct LiteralNode {
     value: Rc<DataValue>,
 }
 
 impl Evaluation for LiteralNode {
+
     fn print(&self) -> String {
         self.value.print()
     }
@@ -417,6 +509,52 @@ impl Evaluation for LiteralNode {
     fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, EvaluationError> {
         Ok(ReturnValue::Reference(Rc::clone(&self.value)))
     }
+}
+
+impl TypeCheck for ArrayNode {
+	fn expected_type(&self) -> Result<DataType, TypeError> {
+		if self.elements.len() == 0 {
+			Ok(DataType::Unresolved)
+		} else {
+			let types: Result<Vec<DataType>, _> = self.elements.iter()
+				.map(|e| e.expected_type() )
+				.collect();
+				
+			let first_type:DataType = match  types {
+				Err(msg) => return Err(msg),
+				Ok(ref types) =>  types[0].clone(),
+			};
+								
+			if types.unwrap().iter().all(|e| e.to_string() == first_type.to_string())  {
+				Ok(first_type)
+			} else {
+				let message = format!("Expressions of different types in array, first type was {}", &first_type);
+				Err(TypeError{ message })
+			}				
+		}
+	}
+	
+	fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		if self.elements.len() == 0 {
+			Ok(DataType::Unresolved)
+		} else {
+		let types: Result<Vec<DataType>, _> = self.elements.iter()
+				.map(|e| e.determine_type(symbols) )
+				.collect();
+				
+			let first_type:DataType = match  types {
+				Err(msg) => return Err(msg),
+				Ok(ref types) =>  types[0].clone(),
+			};
+								
+			if types.unwrap().iter().all(|e| e.to_string() == first_type.to_string())  {
+				Ok(first_type)
+			} else {
+				let message = format!("Expressions of different types in array, first type was {}", &first_type);
+				Err(TypeError{ message })
+			}				
+		}			
+	}
 }
 
 impl TypeCheck for LiteralNode {
@@ -709,6 +847,14 @@ impl Expr {
         };
         Expr::Call(node)
     }
+	
+	pub fn lookup(callee: Expr, bracket: Token, index: Expr) -> Expr {
+		Expr::Lookup( LookupNode {
+			callee: Box::new(callee),
+			bracket,
+			index: Box::new(index),
+		})
+	}
 
     pub fn unary(op: Token, e: Expr) -> Expr {
         let node = UnaryNode {
@@ -722,6 +868,10 @@ impl Expr {
         let data_value = DataValue::from_token_type(&value.token_type);
         Expr::Literal(ReturnValue::new_ref(data_value))
     }
+	
+	pub fn array(location: Token, elements: Vec<Expr>) -> Expr {
+		Expr::Array( ArrayNode { location,elements})
+	}
 
     pub fn grouping(e: Expr) -> Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
