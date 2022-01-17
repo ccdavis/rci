@@ -315,7 +315,6 @@ pub struct VarStmtNode {
 }
 
 impl Executable for VarStmtNode {
-
     fn print(&self) -> String {
         format!("var-stmt = {}", &self.initializer.print())
     }
@@ -430,7 +429,6 @@ impl UserFunction {
 }
 
 impl Callable for UserFunction {
-
     fn name(&self) -> String {
         self.declaration.name.identifier_string()
     }
@@ -502,7 +500,6 @@ pub struct ReturnStmtNode {
 }
 
 impl Executable for ReturnStmtNode {
-
     fn print(&self) -> String {
         format!("return-statement: {}", &self.expr.print())
     }
@@ -601,7 +598,6 @@ impl Executable for WhileStmtNode {
 }
 
 impl TypeChecking for WhileStmtNode {
-
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
         let cond_type = self.condition.determine_type(symbols)?;
         if matches!(cond_type, DataType::Bool) {

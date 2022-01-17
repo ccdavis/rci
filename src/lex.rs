@@ -1,14 +1,14 @@
 use core::str::Chars;
 
 use std::collections::HashMap;
-#[derive(PartialEq,Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
-	LeftBracket,
-	RightBracket,
+    LeftBracket,
+    RightBracket,
     Comma,
     Dot,
     Minus,
@@ -33,12 +33,12 @@ pub enum TokenType {
     Bool,
 
     Comment(String),
-	
+
     NumberType,
     StringType,
     BooleanType,
     SetType,
-	ArrayType,
+    ArrayType,
 
     // keywords
     Set,
@@ -88,7 +88,7 @@ impl TokenType {
         }
     }
 
-    // Prints only the name of the token type.     
+    // Prints only the name of the token type.
     pub fn print(&self) -> String {
         use TokenType::*;
         let name = match self {
@@ -96,8 +96,8 @@ impl TokenType {
             RightParen => ")",
             LeftBrace => "{",
             RightBrace => "}",
-			LeftBracket => "[",
-			RightBracket => "]",
+            LeftBracket => "[",
+            RightBracket => "]",
             Comma => ",",
             Plus => "+",
             Minus => "-",
@@ -149,7 +149,7 @@ impl TokenType {
             StringType => "string",
             BooleanType => "boolean",
             SetType => "set",
-			ArrayType => "array",
+            ArrayType => "array",
 
             // literals
             Number(_) => "Number",
@@ -186,7 +186,7 @@ impl TokenType {
             NumberType,
             BooleanType,
             SetType,
-			ArrayType,
+            ArrayType,
             Enum,
             In,
             Intersects,
@@ -374,8 +374,8 @@ impl Scanner {
             ')' => TokenType::RightParen,
             '{' => TokenType::LeftBrace,
             '}' => TokenType::RightBrace,
-			'[' => TokenType::LeftBracket,
-			']' => TokenType::RightBracket,
+            '[' => TokenType::LeftBracket,
+            ']' => TokenType::RightBracket,
             ',' => TokenType::Comma,
             '.' => TokenType::Dot,
             '-' => TokenType::Minus,
