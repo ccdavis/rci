@@ -65,6 +65,7 @@ impl DataType {
             TokenType::NumberType => Some(DataType::Number),
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
+			TokenType::ArrayType=> Some(DataType::Array(Box::new(DataType::Unresolved))),
             TokenType::Identifier(n) => Some(DataType::User(n.to_owned())),
             _ => None,
         }

@@ -407,8 +407,8 @@ impl Evaluation for LookupNode {
         let mut this_callee = self.callee.evaluate(envr)?;
         if let ReturnValue::Value(DataValue::Array(ref array_data)) = this_callee {
             let index_value = self.index.evaluate(envr)?;
-            if let ReturnValue::Value(DataValue::Number(n)) = index_value {
-                let int_index: usize = n as usize;
+            if let DataValue::Number(ref n) = index_value.get() {
+                let int_index: usize = *n as usize;
                 if array_data.len() <= int_index {
                     let message = format!(
                         "Index {} out of bounds on array  {} at {}",
@@ -423,8 +423,8 @@ impl Evaluation for LookupNode {
                 }
             } else {
                 let message = format!(
-                    "Array lookup at {} requires an integer value as an index.",
-                    &self.bracket.pos()
+                    "Array lookup at {} requires an integer value as an index but was {:?}",
+                    &self.bracket.pos(), index_value
                 );
                 Err(EvaluationError { message })
             }
@@ -445,8 +445,15 @@ impl TypeCheck for LookupNode {
     }
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, TypeError> {
+		if TRACE{ println!("In lookup type checker");}
         let callee_return_type = self.callee.determine_type(symbols)?;
-        Ok(callee_return_type)
+		if let DataType::Array(element_type) = callee_return_type {
+			Ok(*element_type)
+		} else {
+			let message = format!("Only array lookups supported currently.");
+			Err(TypeError { message})
+			
+		}
     }
 }
 
