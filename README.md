@@ -98,8 +98,6 @@ The type checker uses symbol tables collected during parsing. These are placed i
 ### Language to-do list:
 
 * Add classes following the book
-* Add record types based on classes
-* Add table types based on arrays of records
 * Support set and enumeration types
 * A few more basic statements like 'case' or 'switch' and 'for'.
 * File I/O for lines of text (strings) and directly to and from other built-in types
@@ -109,7 +107,7 @@ The type checker uses symbol tables collected during parsing. These are placed i
 * Table types made of records supporting special table-like operations (think Pandas-light)
 * Add user-definable types including newtype types
 
-###Engineering to-do list:
+### Engineering to-do list
 
 * Clean up the error message types by consolidating into one main error type. This would remove the need for re-enclosing messages into different types.
 * Clean up error reporting to always include the location in the source; the capability exists, I was just lazy about crafting the error messages in places.
