@@ -275,7 +275,7 @@ impl Token {
 
 #[derive(Clone, Debug)]
 pub struct Scanner {
-    text: Vec<char>,
+    text: Vec<char>,	
     start: usize,
     current: usize,
     line: usize,
@@ -286,7 +286,7 @@ pub struct Scanner {
 impl Scanner {
     pub fn new(script: String) -> Self {
         Self {
-            text: script.chars().collect(),
+            text: script.clone().chars().collect(),			
             start: 0,
             current: 0,
             line: 1,

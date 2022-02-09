@@ -7,6 +7,7 @@ mod statement;
 mod stdlib;
 mod symbol_table;
 mod types;
+mod errors;
 
 use environment::*;
 use parser::*;
