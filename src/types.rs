@@ -1,8 +1,8 @@
 use crate::environment::*;
-use crate::expression::EvaluationError;
+use crate::errors;
+use crate::errors::*;
 use crate::lex::TokenType;
 use crate::statement::EarlyReturn;
-use crate::statement::ExecutionError;
 use crate::symbol_table::SymbolTableEntry;
 
 use dyn_clonable::*;
@@ -65,7 +65,7 @@ impl DataType {
             TokenType::NumberType => Some(DataType::Number),
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
-			TokenType::ArrayType=> Some(DataType::Array(Box::new(DataType::Unresolved))),
+            TokenType::ArrayType => Some(DataType::Array(Box::new(DataType::Unresolved))),
             TokenType::Identifier(n) => Some(DataType::User(n.to_owned())),
             _ => None,
         }
@@ -158,7 +158,7 @@ impl ReturnValue {
     }
 
     // Helper for internal use in standard library
-    pub fn get_as_number(&self) -> Result<f64, ExecutionError> {
+    pub fn get_as_number(&self) -> Result<f64, errors::Error> {
         match self.get() {
             DataValue::Number(n) => Ok(*n),
             _ => {
@@ -166,7 +166,7 @@ impl ReturnValue {
                     "Incorrect type -- expected number. but was {}",
                     &self.print()
                 );
-                Err(ExecutionError { message })
+                Err(Error::internal(ErrorType::Execution, message))
             }
         }
     }

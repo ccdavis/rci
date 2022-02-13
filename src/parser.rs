@@ -364,22 +364,6 @@ impl Parser {
 
             if self.matches(&[TokenType::Equal]) {
                 let initializer = self.expression(symbols)?;
-                let inferred_type_result = initializer.expected_type();
-                match inferred_type_result {
-                    Err(type_error) => {} // do nothing for now
-                    Ok(ref inferred_type) => {
-                        if !matches!(inferred_type, &DataType::Unresolved)
-                            && inferred_type != &valid_type_name
-                        {
-                            let message = format!("Can't initialize variable '{}' of type {} to an expression with value {}",
-								&v.print(), &valid_type_name, &inferred_type);
-                            return Err(ParseError {
-                                t: type_name,
-                                message,
-                            });
-                        }
-                    }
-                }
 
                 self.consume(TokenType::SemiColon, "expect ';'")?;
                 let entry_number = symbols.entries.len();
@@ -419,7 +403,7 @@ impl Parser {
             // infer data type
             if self.matches(&[TokenType::Equal]) {
                 let initializer = self.expression(symbols)?;
-                let inferred_type = match initializer.expected_type() {
+                let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
                         self.error(ParseError {
                             t: self.previous(),
@@ -543,6 +527,7 @@ impl Parser {
 
     fn if_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
+        let location = self.previous();
         let condition = self.expression(symbols)?;
 
         self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
@@ -550,18 +535,24 @@ impl Parser {
         if self.matches(&[Else]) {
             self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
             let else_branch = self.block_statement(symbols)?;
-            Ok(Stmt::if_stmt(condition, then_branch, Some(else_branch)))
+            Ok(Stmt::if_stmt(
+                location,
+                condition,
+                then_branch,
+                Some(else_branch),
+            ))
         } else {
-            Ok(Stmt::if_stmt(condition, then_branch, None))
+            Ok(Stmt::if_stmt(location, condition, then_branch, None))
         }
     }
 
     fn while_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
+        let location = self.previous();
         let condition = self.expression(symbols)?;
         self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
         let body = self.block_statement(symbols)?;
-        Ok(Stmt::while_stmt(condition, body))
+        Ok(Stmt::while_stmt(location, condition, body))
     }
 
     fn print_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {

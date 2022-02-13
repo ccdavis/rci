@@ -248,7 +248,7 @@ pub struct Token {
 impl Token {
     // The point is to dump all the info including the line and column
     pub fn print(&self) -> String {
-        format!("'{:?}' at {}, {}", &self.token_type, self.line, self.column)
+        format!("'{:?}'", &self.token_type)
     }
 
     pub fn pos(&self) -> String {
@@ -275,7 +275,7 @@ impl Token {
 
 #[derive(Clone, Debug)]
 pub struct Scanner {
-    text: Vec<char>,	
+    text: Vec<char>,
     start: usize,
     current: usize,
     line: usize,
@@ -286,7 +286,7 @@ pub struct Scanner {
 impl Scanner {
     pub fn new(script: String) -> Self {
         Self {
-            text: script.clone().chars().collect(),			
+            text: script.clone().chars().collect(),
             start: 0,
             current: 0,
             line: 1,
@@ -297,7 +297,7 @@ impl Scanner {
 
     // place-holder
     fn error(&self, msg: String) {
-        eprintln!("{}", &msg)
+        eprintln!("Syntax Error at {}, {}: {}", self.line, self.column, &msg)
     }
 
     fn is_finished(&self) -> bool {

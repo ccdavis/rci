@@ -1,6 +1,6 @@
 use crate::environment::*;
+use crate::errors::*;
 use crate::statement::EarlyReturn;
-use crate::statement::ExecutionError;
 use crate::symbol_table::*;
 use crate::types::*;
 

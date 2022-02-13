@@ -2,8 +2,9 @@
 use crate::environment;
 use crate::environment::EnvNode;
 use crate::environment::EnvRc;
+use crate::errors;
+use crate::errors::*;
 use crate::expression::Expr;
-use crate::expression::TypeError;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
@@ -12,14 +13,11 @@ use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::ReturnValue;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
 const TRACE: bool = false;
-#[derive(Clone, Debug)]
-pub struct ExecutionError {
-    pub message: String,
-}
 
 // Use the '?' early return mechanism to propagate results of errors similar to exceptions.
 // Also use it to abandon execution in a function body and return values when executing the
@@ -28,20 +26,20 @@ pub struct ExecutionError {
 pub enum EarlyReturn {
     BreakStatement,
     ReturnStatement(ReturnValue),
-    Error(ExecutionError),
+    Error(errors::Error),
 }
 
 impl EarlyReturn {
     pub fn print(&self) -> String {
         match self {
-            EarlyReturn::Error(ref e) => e.message.to_owned(),
+            EarlyReturn::Error(ref e) => e.format(),
             EarlyReturn::BreakStatement => "break-statement".to_string(),
             EarlyReturn::ReturnStatement(ref retval) => retval.print(),
         }
     }
 
-    pub fn error(msg: String) -> EarlyReturn {
-        let exec_error = ExecutionError { message: msg };
+    pub fn error(t: &Token, msg: String) -> EarlyReturn {
+        let exec_error = Error::new(t, ErrorType::Execution, msg);
         EarlyReturn::Error(exec_error)
     }
 }
@@ -52,7 +50,7 @@ pub trait Executable {
 }
 
 pub trait TypeChecking {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError>;
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
 }
 #[derive(Clone, Debug)]
 pub enum Stmt {
@@ -96,13 +94,11 @@ impl Stmt {
             While(stmt) => stmt.execute(envr),
             Return(stmt) => stmt.execute(envr),
             Break(stmt) => stmt.execute(envr),
-            _ => Err(EarlyReturn::Error(ExecutionError {
-                message: " Statement type not implemented.".to_string(),
-            })),
+            _ => panic!("Statement not implemented."),
         }
     }
 
-    pub fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    pub fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         use Stmt::*;
         match self {
             Print(n) => n.check_types(symbols),
@@ -114,9 +110,7 @@ impl Stmt {
             While(n) => n.check_types(symbols),
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
-            _ => Err(TypeError {
-                message: " Statement type not type-checked yet.".to_string(),
-            }),
+            _ => panic!("Statement type not type-checked yet."),
         }
     }
 }
@@ -137,9 +131,8 @@ impl Executable for PrintStmtNode {
                 Ok(value) => {
                     print!("{}", &value.print());
                 }
-                Err(msg) => {
-                    let message = format!("Execution error on 'print' because of {}", &msg.message);
-                    return Err(EarlyReturn::error(message));
+                Err(err) => {
+                    return Err(EarlyReturn::Error(err));
                 }
             }
         }
@@ -149,7 +142,7 @@ impl Executable for PrintStmtNode {
 }
 
 impl TypeChecking for PrintStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // print can take any type
         for expr in &self.expressions {
             let expr_type = expr.determine_type(symbols)?;
@@ -171,20 +164,14 @@ impl Executable for ExpressionStmtNode {
 
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         match self.expression.evaluate(envr) {
-            Err(msg) => {
-                let message = format!(
-                    "Execution error on 'expression-statement' because of {}",
-                    &msg.message
-                );
-                Err(EarlyReturn::error(message))
-            }
+            Err(err) => Err(EarlyReturn::Error(err)),
             _ => Ok(()),
         }
     }
 }
 
 impl TypeChecking for ExpressionStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // Trigger type checks from the expression contained
         let t = self.expression.determine_type(symbols)?;
         Ok(())
@@ -234,7 +221,7 @@ impl Executable for BlockStmtNode {
 impl TypeChecking for BlockStmtNode {
     // Ignore the symbols passed in for now; they will be useful when we have
     // lambdas with parameters.
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // TODO: For now just return error on the first
         // bad statement, but improve this to check them all.
         for stmt in &self.statements {
@@ -246,6 +233,7 @@ impl TypeChecking for BlockStmtNode {
 
 #[derive(Clone, Debug)]
 pub struct IfStmtNode {
+    location: Token,
     condition: Expr,
     then_branch: Box<Stmt>,
     has_else: bool, // avoid Option inside else box
@@ -284,15 +272,13 @@ impl Executable for IfStmtNode {
                     Ok(())
                 }
             }
-            Err(err) => Err(EarlyReturn::Error(ExecutionError {
-                message: err.message,
-            })),
+            Err(err) => Err(EarlyReturn::Error(err)),
         }
     }
 }
 
 impl TypeChecking for IfStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let cond_type = self.condition.determine_type(symbols)?;
         if let DataType::Bool = cond_type {
             Ok(())
@@ -301,13 +287,14 @@ impl TypeChecking for IfStmtNode {
                 "Condition in if-statement must be boolean but was {} instead.",
                 cond_type
             );
-            Err(TypeError { message })
+            Err(Error::new(&self.location, ErrorType::Type, message))
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct VarStmtNode {
+    location: Token,
     name: String,
     data_type: DataType,
     index: usize,
@@ -332,20 +319,21 @@ impl Executable for VarStmtNode {
                     "Execution error on variable initialization for '{}' because of {}",
                     &self.name, &msg.message
                 );
-                Err(EarlyReturn::error(message))
+                let err = errors::Error::new(&self.location, ErrorType::Execution, message);
+                Err(EarlyReturn::Error(err))
             }
         }
     }
 }
 
 impl TypeChecking for VarStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let init_type = self.initializer.determine_type(symbols)?;
         if self.data_type != init_type {
             let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
 
-            Err(TypeError { message })
+            Err(errors::Error::new(&self.location, ErrorType::Type, message))
         } else {
             Ok(())
         }
@@ -383,29 +371,8 @@ impl Executable for FunStmtNode {
     }
 }
 
-impl FunStmtNode {
-    // Searches the body for a return statement and adds the
-    // return type  to any found. If no return type, it's a
-    // type error.
-    fn check_return_type(&mut self, return_type: &DataType) -> Result<(), TypeError> {
-        let mut has_return = false;
-        for stmt in &mut self.body {}
-
-        if has_return == false {
-            let message = format!(
-                "Missing return statement in function {} at {}",
-                &self.name.identifier_string(),
-                &self.name.print()
-            );
-            Err(TypeError { message })
-        } else {
-            Ok(())
-        }
-    }
-}
-
 impl TypeChecking for FunStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
         }
@@ -481,12 +448,11 @@ impl Callable for UserFunction {
 
         if matches!(return_value, ReturnValue::Value(DataValue::Unresolved)) {
             let message = format!(
-                "No return executed for function {} at {}",
+                "No return executed for function {}.",
                 &self.declaration.name.identifier_string(),
-                &self.name()
             );
 
-            return Err(EarlyReturn::error(message));
+            return Err(EarlyReturn::error(&self.declaration.name, message));
         }
         Ok(return_value)
     }
@@ -507,20 +473,20 @@ impl Executable for ReturnStmtNode {
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         match self.expr.evaluate(envr) {
             Ok(retval) => Err(EarlyReturn::ReturnStatement(retval)),
-            Err(eval_error) => Err(EarlyReturn::error(eval_error.message)),
+            Err(eval_error) => Err(EarlyReturn::error(&self.location, eval_error.message)),
         }
     }
 }
 
 impl TypeChecking for ReturnStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let would_return_type = self.expr.determine_type(symbols)?;
         if would_return_type != self.return_type {
             let message = format!(
-                "Type of return statement '{}' doesn't match function return type of '{}' at {:?}",
-                &would_return_type, &self.return_type, &self.location
+                "Type of return statement '{}' doesn't match function return type of '{}'.",
+                &would_return_type, &self.return_type
             );
-            Err(TypeError { message })
+            Err(Error::new(&self.location, ErrorType::Type, message))
         } else {
             Ok(())
         }
@@ -546,13 +512,14 @@ impl Executable for BreakStmtNode {
 impl TypeChecking for BreakStmtNode {
     // We could add a special symbol to any block's symbol table and then the
     // break statement could check if it was valid ...
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         Ok(())
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct WhileStmtNode {
+    location: Token,
     condition: Expr,
     body: Box<Stmt>,
 }
@@ -569,7 +536,7 @@ impl Executable for WhileStmtNode {
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
         loop {
             match self.condition.evaluate(envr) {
-                Err(eval_err) => return Err(EarlyReturn::error(eval_err.message)),
+                Err(eval_err) => return Err(EarlyReturn::Error(eval_err)),
                 Ok(cond) => {
                     if let DataValue::Bool(b) = cond.get() {
                         if *b {
@@ -587,7 +554,7 @@ impl Executable for WhileStmtNode {
                         let message = format!(
                             "Expressions in a while statement must evaluate to true or false."
                         );
-                        return Err(EarlyReturn::error(message));
+                        return Err(EarlyReturn::error(&self.location, message));
                     }
                 }
             }
@@ -598,7 +565,7 @@ impl Executable for WhileStmtNode {
 }
 
 impl TypeChecking for WhileStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), TypeError> {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let cond_type = self.condition.determine_type(symbols)?;
         if matches!(cond_type, DataType::Bool) {
             self.body.check_types(symbols)
@@ -607,7 +574,7 @@ impl TypeChecking for WhileStmtNode {
                 "Condition in while-statement must be boolean but was {} instead.",
                 cond_type
             );
-            Err(TypeError { message })
+            Err(Error::new(&self.location, ErrorType::Type, message))
         }
     }
 }
@@ -628,15 +595,22 @@ impl Stmt {
         })
     }
 
-    pub fn if_stmt(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Stmt {
+    pub fn if_stmt(
+        location: Token,
+        condition: Expr,
+        then_branch: Stmt,
+        else_branch: Option<Stmt>,
+    ) -> Stmt {
         match else_branch {
             None => Stmt::If(IfStmtNode {
+                location,
                 condition,
                 then_branch: Box::new(then_branch),
                 has_else: false,
                 else_branch: Box::new(Stmt::no_op()),
             }),
             Some(unwrapped_else_branch) => Stmt::If(IfStmtNode {
+                location,
                 condition,
                 then_branch: Box::new(then_branch),
                 has_else: true,
@@ -646,8 +620,10 @@ impl Stmt {
     }
 
     pub fn var_stmt(name: Token, data_type: DataType, expr: Expr) -> Stmt {
+        let location = name.clone();
         match name.token_type {
             TokenType::Identifier(n) => Stmt::Var(VarStmtNode {
+                location,
                 name: n,
                 data_type,
                 index: 0,
@@ -689,8 +665,9 @@ impl Stmt {
         Stmt::NoOp
     }
 
-    pub fn while_stmt(condition: Expr, body: Stmt) -> Stmt {
+    pub fn while_stmt(location: Token, condition: Expr, body: Stmt) -> Stmt {
         Stmt::While(WhileStmtNode {
+            location,
             condition,
             body: Box::new(body),
         })

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::expression::EvaluationError;
+use crate::errors;
 
 use crate::types::ReturnValue;
 const TRACE: bool = false;
@@ -78,7 +78,7 @@ impl EnvNode {
         index: usize,
         value: ReturnValue,
         dist: usize,
-    ) -> Result<(), EvaluationError> {
+    ) -> Result<(), errors::Error> {
         if dist == 0 {
             Ok(self.set_with_index(index, value))
         } else {
@@ -90,7 +90,7 @@ impl EnvNode {
         }
     }
 
-    pub fn assign(&self, name: &str, value: ReturnValue) -> Result<(), EvaluationError> {
+    pub fn assign(&self, name: &str, value: ReturnValue) -> Result<(), errors::Error> {
         if self.lookup.borrow().contains_key(name) {
             self.set_value(name, value);
             Ok(())
@@ -98,7 +98,10 @@ impl EnvNode {
             match self.parent {
                 None => {
                     let message = format!("No definition for {}", name);
-                    Err(EvaluationError { message })
+                    Err(errors::Error::no_location(
+                        errors::ErrorType::Evaluation,
+                        message,
+                    ))
                 }
                 Some(ref parent_env) => parent_env.assign(name, value),
             }
@@ -110,7 +113,7 @@ impl EnvNode {
         name: &str,
         value: ReturnValue,
         distance: usize,
-    ) -> Result<(), EvaluationError> {
+    ) -> Result<(), errors::Error> {
         if distance == 0 {
             Ok(self.set_value(name, value))
         } else {
@@ -125,15 +128,16 @@ impl EnvNode {
         }
     }
 
-    pub fn get(&self, name: &str) -> Result<ReturnValue, EvaluationError> {
+    pub fn get(&self, name: &str) -> Result<ReturnValue, errors::Error> {
         match self.lookup.borrow().get(name) {
             None => {
                 if let Some(enclosing) = &self.parent {
                     enclosing.get(name)
                 } else {
-                    Err(EvaluationError {
-                        message: format!("{} not defined.", name),
-                    })
+                    Err(errors::Error::no_location(
+                        errors::ErrorType::Evaluation,
+                        format!("{} not defined.", name),
+                    ))
                 }
             }
             Some(index) => Ok(self.storage.borrow()[*index].clone()),
@@ -144,14 +148,15 @@ impl EnvNode {
         &self,
         name: &str,
         distance: usize,
-    ) -> Result<ReturnValue, EvaluationError> {
+    ) -> Result<ReturnValue, errors::Error> {
         if distance == 0 {
             if let Some(index) = self.lookup.borrow().get(name) {
                 Ok(self.storage.borrow()[*index].clone())
             } else {
-                Err(EvaluationError {
-                    message: format!("{} not defined.", name),
-                })
+                Err(errors::Error::no_location(
+                    errors::ErrorType::Evaluation,
+                    format!("{} not defined.", name),
+                ))
             }
         } else {
             if let Some(enclosing) = &self.parent {
@@ -166,7 +171,7 @@ impl EnvNode {
         &self,
         index: usize,
         distance: usize,
-    ) -> Result<ReturnValue, EvaluationError> {
+    ) -> Result<ReturnValue, errors::Error> {
         if distance == 0 {
             Ok(self.storage.borrow()[index].clone())
         } else {

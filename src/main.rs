@@ -1,4 +1,5 @@
 mod environment;
+mod errors;
 mod expression;
 mod lex;
 mod operations;
@@ -7,7 +8,6 @@ mod statement;
 mod stdlib;
 mod symbol_table;
 mod types;
-mod errors;
 
 use environment::*;
 use parser::*;
@@ -64,7 +64,7 @@ impl Interpreter {
             .for_each(|stmt| match stmt.check_types(&self.global_symbols) {
                 Err(type_error) => {
                     self.had_type_error = true;
-                    eprintln!("Type error:  {:?}", &type_error.message);
+                    eprintln!("{}", &type_error.format());
                 }
                 _ => {}
             });
@@ -85,9 +85,13 @@ impl Interpreter {
             let mut result = stmt.execute(&self.global_env);
             match result {
                 Ok(_) => {}
-                Err(msg) => {
+                Err(early_return) => {
                     self.had_runtime_error = true;
-                    eprintln!("{:?}", &msg);
+                    if let statement::EarlyReturn::Error(msg) = early_return {
+                        eprintln!("{}", &msg.format());
+                    } else {
+                        println!("{:?}", &early_return);
+                    }
                 }
             }
         } // each statement
