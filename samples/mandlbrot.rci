@@ -45,7 +45,7 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 }
 
 fun calc(x1:number, y1:number, x2:number, y2:number):number {
-	var left:number = x1;
+	var left = x1;
 	val right:number = x2;
 	var top:number = y1;
 	val bottom:number = y2;
@@ -80,7 +80,7 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 }
 
 print "Starting";
-val start:number = clock();
+val start = clock();
 calc(-1.5, -1.0, 1.0, 1.0);
 print "Timer: ", (clock() - start) / 1000;
 
