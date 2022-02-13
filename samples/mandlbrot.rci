@@ -46,20 +46,20 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 
 fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	var left = x1;
-	val right:number = x2;
-	var top:number = y1;
-	val bottom:number = y2;
+	val right = x2;
+	var top = y1;
+	val bottom = y2;
 	
-	val height:number = bottom - top;
-	val width:number = right - left;
-	val x_increment:number =width / x_resolution;
-	val y_increment:number =height / y_resolution; 
+	val height= bottom - top;
+	val width =  right - left;
+	val x_increment =width / x_resolution;
+	val y_increment =height / y_resolution; 
 	
 	var points = 0;	
 	var inside = 0;
 	
 	while left < right {						
-		val line:string = "";
+		val line = "";
 		while top < bottom {
 			if in_mandelbrot(left, top) {
 				line := line + "*";
