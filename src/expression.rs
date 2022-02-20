@@ -215,9 +215,27 @@ impl TypeCheck for BinaryNode {
 
 impl Compiler for BinaryNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+	  let data_type = self.determine_type(symbols)?;
+	  let left = self.left.compile(symbols)?;
+	  let right = self.right.compile(symbols)?;
+	  let mut op = self.operator.print();
+	  if matches!(data_type, DataType::Str) {
+		// TODO generate string concatenation code
+		panic!("String concatenation not implemented yet!");
+	  } else {
+		// convert '<>' to '!='
+		if matches!(self.operator.token_type, TokenType::LessGreater){ 
+			op = "!=".to_string();
+		}
+		
+		if matches!(self.operator.token_type, TokenType::Equal) {
+			op = "==".to_string();
+		}
+	}
+	  
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type,
+            code:format!("{} {} {}", &left.code, &op, &right.code),
         })
     }
 }
