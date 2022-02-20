@@ -10,15 +10,13 @@ use crate::symbol_table::*;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
+use crate::types::ObjectCode;
 use crate::types::ReturnValue;
+use crate::types::*;
 
 use std::rc::Rc;
 
 const TRACE: bool = false;
-
-pub struct EvaluationError {
-    pub message: String,
-}
 
 pub trait Evaluation {
     // return the name  of the operation if any and
@@ -30,6 +28,10 @@ pub trait Evaluation {
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error>;
+}
+
+pub trait Compiler {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error>;
 }
 
 #[derive(Clone, Debug)]
@@ -74,6 +76,27 @@ impl Expr {
             Expr::Variable(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
+        }
+    }
+
+    pub fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        match self {
+            Expr::Binary(n) => n.compile(symbols),
+            Expr::Logical(n) => n.compile(symbols),
+            Expr::Call(n) => n.compile(symbols),
+            Expr::Lookup(n) => n.compile(symbols),
+            Expr::Unary(n) => n.compile(symbols),
+            Expr::Grouping(n) => n.compile(symbols),
+            Expr::Array(n) => n.compile(symbols),
+            Expr::Variable(n) => n.compile(symbols),
+            Expr::Assignment(n) => n.compile(symbols),
+            Expr::Literal(n) => {
+                let data_type = DataType::from_data_value(n.get());
+                Ok(ObjectCode {
+                    data_type,
+                    code: n.get().to_c_literal(),
+                })
+            }
         }
     }
 } // impl expr
@@ -190,6 +213,15 @@ impl TypeCheck for BinaryNode {
     }
 } // impl
 
+impl Compiler for BinaryNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct LogicalNode {
     left: Box<Expr>,
@@ -240,6 +272,15 @@ impl TypeCheck for LogicalNode {
             );
             Err(Error::new(&self.operator, ErrorType::Type, message))
         }
+    }
+}
+
+impl Compiler for LogicalNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 
@@ -296,6 +337,15 @@ impl TypeCheck for CallNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         let callee_return_type = self.callee.determine_type(symbols)?;
         Ok(callee_return_type)
+    }
+}
+
+impl Compiler for CallNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 
@@ -365,6 +415,15 @@ impl TypeCheck for LookupNode {
     }
 }
 
+impl Compiler for LookupNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GroupingNode {
     expr: Box<Expr>,
@@ -383,6 +442,15 @@ impl Evaluation for GroupingNode {
 impl TypeCheck for GroupingNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         self.expr.determine_type(symbols)
+    }
+}
+
+impl Compiler for GroupingNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 
@@ -440,6 +508,15 @@ impl TypeCheck for ArrayNode {
     }
 }
 
+impl Compiler for ArrayNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct LiteralNode {
     value: Rc<DataValue>,
@@ -458,6 +535,15 @@ impl Evaluation for LiteralNode {
 impl TypeCheck for LiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         Ok(DataType::from_data_value(&*self.value))
+    }
+}
+
+impl Compiler for LiteralNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 
@@ -523,6 +609,15 @@ impl TypeCheck for UnaryNode {
     }
 }
 
+impl Compiler for UnaryNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct VariableNode {
     pub name: Token,
@@ -584,6 +679,15 @@ impl TypeCheck for VariableNode {
         } else {
             panic!("Fatal error during type-checking: A variable expression must have a TokenType::Identifier(name) token type!");
         }
+    }
+}
+
+impl Compiler for VariableNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 
@@ -671,6 +775,15 @@ impl TypeCheck for AssignmentNode {
             );
             Err(Error::new(&self.name, ErrorType::Type, message))
         }
+    }
+}
+
+impl Compiler for AssignmentNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
     }
 }
 

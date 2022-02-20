@@ -52,6 +52,10 @@ pub trait Executable {
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
 }
+
+pub trait Compiler {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error>;
+}
 #[derive(Clone, Debug)]
 pub enum Stmt {
     Print(PrintStmtNode),
@@ -63,6 +67,7 @@ pub enum Stmt {
     While(WhileStmtNode),
     Return(ReturnStmtNode),
     Break(BreakStmtNode),
+    Program(ProgramNode),
     NoOp,
 }
 
@@ -94,6 +99,7 @@ impl Stmt {
             While(stmt) => stmt.execute(envr),
             Return(stmt) => stmt.execute(envr),
             Break(stmt) => stmt.execute(envr),
+            Program(stmt) => stmt.execute(envr),
             _ => panic!("Statement not implemented."),
         }
     }
@@ -110,7 +116,25 @@ impl Stmt {
             While(n) => n.check_types(symbols),
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
+            Program(n) => n.check_types(symbols),
             _ => panic!("Statement type not type-checked yet."),
+        }
+    }
+
+    pub fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        use Stmt::*;
+        match self {
+            Print(n) => n.compile(symbols),
+            ExpressionStmt(n) => n.compile(symbols),
+            Var(n) => n.compile(symbols),
+            Fun(n) => n.compile(symbols),
+            Block(n) => n.compile(symbols),
+            If(n) => n.compile(symbols),
+            While(n) => n.compile(symbols),
+            Return(n) => n.compile(symbols),
+            Break(n) => n.compile(symbols),
+            Program(n) => n.compile(symbols),
+            _ => panic!("Statement type compilation not supported yet."),
         }
     }
 }
@@ -147,8 +171,29 @@ impl TypeChecking for PrintStmtNode {
         for expr in &self.expressions {
             let expr_type = expr.determine_type(symbols)?;
         }
-
         Ok(())
+    }
+}
+
+impl Compiler for PrintStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        // Parse each expression and return the code + its data type or an error
+        let mut subst_codes = "".to_string();
+        let mut values: Vec<String> = Vec::new();
+        for expr in &self.expressions {
+            let obj_code = expr.compile(symbols)?;
+            let subst_code = match obj_code.data_type {
+                DataType::Str => "%s",
+                DataType::Number => "%d",
+                DataType::Bool => "%d",
+                _ => "%s",
+            };
+            subst_codes = subst_codes + subst_code;
+            values.push(obj_code.code.clone());
+        }
+
+        let mut code = format!("printf(\"{}\",{});\n", &subst_codes, &values.join(","));
+        Ok(code)
     }
 }
 
@@ -175,6 +220,12 @@ impl TypeChecking for ExpressionStmtNode {
         // Trigger type checks from the expression contained
         let t = self.expression.determine_type(symbols)?;
         Ok(())
+    }
+}
+
+impl Compiler for ExpressionStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
     }
 }
 
@@ -228,6 +279,12 @@ impl TypeChecking for BlockStmtNode {
             stmt.check_types(&self.symbols)?
         }
         Ok(())
+    }
+}
+
+impl Compiler for BlockStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
     }
 }
 
@@ -292,6 +349,12 @@ impl TypeChecking for IfStmtNode {
     }
 }
 
+impl Compiler for IfStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct VarStmtNode {
     location: Token,
@@ -340,6 +403,12 @@ impl TypeChecking for VarStmtNode {
     }
 }
 
+impl Compiler for VarStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunStmtNode {
     name: Token, // name + line, column
@@ -379,6 +448,12 @@ impl TypeChecking for FunStmtNode {
         Ok(())
     }
 } // impl
+
+impl Compiler for FunStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
+    }
+}
 
 #[derive(Clone)]
 pub struct UserFunction {
@@ -493,6 +568,12 @@ impl TypeChecking for ReturnStmtNode {
     }
 }
 
+impl Compiler for ReturnStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
+    }
+}
+
 #[derive(Clone, Debug)]
 struct BreakStmtNode {
     location: Token,
@@ -514,6 +595,12 @@ impl TypeChecking for BreakStmtNode {
     // break statement could check if it was valid ...
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         Ok(())
+    }
+}
+
+impl Compiler for BreakStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
     }
 }
 
@@ -576,6 +663,45 @@ impl TypeChecking for WhileStmtNode {
             );
             Err(Error::new(&self.location, ErrorType::Type, message))
         }
+    }
+}
+
+impl Compiler for WhileStmtNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        Ok("// not implemented".to_string())
+    }
+}
+#[derive(Clone, Debug)]
+pub struct ProgramNode {
+    declarations: Vec<Stmt>,
+    imperatives: Box<Stmt>, // this is only allowed to be a block
+}
+
+impl Executable for ProgramNode {
+    fn print(&self) -> String {
+        "Program".to_string()
+    }
+
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
+        Ok(())
+    }
+}
+
+impl TypeChecking for ProgramNode {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+        Ok(())
+    }
+}
+
+// This is  where we insert the internal types for supporting function calling
+// and minimal standard library functions.
+impl Compiler for ProgramNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        let preamble = "typedef bool unsigned char;
+			#define true 1
+			#define false 0";
+
+        Ok(preamble.to_string())
     }
 }
 
@@ -643,6 +769,16 @@ impl Stmt {
 
     pub fn break_stmt(location: Token) -> Stmt {
         Stmt::Break(BreakStmtNode { location })
+    }
+
+    // A program has declarations for functions, variables and types
+    // at the global level, and a single block of statements at the end
+    // to execute.
+    pub fn program(declarations: Vec<Stmt>, imperatives: Box<Stmt>) -> Stmt {
+        Stmt::Program(ProgramNode {
+            declarations,
+            imperatives,
+        })
     }
 
     pub fn fun_stmt(

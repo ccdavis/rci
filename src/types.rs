@@ -34,6 +34,12 @@ pub enum DataType {
     Unresolved, // Incomplete type checker results
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ObjectCode {
+    pub data_type: DataType,
+    pub code: String,
+}
+
 #[derive(Clone, Debug)]
 pub enum DataValue {
     Str(String),
@@ -114,6 +120,10 @@ impl DataValue {
 
     pub fn print(&self) -> String {
         format!("{:?}", self)
+    }
+
+    pub fn to_c_literal(&self) -> String {
+        self.print_value()
     }
 }
 

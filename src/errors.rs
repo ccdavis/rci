@@ -6,6 +6,7 @@ pub enum ErrorType {
     Parse,
     Execution,
     Evaluation,
+    Compiler,
     Internal,
 }
 
@@ -18,6 +19,7 @@ impl fmt::Display for ErrorType {
             Evaluation => "Evaluation",
             Execution => "Execution",
             Internal => "Internal",
+            Compiler => "Compilation",
         };
         write!(f, "{} Error", &name)
     }
