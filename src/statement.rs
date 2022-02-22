@@ -682,14 +682,21 @@ impl Executable for ProgramNode {
         "Program".to_string()
     }
 
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        Ok(())
+    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {        
+		for stmt in &mut self.declarations {
+			stmt.execute(envr)?;
+		}
+		
+		self.imperatives.execute(envr)
     }
 }
 
 impl TypeChecking for ProgramNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
-        Ok(())
+        for decl in &self.declarations {
+			decl.check_types(symbols)?;
+		}
+		self.imperatives.check_types(symbols)
     }
 }
 

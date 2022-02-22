@@ -142,13 +142,50 @@ impl Parser {
     pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-            match self.declaration(global_symbols) {
+			// Here is where we'd put imports or module includes
+			// of some sort, then read the main program.		
+            match self.program(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
             }
         }
         statements
     }
+	
+	// A program is a statement. It is a list of declarations followed by a block
+	// statement type with the entry point function calls or statements.
+	fn program(&mut self, global_symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+		let mut decls = Vec::new();
+		let mut imperatives = Stmt::NoOp;
+		let mut found_main = false; // a 'program' may lack imperatives if it's a module
+				
+        while !self.is_finished() {
+			if found_main {
+				return Err(
+					ParseError { 
+						t: self.previous(),
+						message: format!("Program entry point block already found,no more statements allowed." )
+					}
+				);
+			}
+			let stmt = self.declaration(global_symbols)?;
+            match stmt {
+               Stmt::Var(_) | 
+			   Stmt::Fun(_) => decls.push(stmt),
+			   Stmt::Block(_) =>  {				
+				imperatives = stmt;
+				found_main = true;
+			   },
+			   _ => return Err(ParseError{ 
+				t: self.previous(),
+				message: format!("Programs can only have declarations (fun, var, val) and a block '{{','}}' at the end.")}),			   
+            }
+			
+        }				
+		// If we get to this point without finding {} (main) the
+		// imperatives will be a NoOp which is fine for a module.
+		Ok(Stmt::program(decls, Box::new(imperatives)))
+	}
 
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         if self.matches(&[TokenType::Fun]) {
