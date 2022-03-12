@@ -10,7 +10,7 @@ typedef unsigned char rci_bool;
 typedef long rci_int;
 typedef double rci_number;
 
-typedef enum { utf_8, bytes} 
+typedef enum { utf_8_encoded, byte_encoded} 
 	char_encoding;
 typedef enum { _number_, _string_ , _boolean_, _array_ } 
 	rci_type;	
@@ -30,7 +30,7 @@ typedef union {
 	void * _collection;
 } rci_data;
 
-
+// For run-time type information
 typedef struct  {
 	rci_data data;	
 	rci_type type;	
