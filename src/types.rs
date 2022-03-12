@@ -123,7 +123,16 @@ impl DataValue {
     }
 
     pub fn to_c_literal(&self) -> String {
-        self.print_value()
+		let lexeme = self.print_value();
+		let c_cast = match self {
+			DataValue::Str(_) =>"rci_str",
+            DataValue::Number(_) =>"double",
+            DataValue::Bool(_) => "",
+            DataValue::Array(ref data) => "rci_array",
+            DataValue::User(ref u) => u,
+            DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
+		};
+		format!("({}) {} ",&c_cast, &lexeme)        
     }
 }
 

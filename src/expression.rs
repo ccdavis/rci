@@ -231,12 +231,11 @@ impl Compiler for BinaryNode {
 		if matches!(self.operator.token_type, TokenType::Equal) {
 			op = "==".to_string();
 		}
-	}
-	  
-        Ok(ObjectCode {
-            data_type,
-            code:format!("{} {} {}", &left.code, &op, &right.code),
-        })
+	}	  
+	Ok(ObjectCode {
+			data_type,
+			code:format!("({} {} {})", &left.code, &op, &right.code),
+		})
     }
 }
 
