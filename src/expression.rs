@@ -294,11 +294,27 @@ impl TypeCheck for LogicalNode {
 
 impl Compiler for LogicalNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-        Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
-        })
-    }
+		let data_type = self.determine_type(symbols)?;
+		  let left = self.left.compile(symbols)?;
+		  let right = self.right.compile(symbols)?;
+		  let op = match self.operator.token_type {
+			TokenType::Greater => ">",
+			TokenType::Less => "<",
+			TokenType::LessEqual => "<=",
+			TokenType::GreaterEqual => ">=",
+			TokenType::LessGreater => "!=",
+			TokenType::Not => "!",
+			TokenType::And => "&&",
+			TokenType::Or => "||",
+			_ => panic!("Code generation error, operator not a logical operator: '{}'",
+						&self.operator.print()),									
+		  };
+		  		  
+		Ok(ObjectCode {
+			data_type,
+			code:format!("({} {} {})", &left.code, op, &right.code),
+		})
+    }				          
 }
 
 #[derive(Clone, Debug)]
