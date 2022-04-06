@@ -79,6 +79,8 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	return points;
 }
 
+var a:number = calc("abc");
+
 print "Starting";
 val start = clock();
 calc(-1.5, -1.0, 1.0, 1.0);
