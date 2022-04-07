@@ -25,9 +25,13 @@ typedef struct {
 	char * data;
 	long len;	 // number of bytes
 	long chars; // numbers of chars
+	long refs;
 	char_encoding encoding;
 } rci_str;
 
+void debug_str_to_stdout(rci_str s) {
+	printf("string data: '%s', len: %d, chars: %d",s.data,s.len,s.chars);
+}
 
 
 typedef union {
@@ -75,6 +79,7 @@ typedef struct {
 
 
 rci_str string_concat(rci_str left, rci_str right) {
+	long new_size = left.len + right.len;
 	return left;
 }
 
