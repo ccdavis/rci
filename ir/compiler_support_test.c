@@ -4,30 +4,14 @@
 
 
 rci_value init_xyz() {
-	rci_value x ={.data= (rci_data) {._number = (double)11.3 }, .type = _number_};  	
+	rci_value x = {.data= (rci_data) {._number = (double)11.3 }, .type = _number_};  	
 	rci_value y = {.data= (rci_data) {._number = (double)25.3 }, .type = _number_};  	
 	return x;	
 }
 
 
-rci_str cat_test(rci_str *left, rci_str *right) {				
-	long new_len = left->len + right->len;	
-	char * new_data = malloc(new_len + 1);	
-	memcpy(new_data, left->data, left->len);
-	memcpy(new_data + left->len, right->data, right->len);
-	new_data[new_len] = '\0';
-	rci_str new_string= {
-		.data = new_data, 
-		.len = new_len, 
-		.chars = left->chars + right->chars,
-		.refs = 1 ,
-		.encoding = left->encoding 		
-	};	
-	return new_string;
-}	
 
-int main() {
-			
+int main() {			
 	rci_data x;
 	rci_data y;
 	rci_data result;
@@ -52,7 +36,7 @@ int main() {
 	rci_str this_string = str_result._string;
 	rci_str other_string =  str_other_result._string;
 	
-	rci_str new_string = cat_test(&this_string, &other_string);
+	rci_str new_string = cat_rci_str(&this_string, &other_string);
 	printf("new string: ");
 	debug_str_to_stdout(new_string);
 	

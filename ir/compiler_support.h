@@ -29,6 +29,89 @@ typedef struct {
 	char_encoding encoding;
 } rci_str;
 
+rci_str rci_str_ascii_literal(char  str[]) {
+	rci_str result = {
+		.data = str,
+		.len = strlen(str),
+		.chars = strlen(str),
+		.refs = 0,
+		.encoding = byte_encoded
+	};
+	return result;
+}
+
+rci_str copy_rci_str(rci_str * value) {
+	rci_str result = *value;
+	char * memory = malloc(value->len + 1);
+	strcpy(memory, value->data);
+	result.refs = 1;
+	return result;	
+}
+
+rci_str new_rci_str(char  data[], char_encoding enc) {
+	int byte_length = strlen(data);	
+	char * memory = malloc(byte_length + 1);
+	strcpy(memory, data);
+	return (rci_str) {
+		.data = memory,
+		.len = byte_length,
+		.chars = byte_length,
+		.refs = 1,
+		.encoding = enc				
+	};
+}
+
+rci_str cat_rci_str(rci_str *left, rci_str *right) {				
+	long new_len = left->len + right->len;	
+	char * new_data = malloc(new_len + 1);	
+	memcpy(new_data, left->data, left->len);
+	memcpy(new_data + left->len, right->data, right->len);
+	new_data[new_len] = '\0';
+	rci_str new_string= {
+		.data = new_data, 
+		.len = new_len, 
+		.chars = left->chars + right->chars,
+		.refs = 1 ,
+		.encoding = left->encoding 		
+	};	
+	return new_string;
+}	
+
+rci_str * pass_rci_str(rci_str * value) {
+	value->refs += 1;
+	return value;
+}
+
+void exit_scope_rci_str(rci_str * value) {
+	// If refs == 0 it's a literal and 
+	// no memory needs to be managed.
+	if (value->refs == 1) {
+		free(value->data);
+		value->refs = -1;
+	} else  if (value->refs > 1) {
+		value->refs -= 1;
+	}
+}
+
+rci_str * return_rci_str(rci_str * value) {
+	// If refs == 0 or 1 this is a 'move', the
+	// change in scope decrements the count normally
+	// but the memory won't be needed in the scope
+	// we're exiting.
+	if (value->refs == 0 || value-> refs == 1) return value;
+	if (value->refs > 1) {
+		value->refs -= 1;
+		return value;
+	}
+	if (value->refs == -1) {
+		printf("Runtime error: String memory deallocated.");
+		exit(1);
+	}
+	
+}
+
+
+
 void debug_str_to_stdout(rci_str s) {
 	printf("string data: '%s', len: %d, chars: %d",s.data,s.len,s.chars);
 }
@@ -41,10 +124,10 @@ typedef union {
 } rci_data;
 
 // For run-time type information
-typedef struct  {
+typedef struct {
 	rci_data data;	
 	rci_type type;	
-} rci_value;
+}  rci_value;
 
 void debug_value_to_stdout(rci_value *value) {
 	switch (value->type) {
@@ -78,11 +161,6 @@ typedef struct {
 } rci_array;
 
 
-rci_str string_concat(rci_str left, rci_str right) {
-	long new_size = left.len + right.len;
-	return left;
-}
-
 void code_gen_error(const char * msg) {
 	printf("%s",msg);
 	exit(1);
@@ -105,6 +183,48 @@ rci_data binary_operation(rci_binary_operation op, rci_data left, rci_data right
 		default: code_gen_error("op not implemented");
 	}
 	return left;	
+}
+
+
+rci_value to_string(rci_value *value) {
+	rci_value result;
+	result.type = _string_;
+	switch(value->type) {
+		case _number_: {
+			char buffer[50];
+			sprintf(buffer, "%f", value->data._number);
+			result.data._string = (rci_str) new_rci_str(buffer, byte_encoded);
+		}break;
+		case _string_ : {
+			result.data._string =  (rci_str) copy_rci_str(value);
+		}break;
+		case _boolean_ : {
+			if (value->data._boolean == true) {
+				result.data._string = (rci_str) rci_str_ascii_literal("true");
+			} else {
+				result.data._string = (rci_str) rci_str_ascii_literal("false");
+			}
+		}break;
+		default: {
+			printf("Compilation error, to_string() not supported for type.");
+			exit(1);
+		}
+	}
+	return result;
+}
+
+
+
+rci_value power(rci_value x,rci_value p) {
+	rci_value result = {
+		.data = (rci_data) {._number = (double)1 }, 
+		.type = (rci_type) _number_};
+					
+	while (p.data._number > 1) {
+		p.data._number = p.data._number - 1;
+		result.data._number = result.data._number * x.data._number;					
+	}
+	return result;
 }
 
 
