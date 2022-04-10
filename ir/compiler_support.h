@@ -15,11 +15,15 @@ typedef double rci_number;
 typedef enum { utf_8_encoded, byte_encoded} 
 	char_encoding;
 	
+
 typedef enum { _number_, _string_ , _boolean_, _array_ } 
 	rci_type;	
 	
-typedef enum { _ADD_, _SUB_, _MUL_, _DIV_ }
-	rci_binary_operation;
+
+// These all result in number
+typedef enum { _ADD_, _SUB_, _MUL_, _DIV_, _MOD_, _POW_, _SHL_, _SHR_,  
+			_LT_, _GT_, _LTE_, _GTE_, _EQ_, _NE_, _AND_, _OR_ }  
+	rci_binary_operators;
 
 typedef struct {	
 	char * data;
@@ -110,8 +114,6 @@ rci_str * return_rci_str(rci_str * value) {
 	
 }
 
-
-
 void debug_str_to_stdout(rci_str s) {
 	printf("string data: '%s', len: %d, chars: %d",s.data,s.len,s.chars);
 }
@@ -165,20 +167,74 @@ void code_gen_error(const char * msg) {
 	printf("%s",msg);
 	exit(1);
 }
+
+rci_value power(rci_value x,rci_value p) {
+	rci_value result = {
+		.data = (rci_data) {._number = (double)1 }, 
+		.type = (rci_type) _number_};
+					
+	while (p.data._number > 1) {
+		p.data._number = p.data._number - 1;
+		result.data._number = result.data._number * x.data._number;					
+	}
+	return result;
+}
+
+rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value right) {
+	rci_value result = {.data._boolean=false,.type=_boolean_};
+	switch(op) {
+		case _LT_ :{
+			result.data._boolean = left.data._number < right.data._number;
+		} break;
+		default:code_gen_error("op for comparison not implemented");					
+	}
+	return result;	
+}
+
+rci_value logical_binary_operation(rci_binary_operators op, rci_value left, rci_value right) {
+	rci_value result = {.data._boolean=false,.type=_boolean_};
+	switch(op) {
+		case _OR_: {
+			result.data._boolean = left.data._boolean || right.data._boolean;
+		} break;
+		default:code_gen_error("op for comparison not implemented");					
+	}
+	return result;
+}
+
 // Maybe turn this into a macro?
-rci_data binary_operation(rci_binary_operation op, rci_data left, rci_data right) {	
+rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value right) {	
+	rci_value result;
 	switch(op) {
 		case _ADD_: {
-			left._number += right._number;					
+			left.data._number += right.data._number;					
 			} break;
 		case _SUB_: {
-			left._number -= right._number;
+			left.data._number -= right.data._number;
 		}break;
 		case _MUL_: {
-			left._number = left._number * right._number;
+			left.data._number = left.data._number * right.data._number;
 		}break;
 		case _DIV_: {
-			left._number = left._number / right._number;
+			left.data._number = left.data._number / right.data._number;
+		}break;
+		case _MOD_: {
+			left.data._number = (long) left.data._number % (long) right.data._number;
+		}break;
+		case _POW_ : {
+			left = power(left, right);
+		} break;
+		case _LT_: 
+		case _GT_:
+		case _LTE_:
+		case _GTE_:
+		case _NE_:
+		case _EQ_: {
+			left = comparison_binary_operation(op,left,right);					
+		} break;
+		case _AND_:
+		case _OR_:{
+			left = logical_binary_operation(op, left, right);
 		}break;
 		default: code_gen_error("op not implemented");
 	}
@@ -213,19 +269,6 @@ rci_value to_string(rci_value *value) {
 	return result;
 }
 
-
-
-rci_value power(rci_value x,rci_value p) {
-	rci_value result = {
-		.data = (rci_data) {._number = (double)1 }, 
-		.type = (rci_type) _number_};
-					
-	while (p.data._number > 1) {
-		p.data._number = p.data._number - 1;
-		result.data._number = result.data._number * x.data._number;					
-	}
-	return result;
-}
 
 
 #endif

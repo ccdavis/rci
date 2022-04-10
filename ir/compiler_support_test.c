@@ -26,6 +26,14 @@ int main() {
 	rci_value tagged_type = {.data= (rci_data) {._number = (double)32.3 }, .type = _number_};  	
 	debug_value_to_stdout(&tagged_type);
 	printf("\n");
+	
+	rci_value r3 = binary_operation(
+		_ADD_, 
+		tagged_type, 
+		(rci_value) {.data= (rci_data) {._number = (double)32.3 }, .type = _number_});
+	debug_value_to_stdout(&r3);
+	printf("\n");
+	
 
 	rci_data str_result;	
 	str_result._string = (rci_str) {.data = "abc",.len=3,.chars = 3,  .refs = 1,.encoding = byte_encoded}; 
@@ -52,9 +60,7 @@ int main() {
 	
 	rci_str left = string_value.data._string;
 	rci_str right = other_string_value.data._string;
-	
-	
-	
+		
 	rci_value new_string_value = {
 			.data._string = new_string, 
 			.type = _string_};

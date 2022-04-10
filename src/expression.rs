@@ -90,13 +90,8 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
-            Expr::Literal(n) => {
-                let data_type = DataType::from_data_value(n.get());
-                Ok(ObjectCode {
-                    data_type,
-                    code: n.get().to_c_literal(),
-                })
-            }
+            Expr::Literal(n) => n.compile(symbols),                
+            
         }
     }
 } // impl expr
@@ -220,16 +215,23 @@ impl Compiler for BinaryNode {
 	  let right = self.right.compile(symbols)?;
 	  let mut op = self.operator.print();
 	  if matches!(data_type, DataType::Str) {
-		// TODO generate string concatenation code
-		panic!("String concatenation not implemented yet!");
+		if matches!(self.operator.token_type, TokenType::Plus) {
+			return  Ok(ObjectCode {
+				data_type,
+				code:format!("cat_rci_str({}, {})", &left.code, &right.code),
+			});
+		 } else {
+			let msg = format!("Operator {} not supported for string type.",&op);
+			return Err( Error::new(&self.operator, ErrorType::Compiler, msg));
+		}
 	  } else {
 		// convert '<>' to '!='
 		if matches!(self.operator.token_type, TokenType::LessGreater){ 
-			op = "!=".to_string();
+			op = "_NE_".to_string();
 		}
 		
 		if matches!(self.operator.token_type, TokenType::Equal) {
-			op = "==".to_string();
+			op = "_EQ_".to_string();
 		}
 	}	  
 	Ok(ObjectCode {
@@ -374,10 +376,23 @@ impl TypeCheck for CallNode {
 }
 
 impl Compiler for CallNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {			
+		let callee_return_type = self.callee.determine_type(symbols)?;
+		
+		// The 'callee' is an expression but it really just resolves to the 
+		// name of the function to be called; it could be expanded to be a
+		// class-instance.method() call or other things as well.
+		let function_name = self.callee.compile(symbols)?;
+		let mut arguments: Vec<String> = Vec::new();
+		for arg_expr in &self.args {
+			let arg = arg_expr.compile(symbols)?;
+			arguments.push(arg.code);
+		}
+		
+		let args_list = arguments.join(", ");		
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type: callee_return_type,
+            code: format!("{}({})",&function_name.code, &args_list),
         })
     }
 }
@@ -480,9 +495,11 @@ impl TypeCheck for GroupingNode {
 
 impl Compiler for GroupingNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+		let group_type = self.expr.determine_type(symbols)?;
+		let group_expr_code = self.expr.compile(symbols)?;
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type: group_type,
+            code: format!("( {} )", &group_expr_code.code),
         })
     }
 }
@@ -573,9 +590,20 @@ impl TypeCheck for LiteralNode {
 
 impl Compiler for LiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+		let literal_type = DataType::from_data_value(&*self.value);
+		let object_code = match *self.value {
+			DataValue::Str(ref v)=> 
+				format!("(rci_value) {{.data= (rci_str) {{.data=\"{}\",.len={},.chars={},.refs=0,.encoding=byte_encoding }}, .type = _string_}} ", &v, &v.len(), &v.len()),
+			DataValue::Number(n)=>
+				format!("(rci_value) {{.data._number={}, .type=_number_}}",n),
+			DataValue::Bool(b)=>
+				format!("(rci_value) {{.data._boolean={}, .type=_boolean_}}",n),
+			_ => panic!("Literal compilation not implemented for {:?}", self.value),
+		};
+						
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type: literal_type,
+            code: object_code,
         })
     }
 }
@@ -644,9 +672,18 @@ impl TypeCheck for UnaryNode {
 
 impl Compiler for UnaryNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+		use TokenType::*;		
+		let compiled_expr = self.expr.compile(symbols)?;
+		
+		let code =match self.operator.token_type {
+			Not => format!("negate({})",&compiled_expr.code),
+			Minus => format!("negative({})",&compiled_expr.code),
+			_ => panic!("Compiler error. Only '-' or 'not' should be in a unary expression."),
+		};
+						
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type: compiled_expr.data_type,
+            code,
         })
     }
 }
@@ -717,11 +754,16 @@ impl TypeCheck for VariableNode {
 
 impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-        Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
-        })
-    }
+		let var_type = self.determine_type(symbols)?;
+		if let TokenType::Identifier(var_name) = self.name.token_type {
+			Ok( ObjectCode {
+				data_type: var_type,
+				code: format!("{}",&var_name),
+			})
+		} else {
+			panic!("Compiler error. A variable node must have an identifier token type.");
+		}
+	}					
 }
 
 #[derive(Clone, Debug)]
@@ -813,9 +855,15 @@ impl TypeCheck for AssignmentNode {
 
 impl Compiler for AssignmentNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+		let value_to_store = self.value.compile(symbols)?;
+		let assignee_name = match  self.name.token_type {
+			TokenType::Identifier(ref n) => n.clone(),
+			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
+		};
+		
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type: value_to_store.data_type,
+            code: format!("{} = {}",&assignee_name, &value_to_store.code),
         })
     }
 }
