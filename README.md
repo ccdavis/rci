@@ -18,6 +18,7 @@ The main idea is to try out some familiar language features combined in new ways
 * Actual newtype types created by a 'type' declaration. This is different from 'type' in ___Rust___ or 'typedef' in ___C___ which simply aliases the type name. To do this well the language has to allow common operators to work on directly derived types but prevent automatic operation between say 'kilometers' and 'int64' -- but allow them when explicit casts (but only if the newtype derives from the exact same built-in type.)
 * Enumeration types with ordering and name assignments
 * Set type, along with dynamic arrays and hashtables.
+* Arrays, like tables have an index type: data: array<Integer, String>. In most languages the type of the index is implied but is some scalar type. Allow enumerations or sets of enumeration types to be the index type of an array. This way, all "look-up" types have the same calling conventions and same declaration syntax.
 * Set operators on all collection types
 * Pattern matching case statements
 * Record types that ensure field order and always support serialization
