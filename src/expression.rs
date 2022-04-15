@@ -90,7 +90,7 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
-            Expr::Literal(n) => n.compile(symbols),                
+            Expr::Literal(n) => LiteralNode::compile(n, symbols),                
             
         }
     }
@@ -304,8 +304,8 @@ impl Compiler for LogicalNode {
 			TokenType::Less => "<",
 			TokenType::LessEqual => "<=",
 			TokenType::GreaterEqual => ">=",
-			TokenType::LessGreater => "!=",
-			TokenType::Not => "!",
+			// The '<>' is "not equal"
+			TokenType::LessGreater => "!=",		
 			TokenType::And => "&&",
 			TokenType::Or => "||",
 			_ => panic!("Code generation error, operator not a logical operator: '{}'",
@@ -588,17 +588,18 @@ impl TypeCheck for LiteralNode {
     }
 }
 
-impl Compiler for LiteralNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		let literal_type = DataType::from_data_value(&*self.value);
-		let object_code = match *self.value {
+impl LiteralNode {
+    fn compile(data_value: &ReturnValue, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let value = data_value.get();
+		let literal_type = DataType::from_data_value(value);
+		let object_code = match *value {
 			DataValue::Str(ref v)=> 
 				format!("(rci_value) {{.data= (rci_str) {{.data=\"{}\",.len={},.chars={},.refs=0,.encoding=byte_encoding }}, .type = _string_}} ", &v, &v.len(), &v.len()),
 			DataValue::Number(n)=>
 				format!("(rci_value) {{.data._number={}, .type=_number_}}",n),
 			DataValue::Bool(b)=>
-				format!("(rci_value) {{.data._boolean={}, .type=_boolean_}}",n),
-			_ => panic!("Literal compilation not implemented for {:?}", self.value),
+				format!("(rci_value) {{.data._boolean={}, .type=_boolean_}}",b),
+			_ => panic!("Literal compilation not implemented for {:?}", value),
 		};
 						
         Ok(ObjectCode {
@@ -755,7 +756,7 @@ impl TypeCheck for VariableNode {
 impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
 		let var_type = self.determine_type(symbols)?;
-		if let TokenType::Identifier(var_name) = self.name.token_type {
+		if let TokenType::Identifier(ref var_name) = self.name.token_type {
 			Ok( ObjectCode {
 				data_type: var_type,
 				code: format!("{}",&var_name),

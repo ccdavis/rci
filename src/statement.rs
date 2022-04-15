@@ -192,7 +192,8 @@ impl Compiler for PrintStmtNode {
             values.push(obj_code.code.clone());
         }
 
-        let mut code = format!("printf(\"{}\",{});\n", &subst_codes, &values.join(","));
+        let mut code = format!("printf(\"{}\",{});\n", 
+			&subst_codes, &values.join(","));
         Ok(code)
     }
 }
@@ -225,7 +226,8 @@ impl TypeChecking for ExpressionStmtNode {
 
 impl Compiler for ExpressionStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+		let code = format!("{};",self.expression.compile(symbols));
+        Ok(code)
     }
 }
 
@@ -284,7 +286,15 @@ impl TypeChecking for BlockStmtNode {
 
 impl Compiler for BlockStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+		let stmts = Vec::new();
+		for stmt in self.statements {
+			let stmt_code = stmt.compile(self.symbols)?;
+			stmts.push(stmt_code);
+		}
+		let stmts_code = stmts.join(";\n");
+		
+        let code = format!("{{\n\t{}\n}}", &stmts_code);
+		Ok(code)
     }
 }
 
@@ -350,8 +360,21 @@ impl TypeChecking for IfStmtNode {
 }
 
 impl Compiler for IfStmtNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {        
+		let cond_code = self.expression.compile(symbols)?;
+		let then_branch_code = self.then_branch.compile(symbols)?;
+		
+		let code = if self.has_else {
+			let else_branch_code = self.else_branch.compile(symbols)?;
+			format!("if (rci_value_to_c_boolean({}))\n{} else\n{}\n",
+				&cond_code,&then_branch_code, &else_branch_code)
+		} else {
+			format!("if (rci_value_to_c_boolean({}))\n{}\n",
+				&cond_code, &then_branch_code)
+		};
+		
+		Ok(code)
+			
     }
 }
 
