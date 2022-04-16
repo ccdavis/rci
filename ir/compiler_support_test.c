@@ -72,11 +72,11 @@ int main() {
 	debug_value_to_stdout(&new_string_value);
 	printf("\n");
 	
-	rci_value return_value = test_function(2, 
+	const rci_value return_value = test_function(2, 
 		(rci_value[2]) {
 		new_string_value,
 		tagged_type});
 		
-
+	
 	return 0;
 }

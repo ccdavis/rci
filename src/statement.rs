@@ -428,7 +428,10 @@ impl TypeChecking for VarStmtNode {
 
 impl Compiler for VarStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+		let lhs = format!("rci_value {}",self.name);
+		let rhs =  self.initializer.compile(symbols)?;
+		let code = format!("{} = {};");
+		Ok(code)		        
     }
 }
 
@@ -474,7 +477,39 @@ impl TypeChecking for FunStmtNode {
 
 impl Compiler for FunStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+		let fun_name = self.name.token_type.print_name();		
+		let params_code:Vec<String> = Vec::new();
+		for p in self.params {
+			let param = match p.entry_type {
+				DeclarationType::Var => {
+					format!("rci_value & {}",&p.name), 
+				},
+				DeclarationType::Val => {
+					format!("const rci_value & {}",&p.name),
+				},
+				DeclarationType::Cpy => {
+					// NOTE: at the call site a deep copy should have been
+					// made by the compiler.
+					format!("rci_value {}",&p.name)
+				},
+				_ => {
+				 panic!("Internal compiler error. Only val, var,, cpy allowed as param decl types.")
+				}				
+			};
+			params.push(param_code);
+		}
+		
+		let stmts_code:Vec<String> = Vec::new();
+		for stmt in self.body {
+			let stmt_code = stmt.compile(&self.symbols)?;
+			stmts_code.push(stmt_code);
+		}
+
+        let decl = format!("rci_value {}({})", 
+			&fun_name, &params_code.join(","));
+		let body = format!("{{\n{}\n}}"), 
+			&stmts_code.join("\n"));
+		Ok(format!("{}\n{}\n",&decl, &body))		
     }
 }
 
