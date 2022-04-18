@@ -9,6 +9,7 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
+use crate::types::DeclarationType;
 use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
@@ -226,7 +227,8 @@ impl TypeChecking for ExpressionStmtNode {
 
 impl Compiler for ExpressionStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let code = format!("{};",self.expression.compile(symbols));
+            let expr_code = self.expression.compile(symbols)?;
+		let code = format!("{};",&expr_code.code);
         Ok(code)
     }
 }
@@ -286,9 +288,9 @@ impl TypeChecking for BlockStmtNode {
 
 impl Compiler for BlockStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let stmts = Vec::new();
-		for stmt in self.statements {
-			let stmt_code = stmt.compile(self.symbols)?;
+		let mut stmts = Vec::new();
+		for stmt in &self.statements {
+			let stmt_code = stmt.compile(&self.symbols)?;
 			stmts.push(stmt_code);
 		}
 		let stmts_code = stmts.join(";\n");
@@ -361,16 +363,16 @@ impl TypeChecking for IfStmtNode {
 
 impl Compiler for IfStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {        
-		let cond_code = self.expression.compile(symbols)?;
+		let cond_code = self.condition.compile(symbols)?;
 		let then_branch_code = self.then_branch.compile(symbols)?;
 		
 		let code = if self.has_else {
 			let else_branch_code = self.else_branch.compile(symbols)?;
 			format!("if (rci_value_to_c_boolean({}))\n{} else\n{}\n",
-				&cond_code,&then_branch_code, &else_branch_code)
+				&cond_code.code,&then_branch_code, &else_branch_code)
 		} else {
 			format!("if (rci_value_to_c_boolean({}))\n{}\n",
-				&cond_code, &then_branch_code)
+				&cond_code.code, &then_branch_code)
 		};
 		
 		Ok(code)
@@ -430,7 +432,7 @@ impl Compiler for VarStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
 		let lhs = format!("rci_value {}",self.name);
 		let rhs =  self.initializer.compile(symbols)?;
-		let code = format!("{} = {};");
+		let code = format!("{} = {};",&lhs, &rhs.code);
 		Ok(code)		        
     }
 }
@@ -477,15 +479,16 @@ impl TypeChecking for FunStmtNode {
 
 impl Compiler for FunStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let fun_name = self.name.token_type.print_name();		
-		let params_code:Vec<String> = Vec::new();
-		for p in self.params {
-			let param = match p.entry_type {
+            
+		let fun_name = self.name.token_type.print_value();		
+		let mut params_code:Vec<String> = Vec::new();
+		for p in &self.params {
+			let param_code = match p.entry_type {
 				DeclarationType::Var => {
-					format!("rci_value & {}",&p.name), 
+					format!("rci_value & {}",&p.name) 
 				},
 				DeclarationType::Val => {
-					format!("const rci_value & {}",&p.name),
+					format!("const rci_value & {}",&p.name)
 				},
 				DeclarationType::Cpy => {
 					// NOTE: at the call site a deep copy should have been
@@ -496,18 +499,19 @@ impl Compiler for FunStmtNode {
 				 panic!("Internal compiler error. Only val, var,, cpy allowed as param decl types.")
 				}				
 			};
-			params.push(param_code);
+			params_code.push(param_code);
 		}
 		
-		let stmts_code:Vec<String> = Vec::new();
-		for stmt in self.body {
+		let mut stmts_code:Vec<String> = Vec::new();
+		for stmt in &self.body {
 			let stmt_code = stmt.compile(&self.symbols)?;
 			stmts_code.push(stmt_code);
 		}
 
         let decl = format!("rci_value {}({})", 
 			&fun_name, &params_code.join(","));
-		let body = format!("{{\n{}\n}}"), 
+
+		let body = format!("{{\n{}\n}}", 
 			&stmts_code.join("\n"));
 		Ok(format!("{}\n{}\n",&decl, &body))		
     }
@@ -633,7 +637,7 @@ impl Compiler for ReturnStmtNode {
 }
 
 #[derive(Clone, Debug)]
-struct BreakStmtNode {
+pub struct BreakStmtNode {
     location: Token,
 }
 
