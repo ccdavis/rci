@@ -151,6 +151,55 @@ pub fn repl() {
     rl.save_history("history.txt").unwrap();
 }
 
+
+pub fn compile(code: &str) {
+	let mut had_type_error = false;
+	let mut global_symbols = symbol_table::SymbolTable::global();
+	let mut scanner = lex::Scanner::new(code.to_string());
+	let tokens = scanner.tokenize();
+	let mut parser = Parser::new(tokens);
+	let statements = parser.parse(&mut global_symbols);
+	statements
+		.iter()
+		.for_each(|stmt| 
+			match stmt.check_types(&global_symbols) {
+				Err(type_error) => {
+					had_type_error = true;
+					eprintln!("{}", &type_error.format());
+				}
+				_ => {}
+		});
+
+	if had_type_error {
+		eprintln!("Type errors in source code. Compilation terminated.");
+		std::process::exit(3);
+	}
+	
+	let mut had_compiler_error = false;
+	
+	let mut compiled_statements: Vec<String> = Vec::new();
+	for stmt in &statements {
+		match stmt.compile(&global_symbols) {
+			Ok(code) => compiled_statements.push(code),
+			Err(msg) => {
+				eprintln!("{}",&msg.format());
+				had_compiler_error = true;
+			}
+		};
+	}
+	
+	let object_code = compiled_statements.join("\n");
+	println!("{}",&object_code);
+	
+	if had_compiler_error {
+		eprintln!("Error during compilation. Will not link or run.");
+		std::process::exit(4);
+	}
+	
+	// TODO Call tcc or gcc on the output source
+
+}
+
 fn main() {
     println!("Starting interpreter...");
 
@@ -166,7 +215,10 @@ fn main() {
         let program_file = &args[1];
         let code = fs::read_to_string(program_file)
             .expect(&format!("File at {} unreadable.", program_file));
-
+		compile(&code);
+		
+		std::process::exit(0);
+		
         let mut interpreter = Interpreter::init();
         interpreter.run(code);
 

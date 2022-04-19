@@ -632,7 +632,8 @@ impl TypeChecking for ReturnStmtNode {
 
 impl Compiler for ReturnStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+		let return_value = self.expr.compile(symbols)?;
+        Ok(format!("return {};", &return_value.code))
     }
 }
 
@@ -662,7 +663,7 @@ impl TypeChecking for BreakStmtNode {
 
 impl Compiler for BreakStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+        Ok("break;".to_string())
     }
 }
 
@@ -730,7 +731,9 @@ impl TypeChecking for WhileStmtNode {
 
 impl Compiler for WhileStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        Ok("// not implemented".to_string())
+        let cond = self.condition.compile(symbols)?;
+		let body_code = self.body.compile(symbols)?;
+		Ok( format!("while(rci_value_to_c_boolean({}))\n{}",&cond.code, &body_code))
     }
 }
 #[derive(Clone, Debug)]
@@ -766,11 +769,23 @@ impl TypeChecking for ProgramNode {
 // and minimal standard library functions.
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        let preamble = "typedef bool unsigned char;
-			#define true 1
-			#define false 0";
-
-        Ok(preamble.to_string())
+        let  compiler_support = "#include \"compiler_support.h\"";
+		let mut decls: Vec<String> = Vec::new();
+		for decl in &self.declarations {
+			let decl_code = decl.compile(symbols)?;
+			decls.push(decl_code);
+		}
+		let declarations_code = decls.join("\n\n");
+		
+		let imperatives_code = self.imperatives.compile(symbols)?;
+		
+		let main_fn = format!("int main(int argc, const char ** argv) {{\n{}\nreturn 0;\n}}",
+			&imperatives_code);
+			
+		Ok(format!("{}\n{}\n\n{}", 
+			compiler_support, 
+			&declarations_code,
+			&main_fn))				        
     }
 }
 
