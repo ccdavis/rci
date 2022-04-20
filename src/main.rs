@@ -189,7 +189,11 @@ pub fn compile(code: &str) {
 	}
 	
 	let object_code = compiled_statements.join("\n");
-	println!("{}",&object_code);
+
+    // TODO configure this path and make it a cache for object code. Also, have one sub-directory
+    // per program and make the dir hidden with a "." name.
+    let tmp_ir_path = "./tmp_ir.c";
+    fs::write(tmp_ir_path, object_code).expect("Problem writing intermediate representation code.");
 	
 	if had_compiler_error {
 		eprintln!("Error during compilation. Will not link or run.");
@@ -197,6 +201,7 @@ pub fn compile(code: &str) {
 	}
 	
 	// TODO Call tcc or gcc on the output source
+    
 
 }
 

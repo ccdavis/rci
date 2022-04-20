@@ -485,10 +485,10 @@ impl Compiler for FunStmtNode {
 		for p in &self.params {
 			let param_code = match p.entry_type {
 				DeclarationType::Var => {
-					format!("rci_value & {}",&p.name) 
+					format!("rci_value * {}",&p.name) 
 				},
 				DeclarationType::Val => {
-					format!("const rci_value & {}",&p.name)
+					format!("const rci_value * {}",&p.name)
 				},
 				DeclarationType::Cpy => {
 					// NOTE: at the call site a deep copy should have been
@@ -769,7 +769,7 @@ impl TypeChecking for ProgramNode {
 // and minimal standard library functions.
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        let  compiler_support = "#include \"compiler_support.h\"";
+        let  compiler_support = "#include \"./ir/compiler_support.h\"";
 		let mut decls: Vec<String> = Vec::new();
 		for decl in &self.declarations {
 			let decl_code = decl.compile(symbols)?;

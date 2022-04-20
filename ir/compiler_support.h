@@ -241,6 +241,10 @@ rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value ri
 	return left;	
 }
 
+unsigned char  rci_value_to_c_boolean(rci_value v) {	
+	return v.data._boolean;
+}
+
 
 rci_value to_string(rci_value *value) {
 	rci_value result;

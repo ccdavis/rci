@@ -213,7 +213,16 @@ impl Compiler for BinaryNode {
 	  let data_type = self.determine_type(symbols)?;
 	  let left = self.left.compile(symbols)?;
 	  let right = self.right.compile(symbols)?;
-	  let mut op = self.operator.print();
+	  let mut op = match self.operator.token_type {
+		TokenType::Plus => "_ADD_",
+		TokenType::Minus => "_SUB_",
+		TokenType::Star => "_MUL_",
+		TokenType::Slash => "_DIV_",
+		TokenType::Equal => "_EQ_",
+		TokenType::LessGreater => "_NE_",
+		_ => panic!("Compilation error, operator not supported yet."),		
+	  };
+	  
 	  if matches!(data_type, DataType::Str) {
 		if matches!(self.operator.token_type, TokenType::Plus) {
 			return  Ok(ObjectCode {
@@ -224,19 +233,10 @@ impl Compiler for BinaryNode {
 			let msg = format!("Operator {} not supported for string type.",&op);
 			return Err( Error::new(&self.operator, ErrorType::Compiler, msg));
 		}
-	  } else {
-		// convert '<>' to '!='
-		if matches!(self.operator.token_type, TokenType::LessGreater){ 
-			op = "_NE_".to_string();
-		}
-		
-		if matches!(self.operator.token_type, TokenType::Equal) {
-			op = "_EQ_".to_string();
-		}
-	}	  
+	  }  
 	Ok(ObjectCode {
 			data_type,
-			code:format!("({} {} {})", &left.code, &op, &right.code),
+			code:format!("binary_operation({}, {}, {})", &op, &left.code,  &right.code),
 		})
     }
 }
@@ -594,7 +594,7 @@ impl LiteralNode {
 		let literal_type = DataType::from_data_value(value);
 		let object_code = match *value {
 			DataValue::Str(ref v)=> 
-				format!("(rci_value) {{.data= (rci_str) {{.data=\"{}\",.len={},.chars={},.refs=0,.encoding=byte_encoding }}, .type = _string_}} ", &v, &v.len(), &v.len()),
+				format!("(rci_value) {{ .data._string = {{.data = \"{}\",.len = {}, .chars = {}, .refs = 0, .encoding = byte_encoded }}, .type = _string_}} ", &v, &v.len(), &v.len()),
 			DataValue::Number(n)=>
 				format!("(rci_value) {{.data._number={}, .type=_number_}}",n),
 			DataValue::Bool(b)=>
