@@ -189,11 +189,19 @@ impl Compiler for PrintStmtNode {
                 DataType::Bool => "%d",
                 _ => "%s",
             };
+			
+			let printable = match obj_code.data_type {
+				DataType::Str =>  format!("rci_value_to_c_str({})",&obj_code.code),
+				DataType::Number => format!("rci_value_to_c_double({})",&obj_code.code),
+				DataType::Bool => format!("rci_value_to_c_boolean({})",&obj_code.code),
+				_ => "** PRINTING NOT SUPPORTED **".to_string(),
+			};
+			
             subst_codes = subst_codes + subst_code;
-            values.push(obj_code.code.clone());
+            values.push(printable);
         }
 
-        let mut code = format!("printf(\"{}\",{});\n", 
+        let mut code = format!("printf(\"{}\\n\",{});\n", 
 			&subst_codes, &values.join(","));
         Ok(code)
     }
@@ -293,7 +301,7 @@ impl Compiler for BlockStmtNode {
 			let stmt_code = stmt.compile(&self.symbols)?;
 			stmts.push(stmt_code);
 		}
-		let stmts_code = stmts.join(";\n");
+		let stmts_code = stmts.join("\n");
 		
         let code = format!("{{\n\t{}\n}}", &stmts_code);
 		Ok(code)

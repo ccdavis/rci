@@ -218,6 +218,10 @@ impl Compiler for BinaryNode {
 		TokenType::Minus => "_SUB_",
 		TokenType::Star => "_MUL_",
 		TokenType::Slash => "_DIV_",
+		TokenType::Less => "_LT_",
+		TokenType::Greater => "_GT_",
+		TokenType::LessEqual => "<=",
+		TokenType::GreaterEqual => ">=",
 		TokenType::Equal => "_EQ_",
 		TokenType::LessGreater => "_NE_",
 		_ => panic!("Compilation error, operator not supported yet."),		
@@ -299,13 +303,7 @@ impl Compiler for LogicalNode {
 		let data_type = self.determine_type(symbols)?;
 		  let left = self.left.compile(symbols)?;
 		  let right = self.right.compile(symbols)?;
-		  let op = match self.operator.token_type {
-			TokenType::Greater => ">",
-			TokenType::Less => "<",
-			TokenType::LessEqual => "<=",
-			TokenType::GreaterEqual => ">=",
-			// The '<>' is "not equal"
-			TokenType::LessGreater => "!=",		
+		  let op = match self.operator.token_type {			
 			TokenType::And => "&&",
 			TokenType::Or => "||",
 			_ => panic!("Code generation error, operator not a logical operator: '{}'",
@@ -314,7 +312,8 @@ impl Compiler for LogicalNode {
 		  		  
 		Ok(ObjectCode {
 			data_type,
-			code:format!("({} {} {})", &left.code, op, &right.code),
+			code:format!("c_boolean_to_rci_value( rci_value_to_c_boolean({}) {} rci_value_to_c_boolean({}))", 
+				&left.code, op, &right.code),
 		})
     }				          
 }
@@ -677,8 +676,8 @@ impl Compiler for UnaryNode {
 		let compiled_expr = self.expr.compile(symbols)?;
 		
 		let code =match self.operator.token_type {
-			Not => format!("negate({})",&compiled_expr.code),
-			Minus => format!("negative({})",&compiled_expr.code),
+			Not => format!("unary_operation(_NOT_,{})",&compiled_expr.code),
+			Minus => format!("unary_operation(_NEGATIVE_,{})",&compiled_expr.code),
 			_ => panic!("Compiler error. Only '-' or 'not' should be in a unary expression."),
 		};
 						
@@ -757,9 +756,24 @@ impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
 		let var_type = self.determine_type(symbols)?;
 		if let TokenType::Identifier(ref var_name) = self.name.token_type {
+			let ste = match symbols.lookup(&var_name) {
+				Ok(ref entry) => entry.clone(),
+				Err(error_msg) => {
+					return Err(errors::Error::new(&self.name,ErrorType::Compiler, error_msg.message.clone()));
+				}
+			};
+			
 			Ok( ObjectCode {
 				data_type: var_type,
-				code: format!("{}",&var_name),
+				code: {
+					if ste.is_arg &&
+						(matches!(ste.entry_type,DeclarationType::Var) ||
+						matches!(ste.entry_type,DeclarationType::Val)) {						
+						format!("(*{})",&var_name)
+					} else {
+						format!("{}",&var_name)
+					}
+				}
 			})
 		} else {
 			panic!("Compiler error. A variable node must have an identifier token type.");

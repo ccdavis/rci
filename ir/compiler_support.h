@@ -187,6 +187,21 @@ rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, r
 		case _LT_ :{
 			result.data._boolean = left.data._number < right.data._number;
 		} break;
+		case _EQ_ :{
+			result.data._boolean = left.data._number == right.data._number;
+		}break;
+		case _GT_ : {
+			result.data._boolean = left.data._number > right.data._number;
+		}break;
+		case _NE_ : {
+			result.data._boolean = left.data._number != right.data._number;
+		}break;
+		case _GTE_ : {
+			result.data._boolean = left.data._number >= right.data._number;
+		}break;
+		case _LTE_ : {
+			result.data._boolean = left.data._number <= right.data._number;
+		}break;
 		default:code_gen_error("op for comparison not implemented");					
 	}
 	return result;	
@@ -265,6 +280,20 @@ rci_value unary_operation(rci_unary_operators op, rci_value value) {
 unsigned char  rci_value_to_c_boolean(rci_value v) {	
 	return v.data._boolean;
 }
+
+char * rci_value_to_c_str(rci_value value) {
+	return (char*) value.data._string.data;
+}
+
+double rci_value_to_c_double(rci_value value) {
+	return value.data._number;
+}
+
+rci_value c_boolean_to_rci_value(unsigned char b) {
+	return (rci_value) {.data= (rci_data) {._boolean = b}, .type = _boolean_};  	
+}
+
+
 
 
 rci_value to_string(rci_value value) {
