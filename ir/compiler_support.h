@@ -278,7 +278,7 @@ rci_value unary_operation(rci_unary_operators op, rci_value value) {
 }
 
 unsigned char  rci_value_to_c_boolean(rci_value v) {	
-	return v.data._boolean;
+	return (unsigned char) v.data._boolean;
 }
 
 char * rci_value_to_c_str(rci_value value) {
@@ -286,7 +286,7 @@ char * rci_value_to_c_str(rci_value value) {
 }
 
 double rci_value_to_c_double(rci_value value) {
-	return value.data._number;
+	return (double) value.data._number;
 }
 
 rci_value c_boolean_to_rci_value(unsigned char b) {

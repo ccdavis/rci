@@ -185,7 +185,7 @@ impl Compiler for PrintStmtNode {
             let obj_code = expr.compile(symbols)?;
             let subst_code = match obj_code.data_type {
                 DataType::Str => "%s",
-                DataType::Number => "%d",
+                DataType::Number => "%f",
                 DataType::Bool => "%d",
                 _ => "%s",
             };
