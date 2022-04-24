@@ -105,5 +105,9 @@ int main() {
 	debug_value_to_stdout(tagged_type);
 	printf("\n");
 	
+	rci_value result5 = test3(1, &tagged_type);
+	debug_value_to_stdout(result5);
+	printf("\n");
+	
 	return 0;
 }
