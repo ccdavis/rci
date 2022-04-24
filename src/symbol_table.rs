@@ -9,6 +9,8 @@ use std::collections::HashMap;
 pub struct SymbolTableEntry {
     pub entry_number: usize, // The entry in the current table when this entry was added
     pub name: String,
+    pub is_arg: bool,
+
     // Where the symbol was declared in the source
     pub location: Option<Token>, // use the col and line
     pub data_type: DataType,
@@ -36,6 +38,7 @@ impl SymbolTableEntry {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Var,
             data_type: data_type.clone(),
             data_value: data_value.clone(),
@@ -56,6 +59,7 @@ impl SymbolTableEntry {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Val,
             data_type: data_type.clone(),
             data_value: data_value.clone(),
@@ -68,7 +72,7 @@ impl SymbolTableEntry {
     pub fn new_copy(
         entry_number: usize,
         location: &Token,
-        name: &str,
+        name: &str,        
         data_type: &DataType,
         data_value: &DataValue,
     ) -> Self {
@@ -76,6 +80,7 @@ impl SymbolTableEntry {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Cpy,
             data_type: data_type.clone(),
             data_value: data_value.clone(),
@@ -94,6 +99,7 @@ impl SymbolTableEntry {
             entry_number,
             location: None,
             name: param_name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Var,
             data_type: data_type.clone(),
             data_value: DataValue::Unresolved,
@@ -112,6 +118,7 @@ impl SymbolTableEntry {
             entry_number,
             location: None,
             name: param_name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Val,
             data_type: data_type.clone(),
             data_value: DataValue::Unresolved,
@@ -130,6 +137,7 @@ impl SymbolTableEntry {
             entry_number,
             location: None,
             name: param_name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Cpy,
             data_type: data_type.clone(),
             data_value: DataValue::Unresolved,
@@ -148,7 +156,7 @@ impl SymbolTableEntry {
         let location = name.clone();
         let param_name = name.identifier_string();
 
-        match decl_type {
+        let mut entry = match decl_type {
             DeclarationType::Var => SymbolTableEntry::new_var(
                 entry_number,
                 &location,
@@ -175,7 +183,9 @@ impl SymbolTableEntry {
                 decl_type,
                 &name.print()
             ),
-        }
+        };
+        entry.is_arg = true;
+        entry
     }
 
     pub fn new_fun(
@@ -189,6 +199,7 @@ impl SymbolTableEntry {
             entry_number,
             location: location,
             name: name.to_owned(),
+            is_arg: false,
             entry_type: DeclarationType::Fun,
             data_type: data_type.clone(),
             data_value: DataValue::Unresolved,

@@ -10,9 +10,15 @@ rci_value init_xyz() {
 }
 
 
-rci_value test_function(int argc,rci_value *args){
-	return args[0];
+rci_value test_function(int argc,rci_value *arg1, rci_value * arg2){
+	rci_value local = {.data= (rci_data) {._number = (double)25.3 }, .type = _number_};  	
+	rci_value result = binary_operation(_ADD_, *arg2, local);
+	rci_value new_arg2 = binary_operation(_ADD_, result, local);
+	(*arg2).data =  new_arg2.data;
+	return result;
+	
 }
+
 
 int main() {			
 	rci_data x;
@@ -24,20 +30,25 @@ int main() {
 		
 	result._number =  x._number + y._number;
 	
-//	binary_operation(_ADD_, x,y);
+
 
 	rci_value tagged_type = {.data= (rci_data) {._number = (double)32.3 }, .type = _number_};  	
-	debug_value_to_stdout(&tagged_type);
+	debug_value_to_stdout(tagged_type);
 	printf("\n");
 	
 	rci_value r3 = binary_operation(
 		_ADD_, 
 		tagged_type, 
 		(rci_value) {.data= (rci_data) {._number = (double)32.3 }, .type = _number_});
-	debug_value_to_stdout(&r3);
+	debug_value_to_stdout(r3);
 	printf("\n");
 	
-
+	rci_value r4 = binary_operation(_ADD_, 
+		 binary_operation(_MUL_, tagged_type, tagged_type),
+		 tagged_type);
+	debug_value_to_stdout(r4);
+	printf("\n");
+	
 	rci_data str_result;	
 	str_result._string = (rci_str) {.data = "abc",.len=3,.chars = 3,  .refs = 1,.encoding = byte_encoded}; 
 	
@@ -47,18 +58,18 @@ int main() {
 	rci_str this_string = str_result._string;
 	rci_str other_string =  str_other_result._string;
 	
-	rci_str new_string = cat_rci_str(&this_string, &other_string);
+	rci_str new_string = cat_rci_str(this_string, other_string);
 	printf("new string: ");
 	debug_str_to_stdout(new_string);
 	
 	
 	printf("print string values\n");	
 	rci_value string_value = {.data = str_result, .type = _string_};
-	debug_value_to_stdout(&string_value);
+	debug_value_to_stdout(string_value);
 	printf("\n");
 	rci_value other_string_value = {.data = str_other_result, .type = _string_};
 	
-	debug_value_to_stdout(&other_string_value);
+	debug_value_to_stdout(other_string_value);
 	printf("\n");
 	
 	
@@ -69,14 +80,18 @@ int main() {
 			.data._string = new_string, 
 			.type = _string_};
 	
-	debug_value_to_stdout(&new_string_value);
+	debug_value_to_stdout(new_string_value);
 	printf("\n");
 	
-	const rci_value return_value = test_function(2, 
+	rci_value return_value = test_function(2, 
 		(rci_value[2]) {
 		new_string_value,
-		tagged_type});
+		tagged_type}, &tagged_type);
 		
+	debug_value_to_stdout(return_value);
+	printf("\n");
+	debug_value_to_stdout(tagged_type);
+	printf("\n");
 	
 	return 0;
 }

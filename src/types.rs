@@ -22,6 +22,13 @@ pub enum DeclarationType {
     Type,  // user defined, the name in the symbol table entry will have the definition
 }
 
+#[derive(Clone)]
+pub struct CollectionType{
+    pub index_type: DataType,
+    pub contains_type: DataType,
+    pub size: Option<usize>,
+}
+
 // Simple data types and values
 #[derive(Clone, Debug, PartialEq)]
 pub enum DataType {

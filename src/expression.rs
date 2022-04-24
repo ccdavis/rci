@@ -386,7 +386,7 @@ impl Compiler for CallNode {
 		let mut arguments: Vec<String> = Vec::new();
 		for arg_expr in &self.args {
 			let arg = arg_expr.compile(symbols)?;
-			arguments.push(arg.code);
+			arguments.push(" &".to_string() + &arg.code);
 		}
 		
 		let args_list = arguments.join(", ");		

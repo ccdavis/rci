@@ -20,6 +20,7 @@ typedef enum { _number_, _string_ , _boolean_, _array_ }
 	rci_type;	
 	
 
+typedef enum { _NEGATIVE_, _NOT_} rci_unary_operators;
 // These all result in number
 typedef enum { _ADD_, _SUB_, _MUL_, _DIV_, _MOD_, _POW_, _SHL_, _SHR_,  
 			_LT_, _GT_, _LTE_, _GTE_, _EQ_, _NE_, _AND_, _OR_ }  
@@ -44,10 +45,10 @@ rci_str rci_str_ascii_literal(char  str[]) {
 	return result;
 }
 
-rci_str copy_rci_str(rci_str * value) {
-	rci_str result = *value;
-	char * memory = malloc(value->len + 1);
-	strcpy(memory, value->data);
+rci_str copy_rci_str(rci_str  value) {
+	rci_str result = value;
+	char * memory = malloc(value.len + 1);
+	strcpy(memory, value.data);
 	result.refs = 1;
 	return result;	
 }
@@ -65,28 +66,28 @@ rci_str new_rci_str(char  data[], char_encoding enc) {
 	};
 }
 
-rci_str cat_rci_str(rci_str *left, rci_str *right) {				
-	long new_len = left->len + right->len;	
+rci_str cat_rci_str(rci_str left, rci_str right) {				
+	long new_len = left.len + right.len;	
 	char * new_data = malloc(new_len + 1);	
-	memcpy(new_data, left->data, left->len);
-	memcpy(new_data + left->len, right->data, right->len);
+	memcpy(new_data, left.data, left.len);
+	memcpy(new_data + left.len, right.data, right.len);
 	new_data[new_len] = '\0';
 	rci_str new_string= {
 		.data = new_data, 
 		.len = new_len, 
-		.chars = left->chars + right->chars,
+		.chars = left.chars + right.chars,
 		.refs = 1 ,
-		.encoding = left->encoding 		
+		.encoding = left.encoding 		
 	};	
 	return new_string;
 }	
 
-rci_str * pass_rci_str(rci_str * value) {
+rci_str * pass_rci_str(rci_str  *value) {
 	value->refs += 1;
 	return value;
 }
 
-void exit_scope_rci_str(rci_str * value) {
+void exit_scope_rci_str(rci_str *value) {
 	// If refs == 0 it's a literal and 
 	// no memory needs to be managed.
 	if (value->refs == 1) {
@@ -97,12 +98,12 @@ void exit_scope_rci_str(rci_str * value) {
 	}
 }
 
-rci_str * return_rci_str(rci_str * value) {
+rci_str * return_rci_str(rci_str *value) {
 	// If refs == 0 or 1 this is a 'move', the
 	// change in scope decrements the count normally
 	// but the memory won't be needed in the scope
 	// we're exiting.
-	if (value->refs == 0 || value-> refs == 1) return value;
+	if (value->refs == 0 || value->refs == 1) return value;
 	if (value->refs > 1) {
 		value->refs -= 1;
 		return value;
@@ -131,27 +132,27 @@ typedef struct {
 	rci_type type;	
 }  rci_value;
 
-void debug_value_to_stdout(rci_value *value) {
-	switch (value->type) {
+void debug_value_to_stdout(rci_value value) {
+	switch (value.type) {
 		case _number_ : {
-			printf("Number: %f",value->data._number);
+			printf("Number: %f",value.data._number);
 		}break;
 		case _boolean_: {
-			printf("Boolean: %d",value->data._boolean);
+			printf("Boolean: %d",value.data._boolean);
 		}break;
 		case _string_ : {
 			char * encoding = "8-bit";
-			if (value->data._string.encoding == utf_8_encoded) {
+			if (value.data._string.encoding == utf_8_encoded) {
 				encoding = "UTF-8";
 			}
 			
 			printf("String: '%s', bytes: %ld, encoding: %s",
-				value->data._string.data, 
-				value->data._string.len,
+				value.data._string.data, 
+				value.data._string.len,
 				encoding);
 		}break;
 		default: {
-			printf("Type %ld not handled \n", value->type);
+			printf("Type %ld not handled \n", value.type);
 		}
 	}
 }
@@ -174,13 +175,13 @@ rci_value power(rci_value x,rci_value p) {
 		.type = (rci_type) _number_};
 					
 	while (p.data._number > 1) {
-		p.data._number = p.data._number - 1;
+		p.data._number =p.data._number - 1;
 		result.data._number = result.data._number * x.data._number;					
 	}
 	return result;
 }
 
-rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value right) {
+rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {
 	rci_value result = {.data._boolean=false,.type=_boolean_};
 	switch(op) {
 		case _LT_ :{
@@ -203,7 +204,7 @@ rci_value logical_binary_operation(rci_binary_operators op, rci_value left, rci_
 }
 
 // Maybe turn this into a macro?
-rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value right) {	
+rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {	
 	rci_value result;
 	switch(op) {
 		case _ADD_: {
@@ -241,25 +242,45 @@ rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value ri
 	return left;	
 }
 
+rci_value unary_operation(rci_unary_operators op, rci_value value) {
+	switch(op) {
+		case _NEGATIVE_: {
+			value.data._number *= -1;
+			return value;
+		}break;
+		case _NOT_ : {
+			if (value.data._boolean) {
+				value.data._boolean = false;
+			}else{
+				value.data._boolean = true;
+			}
+			return value;
+		}break;
+		default: {
+			code_gen_error("Unary operator not supported.");
+		}
+	}
+}
+
 unsigned char  rci_value_to_c_boolean(rci_value v) {	
 	return v.data._boolean;
 }
 
 
-rci_value to_string(rci_value *value) {
+rci_value to_string(rci_value value) {
 	rci_value result;
 	result.type = _string_;
-	switch(value->type) {
+	switch(value.type) {
 		case _number_: {
 			char buffer[50];
-			sprintf(buffer, "%f", value->data._number);
+			sprintf(buffer, "%f", value.data._number);
 			result.data._string = (rci_str) new_rci_str(buffer, byte_encoded);
 		}break;
 		case _string_ : {
-			result.data._string =  (rci_str) copy_rci_str(value);
+			result.data._string =   copy_rci_str(value.data._string);
 		}break;
 		case _boolean_ : {
-			if (value->data._boolean == true) {
+			if (value.data._boolean == true) {
 				result.data._string = (rci_str) rci_str_ascii_literal("true");
 			} else {
 				result.data._string = (rci_str) rci_str_ascii_literal("false");
