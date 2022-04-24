@@ -19,6 +19,18 @@ rci_value test_function(int argc,rci_value *arg1, rci_value * arg2){
 	
 }
 
+rci_value test2(int argc, rci_value * arg1, rci_value * arg2) {
+	return binary_operation(_MUL_, (*arg1), (*arg2));
+}
+
+rci_value test3(int argc, rci_value * arg1) {
+	rci_value local = {.data= (rci_data) {._number = (double)25.3 }, .type = _number_};  	
+	
+	rci_value result = test2(2, &local, &(*arg1));
+	return result;
+	
+}
+
 
 int main() {			
 	rci_data x;
