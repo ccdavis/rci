@@ -112,8 +112,9 @@ rci_str * return_rci_str(rci_str *value) {
 		printf("Runtime error: String memory deallocated.");
 		exit(1);
 	}
-	
 }
+
+
 
 void debug_str_to_stdout(rci_str s) {
 	printf("string data: '%s', len: %d, chars: %d",s.data,s.len,s.chars);
@@ -168,6 +169,21 @@ void code_gen_error(const char * msg) {
 	printf("%s",msg);
 	exit(1);
 }
+
+
+rci_value cat_string(rci_value lhs, rci_value rhs) {
+	return (rci_value) {.data._string = (rci_str) cat_rci_str(lhs.data._string,rhs.data._string), .type=_string_};
+}
+
+rci_value assign_string(rci_value lhs, rci_value rhs) {
+	if (lhs.data._string.refs > 0) {
+		free(lhs.data._string.data);
+	}
+	return rhs;
+}
+
+
+
 
 rci_value power(rci_value x,rci_value p) {
 	rci_value result = {

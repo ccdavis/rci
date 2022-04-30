@@ -186,8 +186,7 @@ pub fn compile(code: &str) {
 				had_compiler_error = true;
 			}
 		};
-	}
-	
+	}	
 	let object_code = compiled_statements.join("\n");
 
     // TODO configure this path and make it a cache for object code. Also, have one sub-directory
@@ -205,8 +204,7 @@ pub fn compile(code: &str) {
 
 }
 
-fn main() {
-    println!("Starting interpreter...");
+fn main() {    
 
     let args = std::env::args().collect::<Vec<String>>();
     if args.len() > 2 {

@@ -496,7 +496,7 @@ impl Compiler for FunStmtNode {
 					format!("rci_value * {}",&p.name) 
 				},
 				DeclarationType::Val => {
-					format!("const rci_value * {}",&p.name)
+					format!("const rci_value {}",&p.name)
 				},
 				DeclarationType::Cpy => {
 					// NOTE: at the call site a deep copy should have been

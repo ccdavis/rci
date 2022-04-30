@@ -1,4 +1,6 @@
 use crate::lex::Token;
+use crate::types::ObjectCode;
+
 use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
 pub enum ErrorType {
@@ -68,3 +70,9 @@ impl Error {
         self.format()
     }
 }
+
+// Convenience
+pub fn compiler_err(t: &Token, msg: &str) -> Result<ObjectCode,Error> {
+    return  Err(Error::new(t, ErrorType::Compiler, msg.to_string()))
+}
+

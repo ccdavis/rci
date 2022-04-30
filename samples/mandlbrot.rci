@@ -16,14 +16,14 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 100;
-val y_resolution = 132;
+val x_resolution = 1600;
+val y_resolution = 1600;
 
-val max_iterations = 100;
+val max_iterations = 50;
 val escape_radius = 2.0;
 
 
-fun not_escaped(x:number, iy:number):boolean {
+fun not_escaped(x:number,iy:number):boolean {
 	return (x*x + iy*iy) < 2*escape_radius; 	
 }
 
@@ -79,10 +79,12 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 	return points;
 }
 
-var a:number = calc("abc");
+{
+//	var a:number = calc("abc");
 
-print "Starting";
-val start = clock();
-calc(-1.5, -1.0, 1.0, 1.0);
-print "Timer: ", (clock() - start) / 1000;
-
+	print "Starting";
+	//val start = clock();
+	calc(-1.5, -1.0, 1.0, 1.0);
+	//print "Timer: ", (clock() - start) / 1000;
+	print("Finished");
+}

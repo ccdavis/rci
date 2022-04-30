@@ -3,6 +3,7 @@ use crate::environment::EnvNode;
 use crate::environment::EnvRc;
 use crate::errors;
 use crate::errors::*;
+use crate::errors::compiler_err;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::operations;
@@ -231,7 +232,7 @@ impl Compiler for BinaryNode {
 		if matches!(self.operator.token_type, TokenType::Plus) {
 			return  Ok(ObjectCode {
 				data_type,
-				code:format!("cat_rci_str({}, {})", &left.code, &right.code),
+				code:format!("cat_string({}, {})", &left.code, &right.code),
 			});
 		 } else {
 			let msg = format!("Operator {} not supported for string type.",&op);
@@ -381,11 +382,50 @@ impl Compiler for CallNode {
 		// The 'callee' is an expression but it really just resolves to the 
 		// name of the function to be called; it could be expanded to be a
 		// class-instance.method() call or other things as well.
-		let function_name = self.callee.compile(symbols)?;
+		let function_name = self.callee.compile(symbols)?;        
+		let function_ste = symbols.lookup(&function_name.code).unwrap();
+        if self.args.len() != function_ste.fields.len() {
+            let msg = format!("Symbol table definition of function {} and call site don't match arrity!",&function_name.code);
+            return  compiler_err(&self.paren, &msg);            
+        }
+        
+            				
 		let mut arguments: Vec<String> = Vec::new();
-		for arg_expr in &self.args {
+		for (arg_num, arg_expr) in self.args.iter().enumerate() {                
+            // For 'var' params, we can pass in only variables, not other expressions, and the
+            // variable must have a 'var' declaration type.
+			let mut var_name = "".to_string();
+            let mut is_var_decl = false;            
+            let is_variable_expr = if let  Expr::Variable(ref var_node) = arg_expr{
+                var_name =  var_node.name.identifier_string();
+                let var_ste =symbols.lookup(&var_name) ;
+                if var_ste.is_err() {
+                    return compiler_err(&self.paren, &format!("{} not in symbol table!",&var_name));
+                }
+                is_var_decl = matches!(var_ste.unwrap().entry_type, DeclarationType::Var)                                        ;            
+				true
+            } else {
+				false
+			};
+
 			let arg = arg_expr.compile(symbols)?;
-			arguments.push(" &".to_string() + &arg.code);
+            let param_definition = function_ste.fields.get(arg_num).unwrap();
+            if matches!(param_definition.entry_type, DeclarationType::Var) {
+                if !is_var_decl && is_variable_expr {
+                    let msg = &format!("parameter '{}' on function '{}' is a 'var' type, but the variable '{}' is not 'var'.",
+                        &param_definition.name,&function_ste.name,&var_name);
+                    return compiler_err(&self.paren, msg);
+                }				
+				if !is_variable_expr {
+					let msg = &format!("Argument to parameter '{}' on function '{}' must be a variable with a 'var' declaration type.",
+						&param_definition.name,&function_ste.name);
+					return compiler_err(&self.paren, msg);
+				}				
+                arguments.push("& ".to_string() + &arg.code);
+            }else{
+                arguments.push(arg.code);
+
+            }            			
 		}
 		
 		let args_list = arguments.join(", ");		
@@ -767,8 +807,7 @@ impl Compiler for VariableNode {
 				data_type: var_type,
 				code: {
 					if ste.is_arg &&
-						(matches!(ste.entry_type,DeclarationType::Var) ||
-						matches!(ste.entry_type,DeclarationType::Val)) {						
+						matches!(ste.entry_type,DeclarationType::Var) {						
 						format!("(*{})",&var_name)
 					} else {
 						format!("{}",&var_name)
@@ -875,10 +914,18 @@ impl Compiler for AssignmentNode {
 			TokenType::Identifier(ref n) => n.clone(),
 			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
 		};
+				
+		let code = match value_to_store.data_type {
+			DataType::Str => {
+				format!("{} = assign_string({},{});",
+					&assignee_name, &assignee_name, &value_to_store.code)
+			}
+			_ =>format!("{} = {}",&assignee_name, &value_to_store.code),
+		};
 		
         Ok(ObjectCode {
             data_type: value_to_store.data_type,
-            code: format!("{} = {}",&assignee_name, &value_to_store.code),
+            code,
         })
     }
 }

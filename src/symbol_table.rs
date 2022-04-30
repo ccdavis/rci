@@ -216,6 +216,7 @@ pub struct SymbolTable {
     pub entries: HashMap<String, SymbolTableEntry>,
 }
 
+#[derive(Clone,Debug)]
 pub struct NotDeclaredError {
     pub message: String,
 }
