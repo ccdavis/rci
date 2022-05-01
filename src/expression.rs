@@ -594,7 +594,7 @@ impl TypeCheck for ArrayNode {
             }
             last_type = this_type;
         }
-        Ok(first_type.clone())
+        Ok(DataType::Array(Box::new(first_type.clone())))
     }
 }
 

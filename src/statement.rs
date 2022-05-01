@@ -118,7 +118,8 @@ impl Stmt {
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
-            _ => panic!("Statement type not type-checked yet."),
+			NoOp => Ok(()),
+            _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
     }
 

@@ -375,8 +375,39 @@ impl Parser {
         if self.matches(&[TokenType::Colon]) {
             // Type may be a built-in type or an identifier for a user-defined type
             let type_name = self.advance();
+								
             let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
-                Some(valid_type) => valid_type,
+				// For the most part complex types should be declared elsewhere, but
+				// we allow Map or Array or Set.			
+                Some(valid_type) => match valid_type {
+					
+					DataType::Array(_) => {						
+						self.consume(TokenType::Less, "expect '<' after 'array' to complete type signature.");
+						let array_type_name = self.advance();
+						if matches!(array_type_name.token_type, TokenType::ArrayType) {
+							return Err(ParseError {
+								t: array_type_name,
+								message: "Can't nest arrays in variable type declarations.".to_string(),
+							});
+						}
+
+						let array_type = match DataType::from_token_type(&array_type_name.token_type) {
+							Some(simple_type) => simple_type,
+							None => {
+								return Err(ParseError {
+									t: array_type_name,
+									message: "Can't make an array of this type. Types must be built-in or user defined.".to_string(),
+								});
+							}
+						};
+
+						self.consume(TokenType::Greater, "expect '>' after array member type.");
+						DataType::Array(Box::new(array_type))		
+					},
+					
+					// TODO Map and Set go here				
+					_ => valid_type,
+				},
                 None => {
                     return Err(ParseError {
                         t: type_name,
@@ -384,7 +415,10 @@ impl Parser {
                     });
                 }
             };
-
+			
+			
+			
+									
             if let DataType::User(ref u) = valid_type_name {
                 let has_type = symbols.lookup(u);
                 if has_type.is_err() {
