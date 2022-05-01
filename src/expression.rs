@@ -371,6 +371,7 @@ impl Evaluation for CallNode {
 impl TypeCheck for CallNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         let callee_return_type = self.callee.determine_type(symbols)?;
+		
         Ok(callee_return_type)
     }
 }
