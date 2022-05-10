@@ -17,7 +17,7 @@ typedef enum { utf_8_encoded, byte_encoded}
 	
 
 // All the types that can have literals
-typedef enum { _number_, _string_ , _boolean_, _array_ } 
+typedef enum { _number_, _string_ , _boolean_, _array_, _object_ } 
 	rci_type;	
 	
 
@@ -50,9 +50,26 @@ typedef union {
 
 // For run-time type information
 typedef struct {
-	rci_data data;	
 	rci_type type;	
+	rci_data as;	
 }  rci_value;
+
+#define BOOL_VAL(value) ((rci_value) {_boolean_, (rci_data){._boolean = value}})
+#define NUMBER_VAL(value) ((rci_value) {_number_, (rci_data){._number = value}})
+
+
+#define AS_BOOL(value) ((value).as._boolean)
+#define AS_NUMBER(value) ((value).as._number)
+#define AS_OBJECT(value) ((value).as._object)
+
+
+#define IS_BOOL(value) ((value).type == _boolean_)
+#define IS_NUMBER(value) ((value).type == _number_)
+#define IS_OBJECT(value) ((value).type == _object_ )
+
+// String, Array are 'Object' types
+#define IS_STRING(value) ((value).type == _string_)
+#define IS_ARRAY(value) ((value).type == _array_ )
 
 /* ************************************************************************************************
 
@@ -74,6 +91,9 @@ struct StringObject {
 	rci_str string_data;
 };
 
+
+
+
 rci_str rci_str_ascii_literal(char  str[]) {
 	rci_str result = {		
 		.len = strlen(str),
@@ -85,10 +105,10 @@ rci_str rci_str_ascii_literal(char  str[]) {
 	return result;
 }
 
-rci_str copy_rci_str(rci_str  value) {
-	rci_str result = value;
-	char * memory = malloc(value.len + 1);
-	strcpy(memory, value.data);
+rci_str copy_rci_str(rci_str  original) {
+	rci_str result = original;
+	char * memory = malloc(original.len + 1);
+	strcpy(memory, original.data);
 	result.refs = 1;
 	return result;	
 }
@@ -141,9 +161,9 @@ rci_value new_array(rci_type element_type,rci_value * initial_data, long initial
 	new_array->array_data.type = element_type;
 	new_array->array_data.elements = malloc(initial_len * sizeof(rci_data));
 	for (int e=0; e<initial_len; e++) {
-		new_array->array_data.elements[e] = initial_data[e].data;		
+		new_array->array_data.elements[e] = initial_data[e].as;		
 	}
-	return (rci_value) {.data._object = new_array,.type=_array_};
+	return (rci_value) {.as._object = new_array,.type=_array_};
 }
 
 // Add a little run-time checking
@@ -151,7 +171,7 @@ rci_value array_lookup(rci_array this_array, long index) {
 	if (index>= this_array.len) {
 		runtime_error("Index out of bounds.");
 	}
-	return (rci_value) {.data = this_array[index], .type = this_array.type};	
+	return (rci_value) {.as = this_array[index], .type = this_array.type};	
 }
 
 void replace_element(rci_array this_array, long index, rci_value new_element) {	
@@ -163,7 +183,7 @@ void replace_element(rci_array this_array, long index, rci_value new_element) {
 		runtime_error("Index out of bounds.");
 	}
 	
-	this_array[index] = new_element.data;	
+	this_array[index] = (rci_data) new_element.as;	
 }
 
 
@@ -188,21 +208,13 @@ int is_type(rci_value v, rci_type t) {
 void debug_value_to_stdout(rci_value value) {
 	switch (value.type) {
 		case _number_ : {
-			printf("Number: %f",value.data._number);
+			printf("Number: %f",value.as._number);
 		}break;
 		case _boolean_: {
-			printf("Boolean: %d",value.data._boolean);
+			printf("Boolean: %d",value.as._boolean);
 		}break;
 		case _string_ : {
-			char * encoding = "8-bit";
-			if (value.data._string.encoding == utf_8_encoded) {
-				encoding = "UTF-8";
-			}
-			
-			printf("String: '%s', bytes: %ld, encoding: %s",
-				value.data._string.data, 
-				value.data._string.len,
-				encoding);
+			debug_str_to_stdout(value.as._object->string_data);
 		}break;
 		default: {
 			printf("Type %ld not handled \n", value.type);
@@ -228,40 +240,45 @@ void runtime_error(const char * msg) {
 
 */
 
-rci_value cat_string(rci_value lhs, rci_value rhs) {
-	StringObject new_string = malloc(sizeof(StringObject));
+rci_value new_string_object(char  data[], char_encoding enc) {
+	StringObject * new_string = malloc(sizeof(StringObject));
 	new_string->obj.type = object_string;
-	new_string->string_data = cat_rci_str(lhs.data._object->string_data,rhs.data._object->string_data);
+	new_string.string_data = new_rci_str(data,enc);
+	return (rci_value) {.type =_string_,.as._object = new_string_object};
+}
+
+
+rci_value cat_string(rci_value lhs, rci_value rhs) {
+	StringObject *new_string = malloc(sizeof(StringObject));
+	new_string->obj.type = object_string;
+	new_string->string_data = cat_rci_str(lhs.as._object->string_data,rhs.as._object->string_data);
 	
-	return (rci_value) {.data._object = new_string, .type = _string_};
+	return (rci_value) { .type = _string_,.as._object = new_string};
 }
 
 rci_value assign_string(rci_value lhs, rci_value rhs) {
-	if (lhs.data._object->refs > 0) {
-		free(lhs.data._object->string_data.data);
+	if (lhs.as._object->refs > 0) {
+		free(lhs.as._object->string_data.data);
 	}
-	lhs.data._object.string_data = rhs.data._object.string_data;
+	lhs.as._object.string_data = rhs.as._object.string_data;	
 	return lhs;
 }
 
 
 rci_value power(rci_value x,rci_value p) {
-	rci_value result = {
-		.data = (rci_data) {._number = (double)1 }, 
-		.type = (rci_type) _number_};
-					
-	while (p.data._number > 1) {
-		p.data._number =p.data._number - 1;
-		result.data._number = result.data._number * x.data._number;					
+	rci_value result = NUMBER_VAL(1);						
+	while (AS_NUMBER(p) > 1) {
+		AS_NUMBER(p) = AS_NUMBER(p) - 1;
+		AS_NUMBER(p) = AS_NUMBER(result) * AS_NUMBER(x);
 	}
 	return result;
 }
 
 rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {
-	rci_value result = {.data._boolean=false,.type=_boolean_};
+	rci_value result = BOOL_VAL(false);
 	switch(op) {
 		case _LT_ :{
-			result.data._boolean = left.data._number < right.data._number;
+			AS_BOOL(result) = AS_NUMBER(left) < AS_NUMBER(right);
 		} break;
 		case _EQ_ :{
 			result.data._boolean = left.data._number == right.data._number;
@@ -383,17 +400,17 @@ rci_value to_string(rci_value value) {
 	switch(value.type) {
 		case _number_: {
 			char buffer[50];
-			sprintf(buffer, "%f", value.data._number);
-			result.data._string = (rci_str) new_rci_str(buffer, byte_encoded);
+			sprintf(buffer, "%f", value.as._number);
+			result.as._object = (StringObject) new_rci_str(buffer, byte_encoded);
 		}break;
 		case _string_ : {
-			result.data._string =   copy_rci_str(value.data._string);
+			result.as._string =   copy_rci_str(value.as._string);
 		}break;
 		case _boolean_ : {
-			if (value.data._boolean == true) {
-				result.data._string = (rci_str) rci_str_ascii_literal("true");
+			if (value.as._boolean == true) {
+				result.as._string = (rci_str) rci_str_ascii_literal("true");
 			} else {
-				result.data._string = (rci_str) rci_str_ascii_literal("false");
+				result.as._string = (rci_str) rci_str_ascii_literal("false");
 			}
 		}break;
 		default: {
