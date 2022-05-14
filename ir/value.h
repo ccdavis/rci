@@ -12,7 +12,7 @@ typedef union {
 
 
 // For run-time type information
-typedef struct {
+typedef struct rci_value {
 	rci_type type;	
 	rci_data as;	
 }  rci_value;
@@ -25,7 +25,7 @@ Definitions for complex types
 
 */
 
-typedef struct {		
+typedef struct rci_str {		
 	long len;	 // number of bytes
 	long chars; // numbers of chars
 	long refs; // basically is it a literal or a heap value
@@ -33,26 +33,25 @@ typedef struct {
 	char * data;
 } rci_str;
 
-struct StringObject {
+typedef struct StringObject {
 	rci_object obj;
 	rci_str string_data;
-};
+} StringObject;
 
-typedef struct {
+typedef struct rci_array {
 	long len;
 	rci_type type;	
 	rci_data * elements;	
 } rci_array;
 
-struct ArrayObject {
+typedef struct ArrayObject {
 	rci_object obj;
 	rci_array array_data;
-};
-
+} ArrayObject;
 
 
 #define BOOL_VAL(value) ((rci_value) {_boolean_, (rci_data){._boolean = value}})
-#define NUMBER_VAL(value) ((rci_value) {_number_, (rci_data){._number = value}})
+#define NUMBER_VAL(value) ((rci_value) {.type = _number_, .as = (rci_data){._number = value}})
 
 #define AS_BOOL(value) ((value).as._boolean)
 #define AS_NUMBER(value) ((value).as._number)

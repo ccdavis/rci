@@ -29,11 +29,10 @@ typedef enum {
 	object_record
 } rci_object_type;
 
-typedef struct {
+typedef struct rci_object  {
 	rci_object_type type;
 	// memory management info goes here
 } rci_object; 
-
 
 
 	
