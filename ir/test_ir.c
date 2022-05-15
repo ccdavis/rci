@@ -37,6 +37,8 @@ void test_boolean_macros() {
 	check(true == IS_BOOL(b),"IS_BOOL");
 }
 
+
+
 int main() {
 	test_number_macros();
 	test_boolean_macros();

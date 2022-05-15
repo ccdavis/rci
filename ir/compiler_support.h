@@ -148,8 +148,7 @@ rci_value new_string_object(char  data[], char_encoding enc) {
 
 
 rci_value cat_string(rci_value lhs, rci_value rhs) {
-	StringObject *new_string = malloc(sizeof(StringObject));
-	new_string->obj.type = object_string;
+	StringObject *new_string = ALLOCATE_OBJECT(StringObject, object_string);	
 	new_string->string_data = cat_rci_str(lhs.as._object->string_data,rhs.as._object->string_data);
 	
 	return (rci_value) { .type = _string_,.as._object = new_string};
