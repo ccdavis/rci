@@ -14,17 +14,32 @@ rci_str rci_str_ascii_literal(char  str[]) {
 	return result;
 }
 
+rci_value string_literal(char str[]) {
+	StringObject * string_object = ALLOCATE_OBJECT(StringObject, object_string);
+	string_object.string_data = rci_str_ascii_literal(str);
+	return (rci_value) {.as = string_object, .type = _string_};
+}
+
 rci_str copy_rci_str(rci_str  original) {
 	rci_str result = original;
-	char * memory = malloc(original.len + 1);
+	char * memory = ALLOCATE(char, original.len + 1);
 	strcpy(memory, original.data);
 	result.refs = 1;
+	result.data = memory;
 	return result;	
+}
+
+rci_value string_copy(rci_value original) {
+	StringObject * orig = (StringObject*) original._object;
+	rci_str copied_string = copy_rci_str(orig->string_data);
+	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
+	new_string->string_data =  copied_string;
+	return (rci_value) {.as = new_string, .type = _string_};	
 }
 
 rci_str new_rci_str(char  data[], char_encoding enc) {
 	int byte_length = strlen(data);	
-	char * memory = malloc(byte_length + 1);
+	char * memory = ALLOCATE(char, byte_length+1);
 	strcpy(memory, data);
 	return (rci_str) {		
 		.len = byte_length,
@@ -35,9 +50,15 @@ rci_str new_rci_str(char  data[], char_encoding enc) {
 	};
 }
 
+rci_value string_new(char data[], char_encoding enc) {	
+	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
+	new_string->string_data = new_rci_str(data, enc);
+	return (rci_value) {.as = new_string, .type = _string_};	
+}
+
 rci_str cat_rci_str(rci_str left, rci_str right) {				
 	long new_len = left.len + right.len;	
-	char * new_data = malloc(new_len + 1);	
+	char * new_data = ALLOCATE(char, new_len + 1);	
 	memcpy(new_data, left.data, left.len);
 	memcpy(new_data + left.len, right.data, right.len);
 	new_data[new_len] = '\0';
@@ -51,14 +72,19 @@ rci_str cat_rci_str(rci_str left, rci_str right) {
 	return new_string;
 }	
 
-
+rci_value string_concat(rci_value left, rci_value right) {
+	StringObject*  left_string = (StringObject*) left.as._object;
+	StringObject * right_string = (StringObject*) right.as._object;	
+	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
+	new_string->string_data = cat_rci_str(left_string->string_data, right_string->string_data);
+	return (rci_value) {.as = new_string, .type = _string_};	
+}
 
 rci_value new_array(rci_type element_type,rci_value * initial_data, long initial_len) {
-	ArrayObject new_array = malloc(sizeof(ArrayObject));
-	new_array->obj.type = object_array;
+	ArrayObject * new_array = ALLOCATE_OBJECT(ArrayObject, object_array);	
 	new_array->array_data.len = initial_len;
 	new_array->array_data.type = element_type;
-	new_array->array_data.elements = malloc(initial_len * sizeof(rci_data));
+	new_array->array_data.elements = ALLOCATE_ARRAY(rci_data, initial_size);
 	for (int e=0; e<initial_len; e++) {
 		new_array->array_data.elements[e] = initial_data[e].as;		
 	}
@@ -113,7 +139,8 @@ void debug_value_to_stdout(rci_value value) {
 			printf("Boolean: %d",value.as._boolean);
 		}break;
 		case _string_ : {
-			debug_str_to_stdout(value.as._object->string_data);
+			StringObject * this_string = (StringObject*) value.as._object;
+			debug_str_to_stdout(this_string->string_data);
 		}break;
 		default: {
 			printf("Type %ld not handled \n", value.type);
@@ -139,26 +166,14 @@ void runtime_error(const char * msg) {
 
 */
 
-rci_value new_string_object(char  data[], char_encoding enc) {
-	StringObject * new_string = malloc(sizeof(StringObject));
-	new_string->obj.type = object_string;
-	new_string.string_data = new_rci_str(data,enc);
-	return (rci_value) {.type =_string_,.as._object = new_string_object};
-}
-
-
-rci_value cat_string(rci_value lhs, rci_value rhs) {
-	StringObject *new_string = ALLOCATE_OBJECT(StringObject, object_string);	
-	new_string->string_data = cat_rci_str(lhs.as._object->string_data,rhs.as._object->string_data);
-	
-	return (rci_value) { .type = _string_,.as._object = new_string};
-}
 
 rci_value assign_string(rci_value lhs, rci_value rhs) {
-	if (lhs.as._object->refs > 0) {
-		free(lhs.as._object->string_data.data);
+	StringObject * old_string = (StringObject*) lhs.as._object;
+	StringObject * new_string = (StringObject*) rhs.as._object;
+	if (old_string->string_data.refs > 0) {				
+		FREE(char, old_string->string_data.data);		
 	}
-	lhs.as._object.string_data = rhs.as._object.string_data;	
+	old_string->string_data = new_string->string_data;	
 	return lhs;
 }
 
@@ -204,16 +219,16 @@ rci_value to_string(rci_value value) {
 		case _number_: {
 			char buffer[50];
 			sprintf(buffer, "%f", value.as._number);
-			result.as._object = (StringObject) new_rci_str(buffer, byte_encoded);
+			result = string_new(buffer, byte_encoded);
 		}break;
 		case _string_ : {
-			result.as._string =   copy_rci_str(value.as._string);
+			result = value;
 		}break;
 		case _boolean_ : {
 			if (value.as._boolean == true) {
-				result.as._string = (rci_str) rci_str_ascii_literal("true");
+				result = string_literal("true");
 			} else {
-				result.as._string = (rci_str) rci_str_ascii_literal("false");
+				result = string_literal("false");
 			}
 		}break;
 		default: {

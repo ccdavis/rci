@@ -1,4 +1,5 @@
 #include "value.h"
+#include "memory.h"
 
 static int  failures = 0;
 static int total = 0;

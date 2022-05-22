@@ -26,11 +26,17 @@ rci_object * allocateObject(size_t size,rci_object_type  type) ;
 #define ALLOCATE_OBJECT(type, objectType) \
     (type*)allocateObject(sizeof(type), objectType)
 
+#define ALLOCATE(type, count) \
+    (type*) reallocate(NULL, 0, sizeof(type) * (count))
+
+#define FREE(type, pointer) reallocate(pointer, sizeof(type), 0)
+//< free
+
 rci_object * allocateObject(size_t size,rci_object_type  type) {
-  rci_object* object = (rci_object*)reallocate(NULL, 0, size);
+  rci_object* object = (rci_object*) reallocate(NULL, 0, size);
   object->type = type;
 //> Garbage Collection init-is-marked
-  object->isMarked = false;
+  object->is_marked = false;
 //< Garbage Collection init-is-marked
 //> add-to-list
   /*
