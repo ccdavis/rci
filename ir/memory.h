@@ -32,6 +32,20 @@ rci_object * allocateObject(size_t size,rci_object_type  type) ;
 #define FREE(type, pointer) reallocate(pointer, sizeof(type), 0)
 //< free
 
+
+
+#define GROW_ARRAY(type, pointer, oldCount, newCount) \
+    (type*)reallocate(pointer, sizeof(type) * (oldCount), \
+        sizeof(type) * (newCount))
+//> free-array
+
+#define FREE_ARRAY(type, pointer, oldCount) \
+    reallocate(pointer, sizeof(type) * (oldCount), 0)
+//< free-array
+
+
+
+
 rci_object * allocateObject(size_t size,rci_object_type  type) {
   rci_object* object = (rci_object*) reallocate(NULL, 0, size);
   object->type = type;
@@ -53,4 +67,6 @@ rci_object * allocateObject(size_t size,rci_object_type  type) {
 //< Garbage Collection debug-log-allocate
   return object;
 }
+
+
 

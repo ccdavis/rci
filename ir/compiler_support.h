@@ -1,6 +1,6 @@
 #ifndef COMPILER_SUPPORT
-#define COMPILER_SUPPORT
 #include "types.h"
+#define COMPILER_SUPPORT
 #include "value.h"
 
 rci_str rci_str_ascii_literal(char  str[]) {
@@ -53,7 +53,7 @@ rci_str new_rci_str(char  data[], char_encoding enc) {
 rci_value string_new(char data[], char_encoding enc) {	
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data = new_rci_str(data, enc);
-	return (rci_value) {.as = new_string, .type = _string_};	
+	return (rci_value) { .type = _string_, .as = new_string};	
 }
 
 rci_str cat_rci_str(rci_str left, rci_str right) {				
@@ -77,18 +77,18 @@ rci_value string_concat(rci_value left, rci_value right) {
 	StringObject * right_string = (StringObject*) right.as._object;	
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data = cat_rci_str(left_string->string_data, right_string->string_data);
-	return (rci_value) {.as = new_string, .type = _string_};	
+	return (rci_value) {.type = _string_, .as = new_string};	
 }
 
 rci_value new_array(rci_type element_type,rci_value * initial_data, long initial_len) {
 	ArrayObject * new_array = ALLOCATE_OBJECT(ArrayObject, object_array);	
 	new_array->array_data.len = initial_len;
 	new_array->array_data.type = element_type;
-	new_array->array_data.elements = ALLOCATE_ARRAY(rci_data, initial_size);
+	new_array->array_data.elements = ALLOCATE(rci_data, initial_size);
 	for (int e=0; e<initial_len; e++) {
 		new_array->array_data.elements[e] = initial_data[e].as;		
 	}
-	return (rci_value) {.as._object = new_array,.type=_array_};
+	return (rci_value) {.type=_array_, .as._object = new_array};
 }
 
 // Add a little run-time checking
@@ -96,7 +96,7 @@ rci_value array_lookup(rci_array this_array, long index) {
 	if (index>= this_array.len) {
 		runtime_error("Index out of bounds.");
 	}
-	return (rci_value) {.as = this_array[index], .type = this_array.type};	
+	return (rci_value) {.type = this_array.type, .as = this_array[index]};	
 }
 
 void replace_element(rci_array this_array, long index, rci_value new_element) {	
@@ -177,7 +177,8 @@ rci_value assign_string(rci_value lhs, rci_value rhs) {
 	return lhs;
 }
 
-
+/* This isn't particularly fast; it's a demonstration of using the type cast macros to show
+how generated code could look. */
 rci_value power(rci_value x,rci_value p) {
 	rci_value result = NUMBER_VAL(1);						
 	while (AS_NUMBER(p) > 1) {
@@ -208,8 +209,6 @@ double rci_value_to_c_double(rci_value value) {
 rci_value c_boolean_to_rci_value(unsigned char b) {
 	return (rci_value) BOOL_VAL(b);
 }
-
-
 
 
 rci_value to_string(rci_value value) {
