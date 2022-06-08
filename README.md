@@ -2,11 +2,55 @@
 
 Building a statically typed language using Crafting Interpreters as a launching pad. 
 
-The language somewhat resembles "Lox" from the book, but with explicit types and user definable types.
+Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.
 
 This is a two-part project. First, develop the language with the tree-walking interpreter to play around with different ideas for the language. Second, implement a compiler when the language has been decided on.
 
 The main idea is to try out some familiar language features combined in new ways. The target lies somewhere between ___Go___, ___Python___ and ___Nim___ with some elements of ___Object Pascal___.
+
+
+```
+
+type Customer = Record(
+		id: Int,
+		rewards_program: Bool,				
+		rewards_points: Int,
+		first_name: Str,
+		last_name: Str,
+		middle: Str,		
+	);
+
+// Typed enumerations	
+type BeerContainer = Enum(
+		crowler, growler, can, tallboy, 
+	);
+	
+// Arrays with type-checked indexing
+type 
+	ContainerInventory = Array<BeerContainner -> Int>;
+	 prices = Array<BeerContainer -> Int>;
+
+// A few globals
+var 
+	sales = 0;
+	inventory = count_from_store_opening();
+
+fun sell_beer(container: BeerContainer, quantity: Int, var cust: Customer):Bool {
+	if inventory[container] >= quantity {
+		inventory[container] -= quantity;
+		price := prices[container];
+		if cust.rewards_program {			
+			cust.rewards_points += price / 10;
+		}
+		
+		sales += price
+		return true;
+	} else { 
+		return false;
+	}
+}
+
+```
 
 
 ### State of the Project

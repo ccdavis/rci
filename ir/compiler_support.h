@@ -3,6 +3,19 @@
 #define COMPILER_SUPPORT
 #include "value.h"
 
+
+
+void code_gen_error(const char * msg) {
+	printf("Code generation error: %s",msg);
+	exit(1);
+}
+
+void runtime_error(const char * msg) {
+	printf("Runtime error: %s",msg);
+	exit(1);
+}
+
+
 rci_str rci_str_ascii_literal(char  str[]) {
 	rci_str result = {		
 		.len = strlen(str),
@@ -16,8 +29,8 @@ rci_str rci_str_ascii_literal(char  str[]) {
 
 rci_value string_literal(char str[]) {
 	StringObject * string_object = ALLOCATE_OBJECT(StringObject, object_string);
-	string_object.string_data = rci_str_ascii_literal(str);
-	return (rci_value) {.as = string_object, .type = _string_};
+	string_object->string_data = rci_str_ascii_literal(str);
+	return (rci_value) { .type = _string_, .as = string_object};
 }
 
 rci_str copy_rci_str(rci_str  original) {
@@ -30,11 +43,11 @@ rci_str copy_rci_str(rci_str  original) {
 }
 
 rci_value string_copy(rci_value original) {
-	StringObject * orig = (StringObject*) original._object;
+	StringObject * orig = (StringObject*) original.as._object;
 	rci_str copied_string = copy_rci_str(orig->string_data);
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data =  copied_string;
-	return (rci_value) {.as = new_string, .type = _string_};	
+	return (rci_value) { .type = _string_, .as = new_string};	
 }
 
 rci_str new_rci_str(char  data[], char_encoding enc) {
@@ -84,7 +97,7 @@ rci_value new_array(rci_type element_type,rci_value * initial_data, long initial
 	ArrayObject * new_array = ALLOCATE_OBJECT(ArrayObject, object_array);	
 	new_array->array_data.len = initial_len;
 	new_array->array_data.type = element_type;
-	new_array->array_data.elements = ALLOCATE(rci_data, initial_size);
+	new_array->array_data.elements = ALLOCATE(rci_data, initial_len);
 	for (int e=0; e<initial_len; e++) {
 		new_array->array_data.elements[e] = initial_data[e].as;		
 	}
@@ -96,7 +109,8 @@ rci_value array_lookup(rci_array this_array, long index) {
 	if (index>= this_array.len) {
 		runtime_error("Index out of bounds.");
 	}
-	return (rci_value) {.type = this_array.type, .as = this_array[index]};	
+	rci_data element = this_array.elements[index];
+	return (rci_value) {.type = this_array.type, .as = element};	
 }
 
 void replace_element(rci_array this_array, long index, rci_value new_element) {	
@@ -108,7 +122,7 @@ void replace_element(rci_array this_array, long index, rci_value new_element) {
 		runtime_error("Index out of bounds.");
 	}
 	
-	this_array[index] = (rci_data) new_element.as;	
+	this_array.elements[index] = (rci_data) new_element.as;	
 }
 
 
@@ -148,16 +162,6 @@ void debug_value_to_stdout(rci_value value) {
 	}
 }
 
-
-void code_gen_error(const char * msg) {
-	printf("Code generation error: %s",msg);
-	exit(1);
-}
-
-void runtime_error(const char * msg) {
-	printf("Runtime error: %s",msg);
-	exit(1);
-}
 
 
 
@@ -203,7 +207,7 @@ char * rci_value_to_c_str(rci_value value) {
 }
 
 double rci_value_to_c_double(rci_value value) {
-	return (double) value.data._number;
+	return (double) value.as._number;
 }
 
 rci_value c_boolean_to_rci_value(unsigned char b) {
