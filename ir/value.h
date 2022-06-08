@@ -3,16 +3,14 @@
 
 #include "types.h"
 
-typedef union {
-	rci_number _number;
+typedef union {	
 	rci_bool _boolean;	
+	rci_number _number;
 	rci_object * _object;
 } rci_data;
 
-
-
 // For run-time type information
-typedef struct rci_value {
+typedef struct rci_value{
 	rci_type type;	
 	rci_data as;	
 }  rci_value;

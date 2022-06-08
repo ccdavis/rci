@@ -28,9 +28,9 @@ rci_str rci_str_ascii_literal(char  str[]) {
 }
 
 rci_value string_literal(char str[]) {
-	StringObject * string_object = ALLOCATE_OBJECT(StringObject, object_string);
+	StringObject * string_object = (StringObject*) ALLOCATE_OBJECT(StringObject, object_string);
 	string_object->string_data = rci_str_ascii_literal(str);
-	return (rci_value) { .type = _string_, .as = string_object};
+	return (rci_value) {.type=_string_, .as._object =  (rci_object*) string_object};
 }
 
 rci_str copy_rci_str(rci_str  original) {
@@ -47,7 +47,7 @@ rci_value string_copy(rci_value original) {
 	rci_str copied_string = copy_rci_str(orig->string_data);
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data =  copied_string;
-	return (rci_value) { .type = _string_, .as = new_string};	
+	return (rci_value) { .type = _string_, .as._object = (rci_object*) new_string};	
 }
 
 rci_str new_rci_str(char  data[], char_encoding enc) {
@@ -66,7 +66,7 @@ rci_str new_rci_str(char  data[], char_encoding enc) {
 rci_value string_new(char data[], char_encoding enc) {	
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data = new_rci_str(data, enc);
-	return (rci_value) { .type = _string_, .as = new_string};	
+	return (rci_value) { .type = _string_, .as._object = (rci_object*) new_string};	
 }
 
 rci_str cat_rci_str(rci_str left, rci_str right) {				
@@ -90,7 +90,7 @@ rci_value string_concat(rci_value left, rci_value right) {
 	StringObject * right_string = (StringObject*) right.as._object;	
 	StringObject * new_string  = ALLOCATE_OBJECT(StringObject, object_string);
 	new_string->string_data = cat_rci_str(left_string->string_data, right_string->string_data);
-	return (rci_value) {.type = _string_, .as = new_string};	
+	return (rci_value) {.type = _string_, .as._object = (rci_object*) new_string};	
 }
 
 rci_value new_array(rci_type element_type,rci_value * initial_data, long initial_len) {
@@ -101,7 +101,7 @@ rci_value new_array(rci_type element_type,rci_value * initial_data, long initial
 	for (int e=0; e<initial_len; e++) {
 		new_array->array_data.elements[e] = initial_data[e].as;		
 	}
-	return (rci_value) {.type=_array_, .as._object = new_array};
+	return (rci_value) {.type=_array_, .as._object = (rci_object*) new_array};
 }
 
 // Add a little run-time checking
@@ -133,7 +133,7 @@ void replace_element(rci_array this_array, long index, rci_value new_element) {
 */
 
 void debug_str_to_stdout(rci_str s) {
-	printf("string data: '%s', len: %d, chars: %d",s.data,s.len,s.chars);
+	printf("string data: '%s', len: %ld, chars: %ld",s.data,s.len,s.chars);
 }
 
 
@@ -157,7 +157,7 @@ void debug_value_to_stdout(rci_value value) {
 			debug_str_to_stdout(this_string->string_data);
 		}break;
 		default: {
-			printf("Type %ld not handled \n", value.type);
+			printf("Type %d not handled \n", value.type);
 		}
 	}
 }

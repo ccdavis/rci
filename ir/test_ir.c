@@ -13,7 +13,7 @@ void check(unsigned char result, const char * test_name) {
 	} else {
 		printf("OK:  ");
 	}	
-	printf(test_name);
+	printf("%s",test_name);
 	printf("\n");	
 }
 
