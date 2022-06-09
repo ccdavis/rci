@@ -93,6 +93,15 @@ rci_value string_concat(rci_value left, rci_value right) {
 	return (rci_value) {.type = _string_, .as._object = (rci_object*) new_string};	
 }
 
+rci_value string_equal(rci_value left_str, rci_value right_str) {
+	StringObject * l = (StringObject*) left_str.as._object;
+	StringObject * r = (StringObject*) right_str.as._object;
+	if (l->string_data.len != r->string_data.len) 
+		return BOOL_VAL(false);
+	
+	return BOOL_VAL( 0 == strncmp(l->string_data.data, r->string_data.data, l->string_data.len));
+}
+
 rci_value new_array(rci_type element_type,rci_value * initial_data, long initial_len) {
 	ArrayObject * new_array = ALLOCATE_OBJECT(ArrayObject, object_array);	
 	new_array->array_data.len = initial_len;
