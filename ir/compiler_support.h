@@ -126,7 +126,6 @@ void replace_element(rci_array this_array, long index, rci_value new_element) {
 }
 
 
-
 /* ***************************************************************************
 
 	Debugging support
@@ -137,11 +136,9 @@ void debug_str_to_stdout(rci_str s) {
 }
 
 
-
 int is_type(rci_value v, rci_type t) {
 	return v.type == t;
 }
-
 
 
 void debug_value_to_stdout(rci_value value) {
@@ -163,13 +160,10 @@ void debug_value_to_stdout(rci_value value) {
 }
 
 
-
-
 /* *********************************************************
  Compiler support and stdlib
 
 */
-
 
 rci_value assign_string(rci_value lhs, rci_value rhs) {
 	StringObject * old_string = (StringObject*) lhs.as._object;
@@ -214,7 +208,6 @@ rci_value c_boolean_to_rci_value(unsigned char b) {
 	return (rci_value) BOOL_VAL(b);
 }
 
-
 rci_value to_string(rci_value value) {
 	rci_value result;
 	result.type = _string_;
@@ -241,7 +234,5 @@ rci_value to_string(rci_value value) {
 	}
 	return result;
 }
-
-
 
 #endif
