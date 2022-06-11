@@ -82,7 +82,7 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 {
 //	var a:number = calc("abc");
 
-	print "Starting";
+	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;
 	//val start = clock();
 	calc(-1.5, -1.0, 1.0, 1.0);
 	//print "Timer: ", (clock() - start) / 1000;
