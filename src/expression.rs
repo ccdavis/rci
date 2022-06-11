@@ -232,7 +232,7 @@ impl Compiler for BinaryNode {
 		if matches!(self.operator.token_type, TokenType::Plus) {
 			return  Ok(ObjectCode {
 				data_type,
-				code:format!("cat_string({}, {})", &left.code, &right.code),
+				code:format!("string_concat({}, {})", &left.code, &right.code),
 			});
 		 } else {
 			let msg = format!("Operator {} not supported for string type.",&op);
@@ -313,7 +313,7 @@ impl Compiler for LogicalNode {
 		  		  
 		Ok(ObjectCode {
 			data_type,
-			code:format!("c_boolean_to_rci_value( rci_value_to_c_boolean({}) {} rci_value_to_c_boolean({}))", 
+			code:format!("BOOL_VAL( AS_BOOL({}) {} AS_BOOL({}))", 
 				&left.code, op, &right.code),
 		})
     }				          
@@ -634,11 +634,11 @@ impl LiteralNode {
 		let literal_type = DataType::from_data_value(value);
 		let object_code = match *value {
 			DataValue::Str(ref v)=> 
-				format!("(rci_value) {{ .data._string = {{.data = \"{}\",.len = {}, .chars = {}, .refs = 0, .encoding = byte_encoded }}, .type = _string_}} ", &v, &v.len(), &v.len()),
+				format!("(rci_value) string_literal(\"{}\")", &v),
 			DataValue::Number(n)=>
-				format!("(rci_value) {{.data._number={}, .type=_number_}}",n),
+				format!("(rci_value) NUMBER_VAL({})",n),
 			DataValue::Bool(b)=>
-				format!("(rci_value) {{.data._boolean={}, .type=_boolean_}}",b),
+				format!("(rci_value)BOOL_VAL({})",b),
 			_ => panic!("Literal compilation not implemented for {:?}", value),
 		};
 						
@@ -918,7 +918,7 @@ impl Compiler for AssignmentNode {
 				
 		let code = match value_to_store.data_type {
 			DataType::Str => {
-				format!("{} = assign_string({},{});",
+				format!("{} = string_assign({},{});",
 					&assignee_name, &assignee_name, &value_to_store.code)
 			}
 			_ =>format!("{} = {}",&assignee_name, &value_to_store.code),

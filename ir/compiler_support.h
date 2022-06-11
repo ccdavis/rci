@@ -174,13 +174,15 @@ void debug_value_to_stdout(rci_value value) {
 
 */
 
-rci_value assign_string(rci_value lhs, rci_value rhs) {
+rci_value string_assign(rci_value lhs, rci_value rhs) {
 	StringObject * old_string = (StringObject*) lhs.as._object;
 	StringObject * new_string = (StringObject*) rhs.as._object;
 	if (old_string->string_data.refs > 0) {				
-		FREE(char, old_string->string_data.data);		
-	}
-	old_string->string_data = new_string->string_data;	
+		FREE(char, old_string->string_data.data);				
+		FREE(StringObject, old_string);
+	}	
+	if (new_string->string_data.refs>0) new_string->string_data.refs += 1;
+	lhs.as._object =  new_string;	
 	return lhs;
 }
 

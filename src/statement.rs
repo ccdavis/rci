@@ -377,10 +377,10 @@ impl Compiler for IfStmtNode {
 		
 		let code = if self.has_else {
 			let else_branch_code = self.else_branch.compile(symbols)?;
-			format!("if (rci_value_to_c_boolean({}))\n{} else\n{}\n",
+			format!("if (AS_BOOL({}))\n{} else\n{}\n",
 				&cond_code.code,&then_branch_code, &else_branch_code)
 		} else {
-			format!("if (rci_value_to_c_boolean({}))\n{}\n",
+			format!("if (AS_BOOL({}))\n{}\n",
 				&cond_code.code, &then_branch_code)
 		};
 		
@@ -742,7 +742,7 @@ impl Compiler for WhileStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let cond = self.condition.compile(symbols)?;
 		let body_code = self.body.compile(symbols)?;
-		Ok( format!("while(rci_value_to_c_boolean({}))\n{}",&cond.code, &body_code))
+		Ok( format!("while(AS_BOOL({}))\n{}",&cond.code, &body_code))
     }
 }
 #[derive(Clone, Debug)]
