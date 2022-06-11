@@ -47,6 +47,15 @@ pub struct ObjectCode {
     pub code: String,
 }
 
+#[derive(Clone,Debug)]
+pub struct GlobalStatementObjectCode {
+    pub decl_type: DeclarationType,
+    pub base_code: String,
+    pub decl_name: String, // variable name, function name, type name etc
+    pub init_code: String, // Compiled init code that must be called elsewhere
+    pub init_name: String, // Name of initializer function
+}
+
 #[derive(Clone, Debug)]
 pub enum DataValue {
     Str(String),

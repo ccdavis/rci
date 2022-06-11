@@ -10,6 +10,7 @@ use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
 use crate::types::DeclarationType;
+use  crate::types::GlobalStatementObjectCode;
 use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
@@ -45,6 +46,7 @@ impl EarlyReturn {
     }
 }
 
+
 pub trait Executable {
     fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn>;
     fn print(&self) -> String;
@@ -56,7 +58,15 @@ pub trait TypeChecking {
 
 pub trait Compiler {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error>;
+    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
+        Err(
+            errors::Error::internal(
+                ErrorType::Internal, "Can't compile this statement type as a global declaration.".to_string())
+        )        
+    }
+    
 }
+
 #[derive(Clone, Debug)]
 pub enum Stmt {
     Print(PrintStmtNode),
@@ -139,6 +149,18 @@ impl Stmt {
             _ => panic!("Statement type compilation not supported yet."),
         }
     }
+
+
+    pub fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
+        use Stmt::*;
+        match self {                        
+            Var(n) => n.compile_global(symbols),
+            Fun(n) => n.compile_global(symbols),            
+            // TODO add Type statement types
+            _ => panic!("Statement type compilation not supported yet."),
+        }
+	}
+        
 }
 
 #[derive(Clone, Debug)]
@@ -444,6 +466,28 @@ impl Compiler for VarStmtNode {
 		let code = format!("{} = {};",&lhs, &rhs.code);
 		Ok(code)		        
     }
+
+
+    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
+        let ste = symbols.lookup(&self.name).expect("Major compiler bug: Symbol should be in symbol table.");
+		let lhs = format!("rci_value {};\n",self.name);
+        // make an initializer function to be called from an init_globals() function called first in main()
+        let initializer_name = format!("__INITIALIZER_FOR_{}()", &self.name);        
+		let rhs =  self.initializer.compile(symbols)?;
+        let init_func = format!("void {} {{\n {} = {}; \n }}\n",
+            &initializer_name,  self.name, &rhs.code);
+
+
+		let code = GlobalStatementObjectCode{
+            decl_type: ste.entry_type.clone(),
+            base_code: lhs,
+            decl_name: self.name.clone(),
+            init_code: init_func,
+            init_name: initializer_name,
+        };
+		Ok(code)		        
+    }
+
 }
 
 #[derive(Debug, Clone)]
@@ -477,7 +521,7 @@ impl Executable for FunStmtNode {
     }
 }
 
-impl TypeChecking for FunStmtNode {
+impl TypeChecking 	for FunStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
@@ -523,6 +567,22 @@ impl Compiler for FunStmtNode {
 		let body = format!("{{\n{}\n}}", 
 			&stmts_code.join("\n"));
 		Ok(format!("{}\n{}\n",&decl, &body))		
+    }
+
+    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error>{
+        let function_name = self.name.token_type.print_value();
+        let code = GlobalStatementObjectCode{            
+            decl_type: DeclarationType::Fun,
+            base_code: self.compile(&symbols)?,        
+            decl_name:  function_name.clone(),
+            init_code: "".to_string(),
+            init_name: function_name.clone(),
+
+
+
+        };
+        Ok(code)
+
     }
 }
 
@@ -779,21 +839,40 @@ impl TypeChecking for ProgramNode {
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let  compiler_support = "#include \"./ir/compiler_support.h\"";
-		let mut decls: Vec<String> = Vec::new();
+		let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
+
 		for decl in &self.declarations {
-			let decl_code = decl.compile(symbols)?;
+			let decl_code = decl.compile_global(symbols)?;                    
 			decls.push(decl_code);
 		}
-		let declarations_code = decls.join("\n\n");
+
+        let declarations_code =decls.iter().map(|decl|{
+            match decl.decl_type {
+                DeclarationType::Val | DeclarationType::Var =>{                    
+                    format!("{}\n{}\n",&decl.base_code,&decl.init_code)
+                }
+                _ => decl.base_code.clone(),
+            }
+            
+        }).collect::<Vec<String>>().join("\n");
+
+
+        let initializer_stmts:Vec<String> = decls.iter()
+            .filter(|d| matches!(d.decl_type, DeclarationType::Var) || matches!(d.decl_type, DeclarationType::Val))
+            .map(|decl|{
+            format!("{};",&decl.init_name)
+        }).collect();
 		
-		let imperatives_code = self.imperatives.compile(symbols)?;
+		let imperatives_code = self.imperatives.compile(symbols)?;		
+		let init_globals = format!("void init_globals() {{\n {} \n}}\n", &initializer_stmts.join("\n"));
 		
-		let main_fn = format!("int main(int argc, const char ** argv) {{\n{}\nreturn 0;\n}}",
-			&imperatives_code);
+		let main_fn = format!("int main(int argc, const char ** argv) {{\n{}\n{}\nreturn 0;\n}}",
+			"\tinit_globals();\n",&imperatives_code);
 			
-		Ok(format!("{}\n{}\n\n{}", 
+		Ok(format!("{}\n{}\n\n{}\n{}\n", 
 			compiler_support, 
 			&declarations_code,
+            &init_globals,
 			&main_fn))				        
     }
 }
