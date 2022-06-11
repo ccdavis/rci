@@ -1,5 +1,5 @@
-#include "value.h"
-#include "memory.h"
+//#include "value.h"
+//#include "memory.h"
 #include "compiler_support.h"
 
 static int  failures = 0;

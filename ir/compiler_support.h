@@ -1,7 +1,9 @@
 #ifndef COMPILER_SUPPORT
-#include "types.h"
 #define COMPILER_SUPPORT
+#include "types.h"
+#include "memory.h"
 #include "value.h"
+
 
 
 
@@ -188,7 +190,7 @@ rci_value string_assign(rci_value lhs, rci_value rhs) {
 
 /* This isn't particularly fast; it's a demonstration of using the type cast macros to show
 how generated code could look. */
-rci_value power(rci_value x,rci_value p) {
+rci_value rcilib_power(rci_value x,rci_value p) {
 	rci_value result = NUMBER_VAL(1);						
 	while (AS_NUMBER(p) > 1) {
 		AS_NUMBER(p) = AS_NUMBER(p) - 1;
@@ -196,6 +198,8 @@ rci_value power(rci_value x,rci_value p) {
 	}
 	return result;
 }
+
+#include "operations.h"
 
 /*  ****************************************************************
 

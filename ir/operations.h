@@ -2,9 +2,6 @@
 #ifndef RCI_OPERATIONS
 #define RCI_OPERATIONS
 
-#include "type.h"
-#include "value.h"
-#include "compiler_support.h"
 
 typedef enum { _NEGATIVE_, _NOT_} rci_unary_operators;
 
@@ -13,26 +10,26 @@ typedef enum { _ADD_, _SUB_, _MUL_, _DIV_, _MOD_, _POW_, _SHL_, _SHR_,
 	rci_binary_operators;
 	
 	
-	rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {
+rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {
 	rci_value result = BOOL_VAL(false);
 	switch(op) {
 		case _LT_ :{
-			AS_BOOL(result) = AS_NUMBER(left) < AS_NUMBER(right);
+			result = BOOL_VAL(AS_NUMBER(left) < AS_NUMBER(right));
 		} break;
 		case _EQ_ :{
-			result.data._boolean = left.data._number == right.data._number;
+			result = BOOL_VAL(left.as._number == right.as._number);
 		}break;
 		case _GT_ : {
-			result.data._boolean = left.data._number > right.data._number;
+			result = BOOL_VAL(left.as._number > right.as._number);
 		}break;
 		case _NE_ : {
-			result.data._boolean = left.data._number != right.data._number;
+			result = BOOL_VAL(left.as._number != right.as._number);
 		}break;
 		case _GTE_ : {
-			result.data._boolean = left.data._number >= right.data._number;
+			result = BOOL_VAL(left.as._number >= right.as._number);
 		}break;
 		case _LTE_ : {
-			result.data._boolean = left.data._number <= right.data._number;
+			result = BOOL_VAL(left.as._number <= right.as._number);
 		}break;
 		default:code_gen_error("op for comparison not implemented");					
 	}
@@ -70,7 +67,7 @@ rci_value binary_operation(rci_binary_operators op, rci_value left, rci_value  r
 			left.as._number = (long) left.as._number % (long) right.as._number;
 		}break;
 		case _POW_ : {
-			left = power(left, right);
+			left = rcilib_power(left, right);
 		} break;
 		case _LT_: 
 		case _GT_:
