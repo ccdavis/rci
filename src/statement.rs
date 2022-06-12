@@ -1,7 +1,5 @@
 #[allow(dead_code)]
-use crate::environment;
-use crate::environment::EnvNode;
-use crate::environment::EnvRc;
+
 use crate::errors;
 use crate::errors::*;
 use crate::expression::Expr;
@@ -14,43 +12,10 @@ use  crate::types::GlobalStatementObjectCode;
 use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
-use crate::types::ReturnValue;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 
 const TRACE: bool = false;
 
-// Use the '?' early return mechanism to propagate results of errors similar to exceptions.
-// Also use it to abandon execution in a function body and return values when executing the
-// 'return' statement, or exit a block when executing 'break'.
-#[derive(Clone, Debug)]
-pub enum EarlyReturn {
-    BreakStatement,
-    ReturnStatement(ReturnValue),
-    Error(errors::Error),
-}
-
-impl EarlyReturn {
-    pub fn print(&self) -> String {
-        match self {
-            EarlyReturn::Error(ref e) => e.format(),
-            EarlyReturn::BreakStatement => "break-statement".to_string(),
-            EarlyReturn::ReturnStatement(ref retval) => retval.print(),
-        }
-    }
-
-    pub fn error(t: &Token, msg: String) -> EarlyReturn {
-        let exec_error = Error::new(t, ErrorType::Execution, msg);
-        EarlyReturn::Error(exec_error)
-    }
-}
-
-
-pub trait Executable {
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn>;
-    fn print(&self) -> String;
-}
 
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
@@ -98,22 +63,6 @@ impl Stmt {
         }
     }
 
-    pub fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        use Stmt::*;
-        match self {
-            Print(stmt) => stmt.execute(envr),
-            ExpressionStmt(stmt) => stmt.execute(envr),
-            Var(stmt) => stmt.execute(envr),
-            Fun(stmt) => stmt.execute(envr),
-            Block(stmt) => stmt.execute(envr),
-            If(stmt) => stmt.execute(envr),
-            While(stmt) => stmt.execute(envr),
-            Return(stmt) => stmt.execute(envr),
-            Break(stmt) => stmt.execute(envr),
-            Program(stmt) => stmt.execute(envr),
-            _ => panic!("Statement not implemented."),
-        }
-    }
 
     pub fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         use Stmt::*;
@@ -168,27 +117,12 @@ pub struct PrintStmtNode {
     expressions: Vec<Expr>,
 }
 
-impl Executable for PrintStmtNode {
+impl  PrintStmtNode {
     fn print(&self) -> String {
-        format!("print-stmt {:?}", &self.expressions)
-    }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        for expr in &self.expressions {
-            match expr.evaluate(envr) {
-                Ok(value) => {
-                    print!("{}", &value.print());
-                }
-                Err(err) => {
-                    return Err(EarlyReturn::Error(err));
-                }
-            }
-        }
-        println!("");
-        Ok(())
+        format!("print {:?}", &self.expressions)
     }
 }
-
+    
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // print can take any type
@@ -235,19 +169,12 @@ pub struct ExpressionStmtNode {
     expression: Expr,
 }
 
-impl Executable for ExpressionStmtNode {
+impl ExpressionStmtNode {
     fn print(&self) -> String {
-        format!("expr-stmt {}", &self.expression.print())
-    }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        match self.expression.evaluate(envr) {
-            Err(err) => Err(EarlyReturn::Error(err)),
-            _ => Ok(()),
-        }
+        format!("{}", &self.expression.print())
     }
 }
-
+    
 impl TypeChecking for ExpressionStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // Trigger type checks from the expression contained
@@ -270,7 +197,7 @@ pub struct BlockStmtNode {
     symbols: SymbolTable,
 }
 
-impl Executable for BlockStmtNode {
+impl BlockStmtNode {
     fn print(&self) -> String {
         let stmts: String = self
             .statements
@@ -279,28 +206,7 @@ impl Executable for BlockStmtNode {
             .collect::<Vec<String>>()
             .join(";");
 
-        format!("block-stmt: {}", &stmts)
-    }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        let local_envr = environment::extend(envr);
-        // To keep the live environment indexes in sync withthe parsed symbol
-        // table which inserts IN_BLOCK and RETURNTYPE in blocks and functions
-        // for parse-time type checking._
-        local_envr.define("IN_BLOCK".to_string(), ReturnValue::None);
-
-        for stmt in &mut self.statements {
-            if let Err(early_return) = stmt.execute(&local_envr) {
-                match early_return {
-                    EarlyReturn::BreakStatement => break,
-                    EarlyReturn::ReturnStatement(_) => {
-                        return Err(early_return);
-                    }
-                    EarlyReturn::Error(_) => return Err(early_return),
-                }
-            }
-        }
-        Ok(())
+        format!("{{\n {}\n}}", &stmts)
     }
 }
 
@@ -340,42 +246,22 @@ pub struct IfStmtNode {
     else_branch: Box<Stmt>,
 }
 
-impl Executable for IfStmtNode {
+impl IfStmtNode {
     fn print(&self) -> String {
         let else_stmt = if self.has_else {
             self.else_branch.print()
         } else {
-            "None".to_string()
+            "".to_string()
         };
         format!(
-            "if-stmt {} then {} else {}",
+            "if {} {{\n {}\n}} else{{ \n{}\n}}",
             &self.condition.print(),
             &*self.then_branch.print(),
             else_stmt
         )
     }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        let test = self.condition.evaluate(envr);
-        match test {
-            Ok(result) => {
-                let falsey = match result.get() {
-                    DataValue::Bool(b) => !b,
-                    _ => false,
-                };
-
-                if !falsey {
-                    self.then_branch.execute(envr)
-                } else if self.has_else {
-                    self.else_branch.execute(envr)
-                } else {
-                    Ok(())
-                }
-            }
-            Err(err) => Err(EarlyReturn::Error(err)),
-        }
-    }
 }
+
 
 impl TypeChecking for IfStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
@@ -420,30 +306,12 @@ pub struct VarStmtNode {
     initializer: Box<Expr>,
 }
 
-impl Executable for VarStmtNode {
+impl VarStmtNode {
     fn print(&self) -> String {
         format!("var-stmt = {}", &self.initializer.print())
     }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        let evaluated = self.initializer.evaluate(envr);
-        match evaluated {
-            Ok(value) => {
-                // Add value to environment binding to name
-                self.index = envr.define(self.name.clone(), value);
-                Ok(())
-            }
-            Err(msg) => {
-                let message = format!(
-                    "Execution error on variable initialization for '{}' because of {}",
-                    &self.name, &msg.message
-                );
-                let err = errors::Error::new(&self.location, ErrorType::Execution, message);
-                Err(EarlyReturn::Error(err))
-            }
-        }
-    }
 }
+
 
 impl TypeChecking for VarStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
@@ -499,28 +367,12 @@ pub struct FunStmtNode {
     symbols: SymbolTable,
 }
 
-impl Executable for FunStmtNode {
+impl FunStmtNode {
     fn print(&self) -> String {
         format!("function: {}", &self.name.identifier_string())
     }
-
-    // This adds the function to the interpreter's environment, executing the function declaration.
-    // function happens in the Expression 'Call' node.
-    // which then calls back to the implementation of Callable (UserFunction) here.
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        if TRACE {
-            println!("Define function {}", self.name.identifier_string());
-        }
-        envr.define(
-            self.name.identifier_string(),
-            ReturnValue::CallableValue(Box::new(UserFunction::new(self.clone(), Rc::clone(envr)))),
-        );
-        // The type-checker should have caught situations where we're redefining a function.
-        // No other errors should be possible at this point either.
-        Ok(())
-    }
 }
-
+ 
 impl TypeChecking 	for FunStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         for stmt in &self.body {
@@ -577,90 +429,8 @@ impl Compiler for FunStmtNode {
             decl_name:  function_name.clone(),
             init_code: "".to_string(),
             init_name: function_name.clone(),
-
-
-
         };
         Ok(code)
-
-    }
-}
-
-#[derive(Clone)]
-pub struct UserFunction {
-    declaration: FunStmtNode,
-    closure: EnvRc,
-}
-
-impl UserFunction {
-    fn new(declaration: FunStmtNode, closure: EnvRc) -> Self {
-        Self {
-            declaration,
-            closure,
-        }
-    }
-}
-
-impl Callable for UserFunction {
-    fn name(&self) -> String {
-        self.declaration.name.identifier_string()
-    }
-
-    fn arity(&self) -> usize {
-        self.declaration.params.len()
-    }
-
-    fn return_type(&self) -> &DataType {
-        &self.declaration.return_type
-    }
-
-    fn params(&self) -> Vec<Box<SymbolTableEntry>> {
-        self.declaration.params.clone()
-    }
-
-    fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn> {
-        let local_envr = environment::extend(&self.closure);
-        // To keep in sync with the symbol table indexes
-        local_envr.define("RETURN_TYPE".to_string(), ReturnValue::None);
-
-        // Add argument values to the local environment
-        for (index, arg_value) in arguments.into_iter().enumerate() {
-            let param = &self.declaration.params[index];
-            local_envr.define(self.declaration.params[index].name.to_owned(), arg_value);
-        }
-
-        let mut return_value = ReturnValue::Value(DataValue::Unresolved);
-        if TRACE {
-            println!("In function {}", self.name());
-        }
-        let decl = &mut self.declaration;
-
-        for stmt in &mut decl.body {
-            // Catch any early returns from a return statement, otherwise
-            // return the error as normal.
-            if let Err(early_return) = stmt.execute(&local_envr) {
-                match early_return {
-                    EarlyReturn::ReturnStatement(retval) => {
-                        return_value = retval;
-                        return Ok(return_value);
-                    }
-                    EarlyReturn::Error(_) => return Err(early_return),
-                    EarlyReturn::BreakStatement => {
-                        panic!("A 'break' statement escaped its context!");
-                    }
-                }
-            }
-        }
-
-        if matches!(return_value, ReturnValue::Value(DataValue::Unresolved)) {
-            let message = format!(
-                "No return executed for function {}.",
-                &self.declaration.name.identifier_string(),
-            );
-
-            return Err(EarlyReturn::error(&self.declaration.name, message));
-        }
-        Ok(return_value)
     }
 }
 
@@ -671,19 +441,11 @@ pub struct ReturnStmtNode {
     return_type: DataType,
 }
 
-impl Executable for ReturnStmtNode {
+impl ReturnStmtNode {
     fn print(&self) -> String {
         format!("return-statement: {}", &self.expr.print())
     }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        match self.expr.evaluate(envr) {
-            Ok(retval) => Err(EarlyReturn::ReturnStatement(retval)),
-            Err(eval_error) => Err(EarlyReturn::error(&self.location, eval_error.message)),
-        }
-    }
 }
-
 impl TypeChecking for ReturnStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let would_return_type = self.expr.determine_type(symbols)?;
@@ -711,17 +473,12 @@ pub struct BreakStmtNode {
     location: Token,
 }
 
-impl Executable for BreakStmtNode {
+impl BreakStmtNode {
     fn print(&self) -> String {
         "break-statement".to_string()
     }
-
-    // The parser should prevent 'break' outside of a block
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        Err(EarlyReturn::BreakStatement)
-    }
 }
-
+    
 impl TypeChecking for BreakStmtNode {
     // We could add a special symbol to any block's symbol table and then the
     // break statement could check if it was valid ...
@@ -743,7 +500,7 @@ pub struct WhileStmtNode {
     body: Box<Stmt>,
 }
 
-impl Executable for WhileStmtNode {
+impl WhileStmtNode {
     fn print(&self) -> String {
         format!(
             "while-loop cond: {}, body: {}",
@@ -751,38 +508,8 @@ impl Executable for WhileStmtNode {
             &self.body.print()
         )
     }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {
-        loop {
-            match self.condition.evaluate(envr) {
-                Err(eval_err) => return Err(EarlyReturn::Error(eval_err)),
-                Ok(cond) => {
-                    if let DataValue::Bool(b) = cond.get() {
-                        if *b {
-                            if let Err(early_return) = self.body.execute(envr) {
-                                match early_return {
-                                    EarlyReturn::BreakStatement => break,
-                                    _ => return Err(early_return),
-                                }
-                            }
-                        } else {
-                            break;
-                        }
-                    } else {
-                        // Type error in test expression
-                        let message = format!(
-                            "Expressions in a while statement must evaluate to true or false."
-                        );
-                        return Err(EarlyReturn::error(&self.location, message));
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
-
+ 
 impl TypeChecking for WhileStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let cond_type = self.condition.determine_type(symbols)?;
@@ -811,17 +538,9 @@ pub struct ProgramNode {
     imperatives: Box<Stmt>, // this is only allowed to be a block
 }
 
-impl Executable for ProgramNode {
+impl ProgramNode {
     fn print(&self) -> String {
         "Program".to_string()
-    }
-
-    fn execute(&mut self, envr: &EnvRc) -> Result<(), EarlyReturn> {        
-		for stmt in &mut self.declarations {
-			stmt.execute(envr)?;
-		}
-		
-		self.imperatives.execute(envr)
     }
 }
 

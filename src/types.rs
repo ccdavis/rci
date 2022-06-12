@@ -1,11 +1,10 @@
-use crate::environment::*;
+
 use crate::errors;
 use crate::errors::*;
 use crate::lex::TokenType;
 use crate::statement::EarlyReturn;
 use crate::symbol_table::SymbolTableEntry;
 
-use dyn_clonable::*;
 use std::fmt;
 use std::rc::Rc;
 
@@ -138,95 +137,17 @@ impl DataValue {
         format!("{:?}", self)
     }
 
-    pub fn to_c_literal(&self) -> String {
+    pub fn to_c_ir(&self) -> String {
 		let lexeme = self.print_value();
-		let c_cast = match self {
-			DataValue::Str(_) =>"rci_str",
-            DataValue::Number(_) =>"double",
-            DataValue::Bool(_) => "",
-            DataValue::Array(ref data) => "rci_array",
-            DataValue::User(ref u) => u,
+		match self {
+			DataValue::Str(_) => format!("(rci_value) string_literal({})",&lexeme),
+            DataValue::Number(_) =>format!("NUMBER_VAL({})",&lexeme),
+            DataValue::Bool(_) =>format!("BOOL_VAL({})",&lexeme),
+            DataValue::Array(ref data) => "//not implemented".to_string(),
+            DataValue::User(ref u) => "//not implemented".to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
-		};
-		format!("({}) {} ",&c_cast, &lexeme)        
+		}
+		
     }
 }
 
-#[clonable]
-pub trait Callable: Clone {
-    fn call(&mut self, arguments: Vec<ReturnValue>) -> Result<ReturnValue, EarlyReturn>;
-    fn arity(&self) -> usize;
-    fn params(&self) -> Vec<Box<SymbolTableEntry>>;
-    fn return_type(&self) -> &DataType;
-    fn name(&self) -> String;
-}
-
-// We use this both for evaluation of expressions and return values from functions. In the execution of
-// statements that are pseudo-expressions ReturnValue is also needed: "return" specifically.
-#[derive(Clone)]
-pub enum ReturnValue {
-    Reference(Rc<DataValue>),
-    Value(DataValue),
-    CallableValue(Box<dyn Callable>),
-    None, // This is for optional return of data, not 'nil' or null
-}
-
-impl fmt::Debug for ReturnValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let output = match self {
-            ReturnValue::Reference(ref val) => format!("{:?}", val),
-            ReturnValue::Value(ref val) => format!("{:?}", val),
-            ReturnValue::None => "None".to_string(),
-            ReturnValue::CallableValue(_) => "Callable".to_string(),
-        };
-        f.write_str(&output)
-    }
-}
-
-impl ReturnValue {
-    pub fn new_ref(value: DataValue) -> Self {
-        ReturnValue::Reference(Rc::new(value))
-    }
-
-    pub fn new_val(value: DataValue) -> Self {
-        ReturnValue::Value(value)
-    }
-
-    // Helper for internal use in standard library
-    pub fn get_as_number(&self) -> Result<f64, errors::Error> {
-        match self.get() {
-            DataValue::Number(n) => Ok(*n),
-            _ => {
-                let message = format!(
-                    "Incorrect type -- expected number. but was {}",
-                    &self.print()
-                );
-                Err(Error::internal(ErrorType::Execution, message))
-            }
-        }
-    }
-
-    pub fn get(&self) -> &DataValue {
-        match self {
-            ReturnValue::Reference(v) => &*v,
-            ReturnValue::Value(v) => &v,
-            ReturnValue::None => {
-                panic!("get() is for internal use and should never be called on None varient.")
-            }
-            _ => panic!("Can't retrieve other types such as Callable."),
-        }
-    }
-
-    pub fn clone_or_increment_count(&self) -> ReturnValue {
-        match self {
-            ReturnValue::Reference(v) => ReturnValue::Reference(Rc::clone(&v)),
-            ReturnValue::Value(v) => ReturnValue::Value(v.clone()),
-            ReturnValue::CallableValue(fun) => ReturnValue::CallableValue(fun.clone()),
-            ReturnValue::None => ReturnValue::None,
-        }
-    }
-
-    pub fn print(&self) -> String {
-        self.get().print_value()
-    }
-}

@@ -4,9 +4,9 @@ Building a statically typed language using Crafting Interpreters as a launching 
 
 Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.
 
-This is a two-part project. First, develop the language with the tree-walking interpreter to play around with different ideas for the language. Second, implement a compiler when the language has been decided on.
+This branch removes the interpreter.
 
-The main idea is to try out some familiar language features combined in new ways. The target lies somewhere between ___Go___, ___Python___ and ___Nim___ with some elements of ___Object Pascal___.
+The main idea behind RCI is to try out some familiar language features combined in new ways. The target lies somewhere between ___Go___, ___Python___ and ___Nim___ with some elements of ___Object Pascal___.
 
 
 ```
@@ -57,15 +57,16 @@ fun sell_beer(container: BeerContainer, quantity: Int, var cust: Customer):Bool 
 
 A compiler with C as the target language now supports most of the interpreted language. Closures and arrays aren't yet supported. The parameter passing semantics are properly modeled with good compiler errors to explain this.
 
-The Mandelbrot sample program compiles and runs with TCC or GCC as the C-compiler. With TCC the benchmark that took 162 seconds to run on the interpreter took 16 seconds. With no optimizations it runs in 8 seconds with GCC, and 1.6 seconds with -O3 optimization level.
+On my PC, the Mandelbrot sample program compiles and runs with TCC or GCC as the C-compiler. With TCC the benchmark that took 162 seconds to run on the interpreter took 9 seconds. With no optimizations it runs in 4.5 seconds with GCC, and 0.5 seconds with -O3 optimization level.
 
 ### Current Language Proposal
 
-* Functions, including nesting functions. Function declarations capture their environment as closures.
-* Function overloading both with arity and parameter types. This can occasionally make hard to debug code but allows for interesting types of polymorphism without  dynamic dispatch or inheritance.
 * Variable declarations with 'var' and 'val' types as in Scala: 'val' types are immutable.
 * Static typing with reasonable type inference during variable declaration and initialization.
 * Function parameters default to 'val' type, but can be 'var' if specified in the definition, or 'cpy' if the argument value needs to be mutable but cause no side-effects. Only 'cpy' causes pass-by-value, only 'var' can alter the passed-in value. Expressions may be passed either as 'val' or 'cpy', only named variables can be passed as 'var'.
+* Function overloading both with arity and parameter types. This can occasionally make hard to debug code but allows for interesting types of polymorphism without  dynamic dispatch or inheritance.
+* Range types for ordinals (Int..Int) is the literal. It is a special case of Set types with all the set operations  supported.
+* For loops operate on ranges and sets.
 * Actual newtype types created by a 'type' declaration. This is different from 'type' in ___Rust___ or 'typedef' in ___C___ which simply aliases the type name. To do this well the language has to allow common operators to work on directly derived types but prevent automatic operation between say 'kilometers' and 'int64' -- but allow them when explicit casts (but only if the newtype derives from the exact same built-in type.)
 * Enumeration types with ordering and name assignments
 * Set type, along with dynamic arrays and hashtables.

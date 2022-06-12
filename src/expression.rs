@@ -1,30 +1,19 @@
-use crate::environment;
-use crate::environment::EnvNode;
-use crate::environment::EnvRc;
+
 use crate::errors;
 use crate::errors::*;
 use crate::errors::compiler_err;
 use crate::lex::Token;
 use crate::lex::TokenType;
-use crate::operations;
 use crate::symbol_table::*;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
 use crate::types::ObjectCode;
-use crate::types::ReturnValue;
 use crate::types::*;
 
 use std::rc::Rc;
 
 const TRACE: bool = false;
-
-pub trait Evaluation {
-    // return the name  of the operation if any and
-    // associated expressions.
-    fn print(&self) -> String;
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error>;
-}
 
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
@@ -34,7 +23,6 @@ pub trait TypeCheck {
 pub trait Compiler {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error>;
 }
-
 #[derive(Clone, Debug)]
 pub enum Expr {
     Binary(BinaryNode),
@@ -50,21 +38,9 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        match self {
-            Expr::Binary(n) => n.evaluate(envr),
-            Expr::Logical(n) => n.evaluate(envr),
-            Expr::Call(n) => n.evaluate(envr),
-            Expr::Lookup(n) => n.evaluate(envr),
-            Expr::Unary(n) => n.evaluate(envr),
-            Expr::Grouping(n) => n.evaluate(envr),
-            Expr::Array(n) => n.evaluate(envr),
-            Expr::Variable(n) => n.evaluate(envr),
-            Expr::Assignment(n) => n.evaluate(envr),
-            Expr::Literal(ref value) => Ok(value.clone_or_increment_count()),
-        }
-    }
-
+ // I don't love this matching. It would be nice to have varents as types (refinement types)
+ // Discussion: https://www.reddit.com/r/rust/comments/2rdoxx/enum_variants_as_types/
+ 
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         match self {
             Expr::Binary(n) => n.determine_type(symbols),
@@ -104,59 +80,9 @@ pub struct BinaryNode {
     right: Box<Expr>,
 }
 
-impl Evaluation for BinaryNode {
-    fn print(&self) -> String {
-        format!(
-            "{} {} {}",
-            &self.operator.print(),
-            self.left.print(),
-            self.right.print()
-        )
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        use TokenType::*;
-        let left = self.left.evaluate(envr)?;
-        let right = self.right.evaluate(envr)?;
-        let left_value = left.get();
-        let right_value = right.get();
-        let result = match self.operator.token_type {
-            Plus => operations::add(left_value, right_value),
-            Minus => operations::subtract(left_value, right_value),
-            Slash => operations::divide(left_value, right_value),
-            Star => operations::multiply(left_value, right_value),
-            Greater => operations::compare_gt(left_value, right_value),
-            Less => operations::compare_lt(left_value, right_value),
-            GreaterEqual => operations::compare_gte(left_value, right_value),
-            LessEqual => operations::compare_lte(left_value, right_value),
-            LessGreater => operations::not_equal(left_value, right_value),
-            Equal => operations::equal(left_value, right_value),
-
-            _ => Err(format!(
-                "Operation {} not supported yet!",
-                self.operator.token_type.print()
-            )),
-        }; // match
-
-        // If there's an error, add the source location from the token
-        match result {
-            Ok(r) => Ok(r),
-            Err(message) => {
-                let eval_err = format!(
-                    "Error performing '{}' operation: {}",
-                    &self.operator.token_type.print(),
-                    &message
-                );
-                Err(Error::new(&self.operator, ErrorType::Evaluation, eval_err))
-            }
-        }
-    }
-} // impl
-
 impl TypeCheck for BinaryNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         use TokenType::*;
-
         let left_type = self.left.determine_type(symbols)?;
         let right_type = self.right.determine_type(symbols)?;
 
@@ -225,7 +151,8 @@ impl Compiler for BinaryNode {
 		TokenType::GreaterEqual => ">=",
 		TokenType::Equal => "_EQ_",
 		TokenType::LessGreater => "_NE_",
-		_ => panic!("Compilation error, operator not supported yet."),		
+		_ => panic!(format!("Compilation error, operator not supported yet: {}",
+			&self.token.token_type.print())),		
 	  };
 	  
 	  if matches!(data_type, DataType::Str) {
@@ -253,36 +180,6 @@ pub struct LogicalNode {
     right: Box<Expr>,
 }
 
-impl Evaluation for LogicalNode {
-    fn print(&self) -> String {
-        format!("logical-operator {}", self.operator.token_type.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        let left_value = self.left.evaluate(envr)?;
-        let left_bool_val = match left_value.get() {
-            DataValue::Bool(b) => *b,
-            _ => {
-                let message = format!("The 'or' operator requires boolean operands.");
-                return Err(Error::new(&self.operator, ErrorType::Evaluation, message));
-            }
-        };
-
-        if matches!(self.operator.token_type, TokenType::Or) {
-            if left_bool_val {
-                return Ok(left_value);
-            }
-        } else {
-            // an 'and'
-            if left_bool_val == false {
-                return Ok(left_value);
-            }
-        }
-
-        self.right.evaluate(envr)
-    }
-}
-
 impl TypeCheck for LogicalNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         let right_type = self.right.determine_type(symbols)?;
@@ -305,9 +202,10 @@ impl Compiler for LogicalNode {
 		  let left = self.left.compile(symbols)?;
 		  let right = self.right.compile(symbols)?;
 		  let op = match self.operator.token_type {			
+		  // TODO the 'or' operator is control flow, really needs correct implementation!
 			TokenType::And => "&&",
 			TokenType::Or => "||",
-			_ => panic!("Code generation error, operator not a logical operator: '{}'",
+			_ => panic!("Code generation error, operator not a logical operator: '{}'. The compiler never should have reached this point.",
 						&self.operator.print()),									
 		  };
 		  		  
@@ -326,52 +224,9 @@ pub struct CallNode {
     args: Vec<Expr>,
 }
 
-impl Evaluation for CallNode {
-    fn print(&self) -> String {
-        format!("function call: {}", &self.callee.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        // Look up the 'callee' expr which is currently always going to be an identifier primary
-        // expression (which is a 'var' expression.) Evaluating it  returns the entry in the
-        // environment associated with the identifier and we expect it to be a callable trait
-        // type.
-        let mut this_callee = self.callee.evaluate(envr)?;
-        if let ReturnValue::CallableValue(ref mut function) = this_callee {
-            let mut arguments: Vec<ReturnValue> = Vec::new();
-            for arg_expr in &self.args {
-                let arg = arg_expr.evaluate(envr)?;
-                arguments.push(arg);
-            }
-
-            if arguments.len() != function.arity() {
-                let message = format!(
-                    "Error calling {}, expected {} arguments but got {}.",
-                    self.callee.print(),
-                    &function.arity(),
-                    arguments.len()
-                );
-                let arity_error = Error::new(&self.paren, ErrorType::Evaluation, message);
-                return Err(arity_error);
-            }
-
-            // Translate execution errors into evaluation errors
-            match function.call(arguments) {
-                Err(msg) => Err(Error::new(&self.paren, ErrorType::Evaluation, msg.print())),
-
-                Ok(result) => Ok(result),
-            }
-        } else {
-            let message = format!("Not a callable value {}", &this_callee.print());
-            Err(Error::new(&self.paren, ErrorType::Evaluation, message))
-        }
-    }
-}
-
 impl TypeCheck for CallNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        let callee_return_type = self.callee.determine_type(symbols)?;
-		
+        let callee_return_type = self.callee.determine_type(symbols)?;		
         Ok(callee_return_type)
     }
 }
@@ -444,50 +299,6 @@ pub struct LookupNode {
     index: Box<Expr>,
 }
 
-impl Evaluation for LookupNode {
-    fn print(&self) -> String {
-        format!("Lookup: {}", &self.callee.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        // Look up the 'callee' expr which is currently always going to be an identifier primary
-        // expression (which is a 'var' expression.) Evaluating it  returns the entry in the
-        // environment associated with the identifier and we expect it to be an array or hashtable.
-        // type.
-        let this_callee = self.callee.evaluate(envr)?;
-        if let ReturnValue::Value(DataValue::Array(ref array_data)) = this_callee {
-            let index_value = self.index.evaluate(envr)?;
-            if let DataValue::Number(ref n) = index_value.get() {
-                let int_index: usize = *n as usize;
-                if array_data.len() <= int_index {
-                    let message = format!(
-                        "Index {} out of bounds on array  {}.",
-                        int_index,
-                        self.callee.print()
-                    );
-                    Err(Error::new(&self.bracket, ErrorType::Evaluation, message))
-                } else {
-                    let item = array_data[int_index].clone();
-                    Ok(ReturnValue::Value(item))
-                }
-            } else {
-                let message = format!(
-                    "Array lookup requires an integer value as an index but was {:?}",
-                    index_value
-                );
-
-                Err(Error::new(&self.bracket, ErrorType::Evaluation, message))
-            }
-        } else {
-            let message = format!(
-                "Only array lookups supported but was {}.",
-                &this_callee.print()
-            );
-            Err(Error::new(&self.bracket, ErrorType::Evaluation, message))
-        }
-    }
-}
-
 impl TypeCheck for LookupNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if TRACE {
@@ -517,15 +328,6 @@ pub struct GroupingNode {
     expr: Box<Expr>,
 }
 
-impl Evaluation for GroupingNode {
-    fn print(&self) -> String {
-        format!("Grouping: {}", &self.expr.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        self.expr.evaluate(envr)
-    }
-}
 
 impl TypeCheck for GroupingNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -550,27 +352,6 @@ pub struct ArrayNode {
     elements: Vec<Expr>,
 }
 
-impl Evaluation for ArrayNode {
-    fn print(&self) -> String {
-        let element_strs = self
-            .elements
-            .iter()
-            .map(|e| e.print())
-            .collect::<Vec<String>>()
-            .join(",");
-        "array:[".to_string() + &element_strs
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        // TODO this could be streamlined,
-        let mut final_array = Vec::new();
-        for e in &self.elements {
-            let return_value = e.evaluate(envr)?;
-            final_array.push(return_value.get().clone());
-        }
-        Ok(ReturnValue::Value(DataValue::Array(final_array)))
-    }
-}
 
 impl TypeCheck for ArrayNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -612,15 +393,6 @@ pub struct LiteralNode {
     value: Rc<DataValue>,
 }
 
-impl Evaluation for LiteralNode {
-    fn print(&self) -> String {
-        self.value.print()
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        Ok(ReturnValue::Reference(Rc::clone(&self.value)))
-    }
-}
 
 impl TypeCheck for LiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -628,7 +400,7 @@ impl TypeCheck for LiteralNode {
     }
 }
 
-impl LiteralNode {
+impl Compiler for LiteralNode {
     fn compile(data_value: &ReturnValue, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let value = data_value.get();
 		let literal_type = DataType::from_data_value(value);
@@ -653,41 +425,6 @@ impl LiteralNode {
 pub struct UnaryNode {
     operator: Token,
     expr: Box<Expr>,
-}
-
-impl Evaluation for UnaryNode {
-    fn print(&self) -> String {
-        format!("{} {}", &self.operator.print(), &self.expr.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        let right = &self.expr.evaluate(envr)?;
-
-        match self.operator.token_type {
-            TokenType::Minus => match right.get() {
-                DataValue::Number(n) => {
-                    let new_value = ReturnValue::Value(DataValue::Number(-n));
-                    Ok(new_value)
-                }
-                _ => {
-                    let message = format!("Not a number value.");
-                    Err(Error::new(&self.operator, ErrorType::Evaluation, message))
-                }
-            },
-            TokenType::Not => {
-                if let DataValue::Bool(b) = right.get() {
-                    Ok(ReturnValue::Value(DataValue::Bool(!b)))
-                } else {
-                    let message = format!("The 'not' unary operator only works on boolean values.");
-                    Err(Error::new(&self.operator, ErrorType::Evaluation, message))
-                }
-            }
-            _ => {
-                let message = format!("Invalid unary expression.");
-                Err(Error::new(&self.operator, ErrorType::Evaluation, message))
-            }
-        } // match
-    } // fn
 }
 
 impl TypeCheck for UnaryNode {
@@ -736,42 +473,6 @@ pub struct VariableNode {
     pub index: Option<usize>,
 }
 
-impl Evaluation for VariableNode {
-    fn print(&self) -> String {
-        format!("var: {}", &self.name.print())
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        match self.name.token_type {
-            TokenType::Identifier(ref name) => {
-                if let Some(dist) = self.distance {
-                    if TRACE {
-                        println!(
-                            "Get {} with index {} and dist {}",
-                            &name,
-                            self.index.unwrap(),
-                            dist
-                        );
-                    }
-                    if TRACE {
-                        envr.dump_content(0);
-                    }
-                    envr.get_with_index_and_distance(self.index.unwrap(), dist)
-                } else {
-                    if TRACE {
-                        println!("Get {} without distance!", &name);
-                    }
-                    envr.get(&name)
-                }
-            }
-            _ => Err(Error::new(
-                &self.name,
-                ErrorType::Evaluation,
-                "Can't look up non-identifiers".to_string(),
-            )),
-        }
-    } // fn
-} // impl
 
 impl TypeCheck for VariableNode {
     // Doing this right requires a symbol table built up from
@@ -829,36 +530,6 @@ pub struct AssignmentNode {
     index: Option<usize>,
 }
 
-impl Evaluation for AssignmentNode {
-    fn print(&self) -> String {
-        format!(
-            "assign var: {} to  {}",
-            &self.name.print(),
-            &self.value.print()
-        )
-    }
-
-    fn evaluate(&self, envr: &EnvRc) -> Result<ReturnValue, errors::Error> {
-        let value_to_store = self.value.evaluate(envr)?;
-
-        let var_name = match self.name.token_type {
-            TokenType::Identifier(ref variable_name) => variable_name,
-            _ => {
-                let message = format!("Only assignment to simple identifiers permitted currently. Assignee token was {:?}", &self.name);
-                return Err(Error::new(&self.name, ErrorType::Evaluation, message));
-            }
-        };
-        if let Some(dist) = self.distance {
-            if TRACE {
-                println!("Assigning {} with distance {}", &var_name, dist);
-            }
-            envr.assign_with_index_and_distance(self.index.unwrap(), value_to_store, dist)?;
-        } else {
-            envr.assign(var_name, value_to_store)?;
-        }
-        Ok(ReturnValue::None)
-    }
-}
 
 impl TypeCheck for AssignmentNode {
     // The result of an assignment is an Empty type; this is mostly useful for
@@ -1041,20 +712,4 @@ impl Expr {
         "(".to_string() + &inside + ")"
     }
 
-    pub fn print(&self) -> String {
-        use Expr::*;
-        let inside = match self {
-            Binary(n) => n.print(),
-            Unary(n) => n.print(),
-            Literal(ref n) => n.print(),
-            Grouping(n) => n.print(),
-            Variable(n) => n.print(),
-            Assignment(n) => n.print(),
-            Call(n) => n.print(),
-            Logical(n) => n.print(),
-
-            _ => panic!("Not implemented"),
-        };
-        Expr::parenthesize(inside)
-    }
 }
