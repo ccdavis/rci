@@ -676,5 +676,40 @@ impl Expr {
     fn parenthesize(inside: String) -> String {
         "(".to_string() + &inside + ")"
     }
+	
+	
+	
+    pub fn print(&self) -> String {
+        use Expr::*;
+        let inside = match self {
+            Binary(n) => {
+			 format!("{} {} {}", &n.left.print(), &n.operator.print(), &n.right.print())
+			}
+            Unary(n) => {
+			format!("{} {}", &n.operator.print(), &n.expr.print())
+			}
+            Literal(ref n) =>{
+				format!("")
+			}
+            Grouping(n) => {
+				format!("{}", &n.expr.print())
+			}
+            Variable(n) =>  {
+				format!("")
+			}
+            Assignment(n) => {
+				format!("")
+			}
+            Call(n) => {
+				format!("")
+			}
+            Logical(n) => {
+				format!("")
+			}
+
+            _ => panic!("Not implemented"),
+        };
+        Expr::parenthesize(inside)
+    }
 
 }
