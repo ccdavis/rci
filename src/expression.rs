@@ -32,7 +32,7 @@ pub enum Expr {
     Unary(UnaryNode),
     Grouping(GroupingNode),
     Array(ArrayNode),
-    Literal(ReturnValue),
+    Literal(DataValue),
     Variable(VariableNode),
     Assignment(AssignmentNode),
 }
@@ -40,6 +40,7 @@ pub enum Expr {
 impl Expr {
  // I don't love this matching. It would be nice to have varents as types (refinement types)
  // Discussion: https://www.reddit.com/r/rust/comments/2rdoxx/enum_variants_as_types/
+ 
  
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         match self {
@@ -52,7 +53,7 @@ impl Expr {
             Expr::Array(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
-            Expr::Literal(value) => Ok(DataType::from_data_value(value.get())),
+            Expr::Literal(value) => Ok(DataType::from_data_value(value)),
         }
     }
 
@@ -67,7 +68,24 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
-            Expr::Literal(n) => LiteralNode::compile(n, symbols),                
+            Expr::Literal(ref value) => {				    
+				let literal_type = DataType::from_data_value(value);
+				let object_code = match value {
+					DataValue::Str(ref v)=> 
+						format!("(rci_value) string_literal(\"{}\")", &v),
+					DataValue::Number(n)=>
+						format!("(rci_value) NUMBER_VAL({})",n),
+					DataValue::Bool(b)=>
+						format!("(rci_value)BOOL_VAL({})",b),
+					_ => panic!("Literal compilation not implemented for {:?}",
+					value),
+				};
+								
+				Ok(ObjectCode {
+					data_type: literal_type,
+					code: object_code,
+				})
+			}
             
         }
     }
@@ -152,7 +170,7 @@ impl Compiler for BinaryNode {
 		TokenType::Equal => "_EQ_",
 		TokenType::LessGreater => "_NE_",
 		_ => panic!(format!("Compilation error, operator not supported yet: {}",
-			&self.token.token_type.print())),		
+			&self.operator.token_type.print())),		
 	  };
 	  
 	  if matches!(data_type, DataType::Str) {
@@ -389,39 +407,6 @@ impl Compiler for ArrayNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct LiteralNode {
-    value: Rc<DataValue>,
-}
-
-
-impl TypeCheck for LiteralNode {
-    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        Ok(DataType::from_data_value(&*self.value))
-    }
-}
-
-impl Compiler for LiteralNode {
-    fn compile(data_value: &ReturnValue, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-        let value = data_value.get();
-		let literal_type = DataType::from_data_value(value);
-		let object_code = match *value {
-			DataValue::Str(ref v)=> 
-				format!("(rci_value) string_literal(\"{}\")", &v),
-			DataValue::Number(n)=>
-				format!("(rci_value) NUMBER_VAL({})",n),
-			DataValue::Bool(b)=>
-				format!("(rci_value)BOOL_VAL({})",b),
-			_ => panic!("Literal compilation not implemented for {:?}", value),
-		};
-						
-        Ok(ObjectCode {
-            data_type: literal_type,
-            code: object_code,
-        })
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct UnaryNode {
     operator: Token,
     expr: Box<Expr>,
@@ -603,6 +588,9 @@ impl Compiler for AssignmentNode {
 }
 
 impl Expr {
+
+
+	
     pub fn binary(l: Expr, op: Token, r: Expr) -> Expr {
         let node = BinaryNode {
             left: Box::new(l),
@@ -647,7 +635,8 @@ impl Expr {
 
     pub fn literal(value: Token) -> Expr {
         let data_value = DataValue::from_token_type(&value.token_type);
-        Expr::Literal(ReturnValue::new_ref(data_value))
+        //Expr::Literal(ReturnValue::new_ref(data_value))
+		Expr::Literal(data_value)
     }
 
     pub fn array(location: Token, elements: Vec<Expr>) -> Expr {
@@ -683,31 +672,7 @@ impl Expr {
     pub fn is_literal(&self) -> bool {
         matches!(self, Expr::Literal(_))
     }
-
-    pub fn data_type(&self) -> DataType {
-        match self {
-            Expr::Literal(ReturnValue::Reference(data_value)) => {
-                DataType::from_data_value(&data_value)
-            }
-            Expr::Literal(ReturnValue::Value(data_value)) => DataType::from_data_value(&data_value),
-            _ => panic!("Not a literal expression!"),
-        }
-    }
-
-    // Type check conveniences
-
-    pub fn is_number(&self) -> bool {
-        matches!(self.data_type(), DataType::Number)
-    }
-
-    pub fn is_boolean(&self) -> bool {
-        matches!(self.data_type(), DataType::Bool)
-    }
-
-    pub fn is_string(&self) -> bool {
-        matches!(self.data_type(), DataType::Str)
-    }
-
+    
     fn parenthesize(inside: String) -> String {
         "(".to_string() + &inside + ")"
     }

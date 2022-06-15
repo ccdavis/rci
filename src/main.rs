@@ -1,5 +1,4 @@
-mod environment;
-mod operations;
+
 mod errors;
 mod expression;
 mod lex;

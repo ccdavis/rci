@@ -9,7 +9,6 @@ use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
 use crate::types::DeclarationType;
 use  crate::types::GlobalStatementObjectCode;
-use crate::types::Callable;
 use crate::types::DataType;
 use crate::types::DataValue;
 

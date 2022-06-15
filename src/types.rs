@@ -2,7 +2,6 @@
 use crate::errors;
 use crate::errors::*;
 use crate::lex::TokenType;
-use crate::statement::EarlyReturn;
 use crate::symbol_table::SymbolTableEntry;
 
 use std::fmt;
