@@ -368,7 +368,7 @@ pub struct FunStmtNode {
 
 impl FunStmtNode {
     fn print(&self) -> String {
-        format!("function: {}", &self.name.identifier_string())
+        format!("fun {}", &self.name.identifier_string())
     }
 }
  

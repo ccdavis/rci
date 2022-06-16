@@ -69,6 +69,7 @@ pub enum TokenType {
     Val,
     Cpy,
     While,
+	Eol,
 
     ScanError(String),
     Eof,
@@ -156,6 +157,7 @@ impl TokenType {
             Str(_) => "String",
             Identifier(_) => "identifier",
             Bool => "bool",
+			Eol => "newline",
             Comment(_) => "comment",
             _ => panic!("Unhandled {:?}", self),
         };
@@ -370,6 +372,7 @@ impl Scanner {
         let c = self.advance();
         let token_type = match c {
             '\0' => TokenType::Eof,
+			'\n' => TokenType::Eol,
             '(' => TokenType::LeftParen,
             ')' => TokenType::RightParen,
             '{' => TokenType::LeftBrace,
@@ -451,8 +454,9 @@ impl Scanner {
         c >= '0' && c <= '9'
     }
 
+	// newlines are significant, so don't count as whitespace
     fn is_whitespace(&self, c: char) -> bool {
-        c == ' ' || c == '\t' || c == '\n' || c == '\r'
+        c == ' ' || c == '\t'  || c == '\r'
     }
 
     fn skip_whitespace(&mut self) {
