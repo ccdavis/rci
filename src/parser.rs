@@ -9,18 +9,14 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
+const TRACE:bool = false;
+
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
     errors: Vec<ParseError>,
 }
-/*
-#[derive(Clone)]
-pub struct ParseError {
-    t: Token,
-    message: String,
-}
-*/
+
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -58,7 +54,7 @@ impl Parser {
     }
 
     fn advance(&mut self) -> Token {
-        self.print_next();
+        if TRACE { self.print_next();}
         if !self.is_finished() {
             self.current += 1
         }
@@ -97,10 +93,7 @@ impl Parser {
         }
     }
 
-    fn match_terminator(&mut self) -> Result<bool, ParseError> {
-        println!("match terminator:");
-        println!("Next token is: ");
-        self.print_next();
+    fn match_terminator(&mut self) -> Result<bool, ParseError> {                        
         if self.check(&TokenType::SemiColon) {
             self.advance();
             self.skip_if_newline();
@@ -169,7 +162,8 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> Vec<Stmt> {
+    pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> 
+		Result< Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
         while !self.is_finished() {
             // Here is where we'd put imports or module includes
@@ -179,9 +173,11 @@ impl Parser {
                 Err(parse_error) => self.error(parse_error),
             }
         }
-        if self.errors.len() > 0 {}
-
-        statements
+        if self.errors.len() > 0 {
+			Err(self.errors.clone())
+		} else {
+			Ok(statements)
+		}
     }
 
     // A program is a statement. It is a list of declarations followed by a block
@@ -216,10 +212,8 @@ impl Parser {
         Ok(Stmt::program(decls, Box::new(imperatives)))
     }
 
-    fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        println!("Entering 'declaration()'");
+    fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {        
         self.skip_all_newlines();
-
         if self.matches(&[TokenType::Fun]) {
             return self.function("function", symbols);
         }
@@ -236,8 +230,7 @@ impl Parser {
     }
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        use TokenType::*;
-        println!("Entering 'function'");
+        use TokenType::*;        
         let name = self.consume_identifier(&format!("expect {} name.", kind))?;
         self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
         let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
@@ -384,8 +377,7 @@ impl Parser {
 
     // Like a block_statement but without its own AST node or symbols -- those are owned
     // by the function.
-    fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
-        println!("Entering 'function-body'");
+    fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {        
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
         self.skip_all_newlines();
@@ -693,8 +685,7 @@ impl Parser {
             &DataValue::Unresolved,
         );
 
-        local_symbols.add(block_entry);
-        println!("Entering block: ");
+        local_symbols.add(block_entry);        
         while !self.check(&RightBrace) && !self.is_finished() {
             self.skip_all_newlines();
             let stmt = self.declaration(&mut local_symbols)?;

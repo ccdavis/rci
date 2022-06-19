@@ -16,19 +16,19 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 1600;
-val y_resolution = 1600;
+val x_resolution = 100;
+val y_resolution = 132;
 
 val max_iterations = 50;
 val escape_radius = 2.0;
 
 
-fun not_escaped(x:number,iy:number):boolean {
+fun not_escaped(x:num,iy:num):bool {
 	return (x*x + iy*iy) < 2*escape_radius; 	
 }
 
 // Check a point in the complex plane for membership
-fun in_mandelbrot(c_x:number, c_iy:number):boolean {
+fun in_mandelbrot(c_x:num, c_iy:num): bool {
 	var iterations = 0;
 	var zn_x = 0.0;
 	var zn_iy = 0.0;
@@ -44,7 +44,7 @@ fun in_mandelbrot(c_x:number, c_iy:number):boolean {
 	return iterations < max_iterations;
 }
 
-fun calc(x1:number, y1:number, x2:number, y2:number):number {
+fun calc(x1:num, y1:num, x2:num, y2:num):num {
 	var left = x1;
 	val right = x2;
 	var top = y1;
@@ -80,7 +80,7 @@ fun calc(x1:number, y1:number, x2:number, y2:number):number {
 }
 
 {
-//	var a:number = calc("abc");
+//	var a:num = calc("abc");
 
 	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;
 	//val start = clock();

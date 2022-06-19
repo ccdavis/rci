@@ -21,7 +21,14 @@ pub fn compile(code: &str) {
     let tokens = scanner.tokenize();
     let mut ast = Parser::new(tokens);
 
-    let statements = ast.parse(&mut global_symbols);
+    let statements = match ast.parse(&mut global_symbols) {
+		Ok(stmts) => stmts,
+		Err(parse_errors) => {
+			eprintln!("Parse errors in source code. Comp8ilation halted.");
+			std::process::exit(3);
+		}
+	};
+	
     statements
         .iter()
         .for_each(|stmt| match stmt.check_types(&global_symbols) {
