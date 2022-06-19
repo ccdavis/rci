@@ -72,7 +72,7 @@ impl Error {
 }
 
 // Convenience
-pub fn compiler_err(t: &Token, msg: &str) -> Result<ObjectCode,Error> {
+pub fn compiler_err(t: &Token, msg: &str) -> Result<ObjectCode, Error> {
     Err(Error::new(t, ErrorType::Compiler, msg.to_string()))
 }
 

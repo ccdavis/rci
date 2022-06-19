@@ -71,7 +71,7 @@ impl SymbolTableEntry {
     pub fn new_copy(
         entry_number: usize,
         location: &Token,
-        name: &str,        
+        name: &str,
         data_type: &DataType,
         data_value: &DataValue,
     ) -> Self {
@@ -215,7 +215,7 @@ pub struct SymbolTable {
     pub entries: HashMap<String, SymbolTableEntry>,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct NotDeclaredError {
     pub message: String,
 }
@@ -243,7 +243,6 @@ impl SymbolTable {
             true
         }
     }
-
 
     // Distance in scopes from the current scope, or None if it doesn't exist.
     // For use resolving variable scopes for assignment and variable expressions.

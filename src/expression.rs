@@ -1,7 +1,6 @@
-
 use crate::errors;
-use crate::errors::*;
 use crate::errors::compiler_err;
+use crate::errors::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::*;
@@ -38,10 +37,9 @@ pub enum Expr {
 }
 
 impl Expr {
- // I don't love this matching. It would be nice to have varents as types (refinement types)
- // Discussion: https://www.reddit.com/r/rust/comments/2rdoxx/enum_variants_as_types/
- 
- 
+    // I don't love this matching. It would be nice to have varents as types (refinement types)
+    // Discussion: https://www.reddit.com/r/rust/comments/2rdoxx/enum_variants_as_types/
+
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         match self {
             Expr::Binary(n) => n.determine_type(symbols),
@@ -68,25 +66,20 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
-            Expr::Literal(ref value) => {				    
-				let literal_type = DataType::from_data_value(value);
-				let object_code = match value {
-					DataValue::Str(ref v)=> 
-						format!("(rci_value) string_literal(\"{}\")", &v),
-					DataValue::Number(n)=>
-						format!("(rci_value) NUMBER_VAL({})",n),
-					DataValue::Bool(b)=>
-						format!("(rci_value)BOOL_VAL({})",b),
-					_ => panic!("Literal compilation not implemented for {:?}",
-					value),
-				};
-								
-				Ok(ObjectCode {
-					data_type: literal_type,
-					code: object_code,
-				})
-			}
-            
+            Expr::Literal(ref value) => {
+                let literal_type = DataType::from_data_value(value);
+                let object_code = match value {
+                    DataValue::Str(ref v) => format!("(rci_value) string_literal(\"{}\")", &v),
+                    DataValue::Number(n) => format!("(rci_value) NUMBER_VAL({})", n),
+                    DataValue::Bool(b) => format!("(rci_value)BOOL_VAL({})", b),
+                    _ => panic!("Literal compilation not implemented for {:?}", value),
+                };
+
+                Ok(ObjectCode {
+                    data_type: literal_type,
+                    code: object_code,
+                })
+            }
         }
     }
 } // impl expr
@@ -155,39 +148,41 @@ impl TypeCheck for BinaryNode {
 
 impl Compiler for BinaryNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-	  let data_type = self.determine_type(symbols)?;
-	  let left = self.left.compile(symbols)?;
-	  let right = self.right.compile(symbols)?;
-	  let mut op = match self.operator.token_type {
-		TokenType::Plus => "_ADD_",
-		TokenType::Minus => "_SUB_",
-		TokenType::Star => "_MUL_",
-		TokenType::Slash => "_DIV_",
-		TokenType::Less => "_LT_",
-		TokenType::Greater => "_GT_",
-		TokenType::LessEqual => "<=",
-		TokenType::GreaterEqual => ">=",
-		TokenType::Equal => "_EQ_",
-		TokenType::LessGreater => "_NE_",
-		_ => panic!("Compilation error, operator not supported yet: {}",
-			&self.operator.token_type.print()),		
-	  };
-	  
-	  if matches!(data_type, DataType::Str) {
-		if matches!(self.operator.token_type, TokenType::Plus) {
-			return  Ok(ObjectCode {
-				data_type,
-				code:format!("string_concat({}, {})", &left.code, &right.code),
-			});
-		 } else {
-			let msg = format!("Operator {} not supported for string type.",&op);
-			return Err( Error::new(&self.operator, ErrorType::Compiler, msg));
-		}
-	  }  
-	Ok(ObjectCode {
-			data_type,
-			code:format!("binary_operation({}, {}, {})", &op, &left.code,  &right.code),
-		})
+        let data_type = self.determine_type(symbols)?;
+        let left = self.left.compile(symbols)?;
+        let right = self.right.compile(symbols)?;
+        let mut op = match self.operator.token_type {
+            TokenType::Plus => "_ADD_",
+            TokenType::Minus => "_SUB_",
+            TokenType::Star => "_MUL_",
+            TokenType::Slash => "_DIV_",
+            TokenType::Less => "_LT_",
+            TokenType::Greater => "_GT_",
+            TokenType::LessEqual => "<=",
+            TokenType::GreaterEqual => ">=",
+            TokenType::Equal => "_EQ_",
+            TokenType::LessGreater => "_NE_",
+            _ => panic!(
+                "Compilation error, operator not supported yet: {}",
+                &self.operator.token_type.print()
+            ),
+        };
+
+        if matches!(data_type, DataType::Str) {
+            if matches!(self.operator.token_type, TokenType::Plus) {
+                return Ok(ObjectCode {
+                    data_type,
+                    code: format!("string_concat({}, {})", &left.code, &right.code),
+                });
+            } else {
+                let msg = format!("Operator {} not supported for string type.", &op);
+                return Err(Error::new(&self.operator, ErrorType::Compiler, msg));
+            }
+        }
+        Ok(ObjectCode {
+            data_type,
+            code: format!("binary_operation({}, {}, {})", &op, &left.code, &right.code),
+        })
     }
 }
 
@@ -216,23 +211,25 @@ impl TypeCheck for LogicalNode {
 
 impl Compiler for LogicalNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		let data_type = self.determine_type(symbols)?;
-		  let left = self.left.compile(symbols)?;
-		  let right = self.right.compile(symbols)?;
-		  let op = match self.operator.token_type {			
+        let data_type = self.determine_type(symbols)?;
+        let left = self.left.compile(symbols)?;
+        let right = self.right.compile(symbols)?;
+        let op = match self.operator.token_type {
 		  // TODO the 'or' operator is control flow, really needs correct implementation!
 			TokenType::And => "&&",
 			TokenType::Or => "||",
 			_ => panic!("Code generation error, operator not a logical operator: '{}'. The compiler never should have reached this point.",
-						&self.operator.print()),									
+						&self.operator.print()),
 		  };
-		  		  
-		Ok(ObjectCode {
-			data_type,
-			code:format!("BOOL_VAL( AS_BOOL({}) {} AS_BOOL({}))", 
-				&left.code, op, &right.code),
-		})
-    }				          
+
+        Ok(ObjectCode {
+            data_type,
+            code: format!(
+                "BOOL_VAL( AS_BOOL({}) {} AS_BOOL({}))",
+                &left.code, op, &right.code
+            ),
+        })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -244,68 +241,72 @@ pub struct CallNode {
 
 impl TypeCheck for CallNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        let callee_return_type = self.callee.determine_type(symbols)?;		
+        let callee_return_type = self.callee.determine_type(symbols)?;
         Ok(callee_return_type)
     }
 }
 
 impl Compiler for CallNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {			
-		let callee_return_type = self.callee.determine_type(symbols)?;
-		
-		// The 'callee' is an expression but it really just resolves to the 
-		// name of the function to be called; it could be expanded to be a
-		// class-instance.method() call or other things as well.
-		let function_name = self.callee.compile(symbols)?;        
-		let function_ste = symbols.lookup(&function_name.code).unwrap();
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let callee_return_type = self.callee.determine_type(symbols)?;
+
+        // The 'callee' is an expression but it really just resolves to the
+        // name of the function to be called; it could be expanded to be a
+        // class-instance.method() call or other things as well.
+        let function_name = self.callee.compile(symbols)?;
+        let function_ste = symbols.lookup(&function_name.code).unwrap();
         if self.args.len() != function_ste.fields.len() {
-            let msg = format!("Symbol table definition of function {} and call site don't match arrity!",&function_name.code);
-            return  compiler_err(&self.paren, &msg);            
+            let msg = format!(
+                "Symbol table definition of function {} and call site don't match arrity!",
+                &function_name.code
+            );
+            return compiler_err(&self.paren, &msg);
         }
-        
-            				
-		let mut arguments: Vec<String> = Vec::new();
-		for (arg_num, arg_expr) in self.args.iter().enumerate() {                
+
+        let mut arguments: Vec<String> = Vec::new();
+        for (arg_num, arg_expr) in self.args.iter().enumerate() {
             // For 'var' params, we can pass in only variables, not other expressions, and the
             // variable must have a 'var' declaration type.
-			let mut var_name = "".to_string();
-            let mut is_var_decl = false;            
-            let is_variable_expr = if let  Expr::Variable(ref var_node) = arg_expr{
-                var_name =  var_node.name.identifier_string();
-                let var_ste =symbols.lookup(&var_name) ;
+            let mut var_name = "".to_string();
+            let mut is_var_decl = false;
+            let is_variable_expr = if let Expr::Variable(ref var_node) = arg_expr {
+                var_name = var_node.name.identifier_string();
+                let var_ste = symbols.lookup(&var_name);
                 if var_ste.is_err() {
-                    return compiler_err(&self.paren, &format!("{} not in symbol table!",&var_name));
+                    return compiler_err(
+                        &self.paren,
+                        &format!("{} not in symbol table!", &var_name),
+                    );
                 }
-                is_var_decl = matches!(var_ste.unwrap().entry_type, DeclarationType::Var)                                        ;            
-				true
+                is_var_decl = matches!(var_ste.unwrap().entry_type, DeclarationType::Var);
+                true
             } else {
-				false
-			};
+                false
+            };
 
-			let arg = arg_expr.compile(symbols)?;
+            let arg = arg_expr.compile(symbols)?;
             let param_definition = function_ste.fields.get(arg_num).unwrap();
             if matches!(param_definition.entry_type, DeclarationType::Var) {
                 if !is_var_decl && is_variable_expr {
                     let msg = &format!("parameter '{}' on function '{}' is a 'var' type, but the variable '{}' is not 'var'.",
                         &param_definition.name,&function_ste.name,&var_name);
                     return compiler_err(&self.paren, msg);
-                }				
-				if !is_variable_expr {
-					let msg = &format!("Argument to parameter '{}' on function '{}' must be a variable with a 'var' declaration type.",
+                }
+                if !is_variable_expr {
+                    let msg = &format!("Argument to parameter '{}' on function '{}' must be a variable with a 'var' declaration type.",
 						&param_definition.name,&function_ste.name);
-					return compiler_err(&self.paren, msg);
-				}				
+                    return compiler_err(&self.paren, msg);
+                }
                 arguments.push("& ".to_string() + &arg.code);
-            }else{
+            } else {
                 arguments.push(arg.code);
+            }
+        }
 
-            }            			
-		}
-		
-		let args_list = arguments.join(", ");		
+        let args_list = arguments.join(", ");
         Ok(ObjectCode {
             data_type: callee_return_type,
-            code: format!("{}({})",&function_name.code, &args_list),
+            code: format!("{}({})", &function_name.code, &args_list),
         })
     }
 }
@@ -346,7 +347,6 @@ pub struct GroupingNode {
     expr: Box<Expr>,
 }
 
-
 impl TypeCheck for GroupingNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         self.expr.determine_type(symbols)
@@ -355,8 +355,8 @@ impl TypeCheck for GroupingNode {
 
 impl Compiler for GroupingNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		let group_type = self.expr.determine_type(symbols)?;
-		let group_expr_code = self.expr.compile(symbols)?;
+        let group_type = self.expr.determine_type(symbols)?;
+        let group_expr_code = self.expr.compile(symbols)?;
         Ok(ObjectCode {
             data_type: group_type,
             code: format!("( {} )", &group_expr_code.code),
@@ -369,7 +369,6 @@ pub struct ArrayNode {
     location: Token,
     elements: Vec<Expr>,
 }
-
 
 impl TypeCheck for ArrayNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -435,15 +434,15 @@ impl TypeCheck for UnaryNode {
 
 impl Compiler for UnaryNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		use TokenType::*;		
-		let compiled_expr = self.expr.compile(symbols)?;
-		
-		let code =match self.operator.token_type {
-			Not => format!("unary_operation(_NOT_,{})",&compiled_expr.code),
-			Minus => format!("unary_operation(_NEGATIVE_,{})",&compiled_expr.code),
-			_ => panic!("Compiler error. Only '-' or 'not' should be in a unary expression."),
-		};
-						
+        use TokenType::*;
+        let compiled_expr = self.expr.compile(symbols)?;
+
+        let code = match self.operator.token_type {
+            Not => format!("unary_operation(_NOT_,{})", &compiled_expr.code),
+            Minus => format!("unary_operation(_NEGATIVE_,{})", &compiled_expr.code),
+            _ => panic!("Compiler error. Only '-' or 'not' should be in a unary expression."),
+        };
+
         Ok(ObjectCode {
             data_type: compiled_expr.data_type,
             code,
@@ -457,7 +456,6 @@ pub struct VariableNode {
     pub distance: Option<usize>,
     pub index: Option<usize>,
 }
-
 
 impl TypeCheck for VariableNode {
     // Doing this right requires a symbol table built up from
@@ -481,30 +479,33 @@ impl TypeCheck for VariableNode {
 
 impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		let var_type = self.determine_type(symbols)?;
-		if let TokenType::Identifier(ref var_name) = self.name.token_type {
-			let ste = match symbols.lookup(&var_name) {
-				Ok(ref entry) => entry.clone(),
-				Err(error_msg) => {
-					return Err(errors::Error::new(&self.name,ErrorType::Compiler, error_msg.message.clone()));
-				}
-			};
-			
-			Ok( ObjectCode {
-				data_type: var_type,
-				code: {
-					if ste.is_arg &&
-						matches!(ste.entry_type,DeclarationType::Var) {						
-						format!("(*{})",&var_name)
-					} else {
-						format!("{}",&var_name)
-					}
-				}
-			})
-		} else {
-			panic!("Compiler error. A variable node must have an identifier token type.");
-		}
-	}					
+        let var_type = self.determine_type(symbols)?;
+        if let TokenType::Identifier(ref var_name) = self.name.token_type {
+            let ste = match symbols.lookup(&var_name) {
+                Ok(ref entry) => entry.clone(),
+                Err(error_msg) => {
+                    return Err(errors::Error::new(
+                        &self.name,
+                        ErrorType::Compiler,
+                        error_msg.message.clone(),
+                    ));
+                }
+            };
+
+            Ok(ObjectCode {
+                data_type: var_type,
+                code: {
+                    if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+                        format!("(*{})", &var_name)
+                    } else {
+                        format!("{}", &var_name)
+                    }
+                },
+            })
+        } else {
+            panic!("Compiler error. A variable node must have an identifier token type.");
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -514,7 +515,6 @@ pub struct AssignmentNode {
     distance: Option<usize>,
     index: Option<usize>,
 }
-
 
 impl TypeCheck for AssignmentNode {
     // The result of an assignment is an Empty type; this is mostly useful for
@@ -566,20 +566,22 @@ impl TypeCheck for AssignmentNode {
 
 impl Compiler for AssignmentNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		let value_to_store = self.value.compile(symbols)?;
-		let assignee_name = match  self.name.token_type {
+        let value_to_store = self.value.compile(symbols)?;
+        let assignee_name = match  self.name.token_type {
 			TokenType::Identifier(ref n) => n.clone(),
 			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
 		};
-				
-		let code = match value_to_store.data_type {
-			DataType::Str => {
-				format!("{} = string_assign({},{});",
-					&assignee_name, &assignee_name, &value_to_store.code)
-			}
-			_ =>format!("{} = {}",&assignee_name, &value_to_store.code),
-		};
-		
+
+        let code = match value_to_store.data_type {
+            DataType::Str => {
+                format!(
+                    "{} = string_assign({},{});",
+                    &assignee_name, &assignee_name, &value_to_store.code
+                )
+            }
+            _ => format!("{} = {}", &assignee_name, &value_to_store.code),
+        };
+
         Ok(ObjectCode {
             data_type: value_to_store.data_type,
             code,
@@ -588,9 +590,6 @@ impl Compiler for AssignmentNode {
 }
 
 impl Expr {
-
-
-	
     pub fn binary(l: Expr, op: Token, r: Expr) -> Expr {
         let node = BinaryNode {
             left: Box::new(l),
@@ -636,7 +635,7 @@ impl Expr {
     pub fn literal(value: Token) -> Expr {
         let data_value = DataValue::from_token_type(&value.token_type);
         //Expr::Literal(ReturnValue::new_ref(data_value))
-		Expr::Literal(data_value)
+        Expr::Literal(data_value)
     }
 
     pub fn array(location: Token, elements: Vec<Expr>) -> Expr {
@@ -672,44 +671,46 @@ impl Expr {
     pub fn is_literal(&self) -> bool {
         matches!(self, Expr::Literal(_))
     }
-    
+
     fn parenthesize(inside: String) -> String {
         "(".to_string() + &inside + ")"
     }
-	
-	
-	
+
     pub fn print(&self) -> String {
         use Expr::*;
         let inside = match self {
             Binary(n) => {
-			 format!("{} {} {}", &n.left.print(), &n.operator.print(), &n.right.print())
-			}
+                format!(
+                    "{} {} {}",
+                    &n.left.print(),
+                    &n.operator.print(),
+                    &n.right.print()
+                )
+            }
             Unary(n) => {
-			format!("{} {}", &n.operator.print(), &n.expr.print())
-			}
-            Literal(ref n) =>{
-				format!("")
-			}
+                format!("{} {}", &n.operator.print(), &n.expr.print())
+            }
+            Literal(ref n) => {
+                format!("")
+            }
             Grouping(n) => {
-				format!("{}", &n.expr.print())
-			}
-            Variable(n) =>  {
-				format!("")
-			}
+                format!("{}", &n.expr.print())
+            }
+            Variable(n) => {
+                format!("")
+            }
             Assignment(n) => {
-				format!("")
-			}
+                format!("")
+            }
             Call(n) => {
-				format!("")
-			}
+                format!("")
+            }
             Logical(n) => {
-				format!("")
-			}
+                format!("")
+            }
 
             _ => panic!("Not implemented"),
         };
         Expr::parenthesize(inside)
     }
-
 }

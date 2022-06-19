@@ -1,11 +1,11 @@
+use crate::errors::parse_err;
+use crate::errors::Error;
 use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types::*;
-use crate::errors::parse_err;
-use crate::errors::Error;
 
 type ParseError = crate::errors::Error;
 
@@ -30,10 +30,9 @@ impl Parser {
         }
     }
 
-    
     pub fn error(&mut self, error: ParseError) {
-        eprintln!("{}",&error.format());
-		self.errors.push(error);
+        eprintln!("{}", &error.format());
+        self.errors.push(error);
     }
 
     fn matches(&mut self, types: &[TokenType]) -> bool {
@@ -53,13 +52,13 @@ impl Parser {
             &self.peek().token_type == token_type
         }
     }
-	
-	fn print_next(&self) {
-		println!(" {} ",&self.peek().token_type.print())
-	}
+
+    fn print_next(&self) {
+        println!(" {} ", &self.peek().token_type.print())
+    }
 
     fn advance(&mut self) -> Token {
-		self.print_next();
+        self.print_next();
         if !self.is_finished() {
             self.current += 1
         }
@@ -85,10 +84,7 @@ impl Parser {
         if self.check(&token_type) {
             Ok(self.advance())
         } else {
-            Err(parse_err(
-                &self.peek(),
-                message,
-            ))
+            Err(parse_err(&self.peek(), message))
         }
     }
 
@@ -97,60 +93,55 @@ impl Parser {
     fn consume_identifier(&mut self, message: &str) -> Result<Token, ParseError> {
         match self.peek().token_type {
             TokenType::Identifier(_) => Ok(self.advance()),
-            _ => Err(parse_err(
-                &self.peek(),
-                message
-            )),
+            _ => Err(parse_err(&self.peek(), message)),
         }
     }
-	
-	fn match_terminator(&mut self) ->Result<bool, ParseError> {		
-		println!("match terminator:");
-		println!("Next token is: ");self.print_next();
-		if self.check(&TokenType::SemiColon) {
-			self.advance();
-			self.skip_if_newline();
-			Ok(true)
-		} else  if self.check(&TokenType::Eol) {
-			self.advance();
-			Ok(true)
-		} else {
-			let message = "Expected ';' or newline";		
-			Err(parse_err(
-				&self.peek(),
-				message
-			))
-		}
-	}
-	
-	fn skip_if(&mut self, token_type: &TokenType) {
-		if self.check(token_type) {
-			self.advance();
-		}
-	}
-	
-	fn skip_if_comma(&mut self) {
-		self.skip_if(&TokenType::Comma);
-	}
-	
-	fn skip_if_newline(&mut self) {
-		self.skip_if(&TokenType::Eol);
-	}
-	
-	fn skip_all_newlines(&mut self) {
-		while self.check(&TokenType::Eol) {
-			self.advance();
-		}
-	}
-	
+
+    fn match_terminator(&mut self) -> Result<bool, ParseError> {
+        println!("match terminator:");
+        println!("Next token is: ");
+        self.print_next();
+        if self.check(&TokenType::SemiColon) {
+            self.advance();
+            self.skip_if_newline();
+            Ok(true)
+        } else if self.check(&TokenType::Eol) {
+            self.advance();
+            Ok(true)
+        } else {
+            let message = "Expected ';' or newline";
+            Err(parse_err(&self.peek(), message))
+        }
+    }
+
+    fn skip_if(&mut self, token_type: &TokenType) {
+        if self.check(token_type) {
+            self.advance();
+        }
+    }
+
+    fn skip_if_comma(&mut self) {
+        self.skip_if(&TokenType::Comma);
+    }
+
+    fn skip_if_newline(&mut self) {
+        self.skip_if(&TokenType::Eol);
+    }
+
+    fn skip_all_newlines(&mut self) {
+        while self.check(&TokenType::Eol) {
+            self.advance();
+        }
+    }
 
     // The idea is to consume tokens until we reach the end of the next statement.
     fn synchronize(&mut self) {
         self.advance();
         use TokenType::*;
         while !self.is_finished() {
-            if matches!(self.previous().token_type, SemiColon) 
-				|| matches!(self.previous().token_type, Eol) {
+            if matches!(self.previous().token_type, SemiColon)
+                || matches!(self.previous().token_type, Eol)
+            {
                 return;
             }
 
@@ -181,66 +172,57 @@ impl Parser {
     pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-			// Here is where we'd put imports or module includes
-			// of some sort, then read the main program.		
+            // Here is where we'd put imports or module includes
+            // of some sort, then read the main program.
             match self.program(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
             }
         }
-		if self.errors.len() > 0 {
-		}
-		
+        if self.errors.len() > 0 {}
+
         statements
     }
-	
-	// A program is a statement. It is a list of declarations followed by a block
-	// statement type with the entry point function calls or statements.
-	fn program(&mut self, global_symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		let mut decls = Vec::new();
-		let mut imperatives = Stmt::NoOp;
-		let mut found_main = false; // a 'program' may lack imperatives if it's a module
-				
+
+    // A program is a statement. It is a list of declarations followed by a block
+    // statement type with the entry point function calls or statements.
+    fn program(&mut self, global_symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        let mut decls = Vec::new();
+        let mut imperatives = Stmt::NoOp;
+        let mut found_main = false; // a 'program' may lack imperatives if it's a module
+
         while !self.is_finished() {
-			if found_main {
-				let message = format!("Program entry point block already found,no more statements allowed.");
-				return Err(
-					parse_err(
-						&self.previous(),
-						&message						
-					)
-				);
-			}
-			let stmt = self.declaration(global_symbols)?;
+            if found_main {
+                let message =
+                    format!("Program entry point block already found,no more statements allowed.");
+                return Err(parse_err(&self.previous(), &message));
+            }
+            let stmt = self.declaration(global_symbols)?;
             match stmt {
-               Stmt::Var(_) | 
-			   Stmt::Fun(_) => decls.push(stmt),
-			   Stmt::Block(_) =>  {	
-				imperatives = stmt;
-				found_main = true;
-			   },
-			   _ => {
-					let message = 
+                Stmt::Var(_) | Stmt::Fun(_) => decls.push(stmt),
+                Stmt::Block(_) => {
+                    imperatives = stmt;
+                    found_main = true;
+                }
+                _ => {
+                    let message =
 						format!("Programs can only have declarations (fun, var, val) and a block '{{','}}' at the end.");
-					return Err(
-						parse_err(&self.previous(), &message));
-				}
-					
-			}
+                    return Err(parse_err(&self.previous(), &message));
+                }
+            }
         }
-		// If we get to this point without finding {} (main) the
-		// imperatives will be a NoOp which is fine for a module.
-		Ok(Stmt::program(decls, Box::new(imperatives)))
-	}
+        // If we get to this point without finding {} (main) the
+        // imperatives will be a NoOp which is fine for a module.
+        Ok(Stmt::program(decls, Box::new(imperatives)))
+    }
 
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-		println!("Entering 'declaration()'");
-		self.skip_all_newlines();
-			
+        println!("Entering 'declaration()'");
+        self.skip_all_newlines();
+
         if self.matches(&[TokenType::Fun]) {
             return self.function("function", symbols);
         }
-		
 
         if self.matches(&[TokenType::Val, TokenType::Var]) {
             return self.var_declaration(symbols);
@@ -255,18 +237,16 @@ impl Parser {
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-		println!("Entering 'function'");
+        println!("Entering 'function'");
         let name = self.consume_identifier(&format!("expect {} name.", kind))?;
         self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
         let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
-		self.skip_all_newlines();
+        self.skip_all_newlines();
         if !self.check(&RightParen) {
             loop {
                 if parameters.len() >= 255 {
-                    let parse_error = parse_err(
-                        &self.peek(),
-                        "More than 255 parameters not allowed"
-                    );
+                    let parse_error =
+                        parse_err(&self.peek(), "More than 255 parameters not allowed");
                     self.error(parse_error);
                 }
 
@@ -289,7 +269,7 @@ impl Parser {
                     None => {
                         return Err(parse_err(
                             &type_name,
-                            "Types must be built-in or user defined."
+                            "Types must be built-in or user defined.",
                         ));
                     }
                 };
@@ -300,7 +280,7 @@ impl Parser {
                     if matches!(array_type_name.token_type, TokenType::ArrayType) {
                         return Err(parse_err(
                             &array_type_name,
-                            "Can't nest arrays in function parameters."
+                            "Can't nest arrays in function parameters.",
                         ));
                     }
 
@@ -327,15 +307,15 @@ impl Parser {
                 );
                 parameters.push(Box::new(entry));
                 if !self.matches(&[Comma]) {
-					self.skip_if_newline();
+                    self.skip_if_newline();
                     break;
                 }
-				self.skip_if_newline();
+                self.skip_if_newline();
             } // loop
         } // right-paren
-		self.skip_if_comma();
+        self.skip_if_comma();
         self.consume(RightParen, "expect ')' after parameters.")?;
-		self.skip_if_newline();		
+        self.skip_if_newline();
         let mut return_type = DataType::Empty;
         if self.matches(&[Colon]) {
             let return_type_name = self.advance();
@@ -344,7 +324,7 @@ impl Parser {
                 None => {
                     return Err(parse_err(
                         &return_type_name,
-                        "Types must be built-in or user defined."
+                        "Types must be built-in or user defined.",
                     ));
                 }
             };
@@ -389,7 +369,7 @@ impl Parser {
         }
 
         // get body
-		self.skip_if_newline();
+        self.skip_if_newline();
         self.consume(LeftBrace, "expect '{'")?;
         let body = self.function_body(&mut local_symbols)?;
 
@@ -405,17 +385,17 @@ impl Parser {
     // Like a block_statement but without its own AST node or symbols -- those are owned
     // by the function.
     fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
-		println!("Entering 'function-body'");
+        println!("Entering 'function-body'");
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
-		self.skip_all_newlines();		
-        while !self.check(&RightBrace) && !self.is_finished() {			
-            let stmt = self.declaration(local_symbols)?;			
+        self.skip_all_newlines();
+        while !self.check(&RightBrace) && !self.is_finished() {
+            let stmt = self.declaration(local_symbols)?;
             stmt_list.push(stmt);
-			self.skip_all_newlines();
-        }		
+            self.skip_all_newlines();
+        }
         self.consume(RightBrace, "expect '}' at the end of a function body.")?;
-		self.skip_all_newlines();
+        self.skip_all_newlines();
         // TODO: Find any return statements and add the return type
         // If none are found it's a parse error.
         Ok(stmt_list)
@@ -423,7 +403,7 @@ impl Parser {
 
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        let mut decl_type = DeclarationType::Val;		
+        let mut decl_type = DeclarationType::Val;
         if matches!(self.previous().token_type, TokenType::Var) {
             decl_type = DeclarationType::Var;
         }
@@ -434,47 +414,50 @@ impl Parser {
         if self.matches(&[TokenType::Colon]) {
             // Type may be a built-in type or an identifier for a user-defined type
             let type_name = self.advance();
-								
-            let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
-				// For the most part complex types should be declared elsewhere, but
-				// we allow Map or Array or Set.			
-                Some(valid_type) => match valid_type {
-					
-					DataType::Array(_) => {						
-						self.consume(TokenType::Less, "expect '<' after 'array' to complete type signature.")?;
-						let array_type_name = self.advance();
-						if matches!(array_type_name.token_type, TokenType::ArrayType) {
-							return Err(parse_err(
-								&array_type_name,
-								"Can't nest arrays in variable type declarations."
-							));
-						}
 
-						let array_type = match DataType::from_token_type(&array_type_name.token_type) {
-							Some(simple_type) => simple_type,
-							None => {
-								return Err(parse_err(
+            let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
+                // For the most part complex types should be declared elsewhere, but
+                // we allow Map or Array or Set.
+                Some(valid_type) => match valid_type {
+                    DataType::Array(_) => {
+                        self.consume(
+                            TokenType::Less,
+                            "expect '<' after 'array' to complete type signature.",
+                        )?;
+                        let array_type_name = self.advance();
+                        if matches!(array_type_name.token_type, TokenType::ArrayType) {
+                            return Err(parse_err(
+                                &array_type_name,
+                                "Can't nest arrays in variable type declarations.",
+                            ));
+                        }
+
+                        let array_type =
+                            match DataType::from_token_type(&array_type_name.token_type) {
+                                Some(simple_type) => simple_type,
+                                None => {
+                                    return Err(parse_err(
 									&array_type_name,
 									"Can't make an array of this type. Types must be built-in or user defined."
 								));
-							}
-						};
+                                }
+                            };
 
-						self.consume(TokenType::Greater, "expect '>' after array member type.")?;
-						DataType::Array(Box::new(array_type))		
-					},
-					
-					// TODO Map and Set go here				
-					_ => valid_type,
-				},
+                        self.consume(TokenType::Greater, "expect '>' after array member type.")?;
+                        DataType::Array(Box::new(array_type))
+                    }
+
+                    // TODO Map and Set go here
+                    _ => valid_type,
+                },
                 None => {
                     return Err(parse_err(
                         &type_name,
-                        "Types must be built-in or user defined."
+                        "Types must be built-in or user defined.",
                     ));
                 }
             };
-												
+
             if let DataType::User(ref u) = valid_type_name {
                 let has_type = symbols.lookup(u);
                 if has_type.is_err() {
@@ -487,10 +470,10 @@ impl Parser {
             }
 
             if self.matches(&[TokenType::Equal]) {
-				self.skip_if_newline();
+                self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
                 //self.consume(TokenType::SemiColon, "expect ';'")?;
-				self.match_terminator()?;
+                self.match_terminator()?;
                 let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
                     SymbolTableEntry::new_var(
@@ -515,25 +498,22 @@ impl Parser {
                 } else {
                     // Already defined
                     let message = format!("Variable already declared in this scope!");
-                    Err(parse_err(&v, &message ))
+                    Err(parse_err(&v, &message))
                 }
             } else {
                 Err(parse_err(
                     &v,
-                    "Variable declaration requires initial value assignment with '='."                        
+                    "Variable declaration requires initial value assignment with '='.",
                 ))
             }
         } else {
             // infer data type
             if self.matches(&[TokenType::Equal]) {
-				self.skip_if_newline();
+                self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
-                        self.error(parse_err(
-                            &self.previous(),
-                            &type_error.message
-                        ));
+                        self.error(parse_err(&self.previous(), &type_error.message));
 
                         let message = format!("Can't infer type for {}, initial value can't be resolved. Please put a specific type next to the variable name. ",&v.print());
                         return Err(parse_err(&v, &message));
@@ -542,7 +522,7 @@ impl Parser {
                 };
 
                 //self.consume(TokenType::SemiColon, "expect ';'")?;
-				self.match_terminator()?;
+                self.match_terminator()?;
                 let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
                     SymbolTableEntry::new_var(
@@ -567,12 +547,12 @@ impl Parser {
                 } else {
                     // Already defined
                     let message = format!("Variable already declared in this scope!");
-                    Err(parse_err(&v, &message ))
+                    Err(parse_err(&v, &message))
                 }
             } else {
                 Err(parse_err(
                     &v,
-                    "Variable declaration requires initial value assignment with '='."                        
+                    "Variable declaration requires initial value assignment with '='.",
                 ))
             }
         }
@@ -580,7 +560,7 @@ impl Parser {
 
     fn statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-		self.skip_all_newlines();
+        self.skip_all_newlines();
 
         if self.matches(&[If]) {
             return self.if_statement(symbols);
@@ -615,7 +595,7 @@ impl Parser {
         // for now don't allow empty returns
         let return_expr = self.expression(symbols)?;
         //self.consume(TokenType::SemiColon, "expect ';' after return statement.")?;
-		self.match_terminator()?;
+        self.match_terminator()?;
 
         if let Ok(ste) = symbols.lookup("RETURN_TYPE") {
             Ok(Stmt::return_stmt(
@@ -624,34 +604,28 @@ impl Parser {
                 ste.data_type.clone(),
             ))
         } else {
-			let message = format!("Return statement not in a function!");
-            Err(parse_err(
-                &location,
-				&message                
-            ))
+            let message = format!("Return statement not in a function!");
+            Err(parse_err(&location, &message))
         }
     }
 
     fn break_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let location = self.previous();
         //self.consume(TokenType::SemiColon, "expect ';' after 'break' statement.")?;
-		self.match_terminator()?;
+        self.match_terminator()?;
 
         if let Ok(ste) = symbols.lookup("IN_BLOCK") {
             Ok(Stmt::break_stmt(location))
         } else {
-			let message = format!("Break statement not in a block ( between '{{' and '}}')!");
-            Err(parse_err(
-                &location,
-				&message                
-            ))
+            let message = format!("Break statement not in a block ( between '{{' and '}}')!");
+            Err(parse_err(&location, &message))
         }
     }
 
     fn expression_statement(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         let expr = self.expression(symbols)?;
         //self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
-		self.match_terminator()?;
+        self.match_terminator()?;
         Ok(Stmt::expression_stmt(expr))
     }
 
@@ -659,13 +633,13 @@ impl Parser {
         use TokenType::*;
         let location = self.previous();
         let condition = self.expression(symbols)?;
-		self.skip_all_newlines();
+        self.skip_all_newlines();
 
         self.consume(LeftBrace, "expect '{' following 'if' condition.")?;
         let then_branch = self.block_statement(symbols)?;
-		self.skip_if_newline();
+        self.skip_if_newline();
         if self.matches(&[Else]) {
-		self.skip_all_newlines();
+            self.skip_all_newlines();
             self.consume(LeftBrace, "expect '{' after 'else' in 'if' statement.")?;
             let else_branch = self.block_statement(symbols)?;
             Ok(Stmt::if_stmt(
@@ -683,9 +657,9 @@ impl Parser {
         use TokenType::*;
         let location = self.previous();
         let condition = self.expression(symbols)?;
-		self.skip_if_newline();
+        self.skip_if_newline();
         self.consume(LeftBrace, "expect '{' following 'while' condition.")?;
-		self.skip_all_newlines();
+        self.skip_all_newlines();
         let body = self.block_statement(symbols)?;
         Ok(Stmt::while_stmt(location, condition, body))
     }
@@ -695,13 +669,13 @@ impl Parser {
         let expr = self.expression(symbols)?;
         exprs.push(expr);
         while self.matches(&[TokenType::Comma]) {
-			self.skip_if_newline();
+            self.skip_if_newline();
             let next_expr = self.expression(symbols)?;
             exprs.push(next_expr);
         }
 
         //self.consume(TokenType::SemiColon, "Expected ';'")?;
-		self.match_terminator()?;
+        self.match_terminator()?;
         Ok(Stmt::print_stmt(exprs))
     }
 
@@ -720,15 +694,15 @@ impl Parser {
         );
 
         local_symbols.add(block_entry);
-		println!("Entering block: ");
+        println!("Entering block: ");
         while !self.check(&RightBrace) && !self.is_finished() {
-			self.skip_all_newlines();			
+            self.skip_all_newlines();
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
         }
-		self.skip_all_newlines();
+        self.skip_all_newlines();
         self.consume(RightBrace, "expect '}' after block.")?;
-		self.skip_all_newlines();
+        self.skip_all_newlines();
         Ok(Stmt::block_stmt(stmt_list, local_symbols))
     }
 
@@ -756,7 +730,7 @@ impl Parser {
                 }
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
-                    Err(parse_err(&change, &message ))
+                    Err(parse_err(&change, &message))
                 }
             };
         } // assignment operator
@@ -764,11 +738,11 @@ impl Parser {
     }
 
     fn or(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-        let mut expr = self.and(symbols)?;				
-        while self.matches(&[TokenType::Or]) {			
-            let operator = self.previous();			
-			self.skip_all_newlines();
-            let right = self.and(symbols)?;			
+        let mut expr = self.and(symbols)?;
+        while self.matches(&[TokenType::Or]) {
+            let operator = self.previous();
+            self.skip_all_newlines();
+            let right = self.and(symbols)?;
             expr = Expr::logical(expr, operator, right);
         }
         Ok(expr)
@@ -776,9 +750,9 @@ impl Parser {
 
     fn and(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         let mut expr = self.equality(symbols)?;
-        while self.matches(&[TokenType::And]) {			
-            let operator = self.previous();			
-			self.skip_all_newlines();
+        while self.matches(&[TokenType::And]) {
+            let operator = self.previous();
+            self.skip_all_newlines();
             let right = self.equality(symbols)?;
             expr = Expr::logical(expr, operator, right);
         }
@@ -788,8 +762,8 @@ impl Parser {
     fn equality(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         let mut expr = self.comparison(symbols)?;
-        while self.matches(&[LessGreater, Equal]) {			
-            let operator: Token = self.previous();			
+        while self.matches(&[LessGreater, Equal]) {
+            let operator: Token = self.previous();
             let right: Expr = self.comparison(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
@@ -800,8 +774,8 @@ impl Parser {
         use TokenType::*;
         let mut expr = self.term(symbols)?;
         while self.matches(&[Less, LessEqual, Greater, GreaterEqual]) {
-			let operator = self.previous();			
-			self.skip_all_newlines();            
+            let operator = self.previous();
+            self.skip_all_newlines();
             let right = self.term(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
@@ -809,11 +783,11 @@ impl Parser {
     }
 
     fn term(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-        let mut expr = self.factor(symbols)?;		
+        let mut expr = self.factor(symbols)?;
 
         while self.matches(&[TokenType::Minus, TokenType::Plus]) {
-			let operator = self.previous(); // a + or  -			
-			self.skip_all_newlines();            
+            let operator = self.previous(); // a + or  -
+            self.skip_all_newlines();
             let right = self.factor(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
@@ -822,9 +796,9 @@ impl Parser {
 
     fn factor(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         let mut expr = self.unary(symbols)?; // get any leading - or 'not'
-        while self.matches(&[TokenType::Slash, TokenType::Star]) {			
-            let operator = self.previous();			
-			self.skip_all_newlines();
+        while self.matches(&[TokenType::Slash, TokenType::Star]) {
+            let operator = self.previous();
+            self.skip_all_newlines();
             let right = self.unary(symbols)?;
             expr = Expr::binary(expr, operator, right);
         }
@@ -833,8 +807,8 @@ impl Parser {
 
     fn unary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         if self.matches(&[TokenType::Not, TokenType::Minus]) {
-			let operator = self.previous();
-			self.skip_all_newlines();            
+            let operator = self.previous();
+            self.skip_all_newlines();
             let right = self.unary(symbols)?;
             return Ok(Expr::unary(operator, right));
         }
@@ -871,9 +845,9 @@ impl Parser {
                 self.consume(RightBracket, "expect ']' to complete lookup expression.")?;
             Ok(Expr::lookup(callee, right_bracket, index))
         } else {
-            let parse_error =parse_err(
+            let parse_error = parse_err(
                 &self.previous(),
-                "Lookup expression needs an index but was empty."
+                "Lookup expression needs an index but was empty.",
             );
             self.error(parse_error.clone());
             Err(parse_error)
@@ -883,21 +857,19 @@ impl Parser {
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         let mut args: Vec<Expr> = Vec::new();
-		self.skip_if_newline();
+        self.skip_if_newline();
         if !self.check(&RightParen) {
             loop {
                 let next_arg = self.expression(symbols)?;
                 args.push(next_arg);
                 if args.len() >= 255 {
-                    let parse_error = parse_err(
-                        &self.previous(),
-                        "Exceeded maximum arguments to function."
-                    );
+                    let parse_error =
+                        parse_err(&self.previous(), "Exceeded maximum arguments to function.");
                     self.error(parse_error.clone());
                     return Err(parse_error);
                 }
                 if !self.matches(&[Comma]) {
-					self.skip_if_newline();
+                    self.skip_if_newline();
                     break;
                 }
             }
@@ -928,24 +900,24 @@ impl Parser {
             }
             LeftParen => {
                 self.advance();
-				self.skip_all_newlines();
-                let expr = self.expression(symbols)?;				
-				self.skip_all_newlines();
+                self.skip_all_newlines();
+                let expr = self.expression(symbols)?;
+                self.skip_all_newlines();
                 self.consume(RightParen, "Expect ')' after expression.")?;
                 Ok(Expr::grouping(expr))
             }
             LeftBracket => {
                 self.advance();
                 let mut elements = Vec::new();
-                self.consume(LeftBracket, "expect '['")?;				
+                self.consume(LeftBracket, "expect '['")?;
                 let mut expr = self.expression(symbols)?;
                 elements.push(expr);
                 while self.matches(&[Comma]) {
-					self.skip_if_newline();
+                    self.skip_if_newline();
                     expr = self.expression(symbols)?;
                     elements.push(expr);
                 }
-				self.skip_if_newline();
+                self.skip_if_newline();
                 let right_bracket =
                     self.consume(RightBracket, "expect ']' to close an array literal.")?;
                 Ok(Expr::array(right_bracket, elements))
@@ -957,10 +929,7 @@ impl Parser {
                 let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
                 self.advance(); // move past the bad token
-                Err(parse_err(
-                    &self.peek(),
-                    &message
-                ))
+                Err(parse_err(&self.peek(), &message))
             }
         }
     }

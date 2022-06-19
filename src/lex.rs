@@ -24,16 +24,16 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
-	DotDot,
+    DotDot,
 
     // literals
     Number(f64),
-	Integer(i64),
-	Float(f64),
-	Range(i64,i64),
-	AsciiChar(u8),
-	Byte(u8),
-			
+    Integer(i64),
+    Float(f64),
+    Range(i64, i64),
+    AsciiChar(u8),
+    Byte(u8),
+
     Identifier(String),
     Str(String),
     Bool,
@@ -41,15 +41,15 @@ pub enum TokenType {
     Comment(String),
 
     NumberType,
-	IntegerType,
-	FloatType,
-    StringType,	
+    IntegerType,
+    FloatType,
+    StringType,
     BooleanType,
-	ByteType,
-	CharType,
+    ByteType,
+    CharType,
     SetType,
     ArrayType,
-	RecordType,
+    RecordType,
 
     // keywords
     Set,
@@ -80,8 +80,8 @@ pub enum TokenType {
     Val,
     Cpy,
     While,
-	To,	
-	Eol,
+    To,
+    Eol,
 
     ScanError(String),
     Eof,
@@ -94,11 +94,11 @@ impl TokenType {
         match self {
             Identifier(name) => format!("{}", &name),
             Number(value) => format!("{}", value),
-			Integer(value) => format!("{}",value),
-			Float(value) => format!("{}",value),
-			AsciiChar(value) => format!("{}",value),
-			Byte(value) => format!("{}", value),
-			Range(l,r) => format!("{}..{}", l,r),
+            Integer(value) => format!("{}", value),
+            Float(value) => format!("{}", value),
+            AsciiChar(value) => format!("{}", value),
+            Byte(value) => format!("{}", value),
+            Range(l, r) => format!("{}..{}", l, r),
             Str(value) => format!("{}", &value),
             Comment(value) => format!("{}", &value),
             ScanError(msg) => format!("{}", &msg),
@@ -109,7 +109,7 @@ impl TokenType {
     // Prints only the name of the token type.
     pub fn print(&self) -> String {
         use TokenType::*;
-		let mut formatted: Option<String> =  None;
+        let mut formatted: Option<String> = None;
         let name = match self {
             LeftParen => "(",
             RightParen => ")",
@@ -132,7 +132,7 @@ impl TokenType {
             ColonEqual => ":=",
             Greater => ">",
             GreaterEqual => ">=",
-			DotDot => "..",
+            DotDot => "..",
 
             Set => "set",
             Enum => "Enum",
@@ -163,43 +163,43 @@ impl TokenType {
             Val => "val",
             Cpy => "cpy",
             While => "while",
-			To =>"to",			
-			Eol => "newline",
+            To => "to",
+            Eol => "newline",
 
             // Type names
             NumberType => "num",
-			IntegerType => "int",
-			FloatType => "flt",
-			CharType => "char",
-			ByteType => "byte",
-			
-            StringType => "str",			
+            IntegerType => "int",
+            FloatType => "flt",
+            CharType => "char",
+            ByteType => "byte",
+
+            StringType => "str",
             BooleanType => "bool",
             SetType => "set",
             ArrayType => "array",
-			RecordType => "rec",
-			_ => {
-				formatted = Some(match self {
-					// literals
-					Number(n) => format!("num({})",n),
-					Integer(i) =>format!("int({})",i),
-					Float(f) => format!("flt({})",f),
-					AsciiChar(c) => format!("char({})",c),
-					Byte(b) => format!("byte({})",b),
-					Str(s) => format!("str({})",&s),
-					Identifier(s) => format!("identifier({})",&s),
-					Bool => "bool".to_string(),					
-					Comment(c) => format!("comment({})",&c),
-					_ => panic!("Printing of literal value unhandled {:?}", self),
-				});
-				""
-			}		
+            RecordType => "rec",
+            _ => {
+                formatted = Some(match self {
+                    // literals
+                    Number(n) => format!("num({})", n),
+                    Integer(i) => format!("int({})", i),
+                    Float(f) => format!("flt({})", f),
+                    AsciiChar(c) => format!("char({})", c),
+                    Byte(b) => format!("byte({})", b),
+                    Str(s) => format!("str({})", &s),
+                    Identifier(s) => format!("identifier({})", &s),
+                    Bool => "bool".to_string(),
+                    Comment(c) => format!("comment({})", &c),
+                    _ => panic!("Printing of literal value unhandled {:?}", self),
+                });
+                ""
+            }
         };
         if formatted.is_none() {
-			name.to_string()
-		} else {
-			formatted.unwrap()
-		}
+            name.to_string()
+        } else {
+            formatted.unwrap()
+        }
     }
 
     pub fn is_comparison_operator(&self) -> bool {
@@ -224,14 +224,14 @@ impl TokenType {
         let words = vec![
             StringType,
             NumberType,
-			IntegerType,
-			FloatType,
-			ByteType,
-			CharType,
+            IntegerType,
+            FloatType,
+            ByteType,
+            CharType,
             BooleanType,
             SetType,
             ArrayType,
-			RecordType,
+            RecordType,
             Enum,
             In,
             Intersects,
@@ -259,8 +259,7 @@ impl TokenType {
             Val,
             Cpy,
             While,
-			To,
-			
+            To,
         ];
 
         let mut types_by_name: HashMap<String, TokenType> = HashMap::new();
@@ -417,7 +416,7 @@ impl Scanner {
         let c = self.advance();
         let token_type = match c {
             '\0' => TokenType::Eof,
-			'\n' => TokenType::Eol,
+            '\n' => TokenType::Eol,
             '(' => TokenType::LeftParen,
             ')' => TokenType::RightParen,
             '{' => TokenType::LeftBrace,
@@ -425,13 +424,13 @@ impl Scanner {
             '[' => TokenType::LeftBracket,
             ']' => TokenType::RightBracket,
             ',' => TokenType::Comma,
-            '.' =>{
-				if self.match_char('.') {
-					TokenType::DotDot
-				} else {
-					TokenType::Dot
-				}
-			}
+            '.' => {
+                if self.match_char('.') {
+                    TokenType::DotDot
+                } else {
+                    TokenType::Dot
+                }
+            }
             '-' => TokenType::Minus,
             '*' => TokenType::Star,
             '+' => TokenType::Plus,
@@ -505,9 +504,9 @@ impl Scanner {
         c >= '0' && c <= '9'
     }
 
-	// newlines are significant, so don't count as whitespace
+    // newlines are significant, so don't count as whitespace
     fn is_whitespace(&self, c: char) -> bool {
-        c == ' ' || c == '\t'  || c == '\r'
+        c == ' ' || c == '\t' || c == '\r'
     }
 
     fn skip_whitespace(&mut self) {

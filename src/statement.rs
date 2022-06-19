@@ -1,5 +1,4 @@
 #[allow(dead_code)]
-
 use crate::errors;
 use crate::errors::*;
 use crate::expression::Expr;
@@ -7,14 +6,12 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
-use crate::types::DeclarationType;
-use  crate::types::GlobalStatementObjectCode;
 use crate::types::DataType;
 use crate::types::DataValue;
-
+use crate::types::DeclarationType;
+use crate::types::GlobalStatementObjectCode;
 
 const TRACE: bool = false;
-
 
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
@@ -22,13 +19,15 @@ pub trait TypeChecking {
 
 pub trait Compiler {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error>;
-    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
-        Err(
-            errors::Error::internal(
-                ErrorType::Internal, "Can't compile this statement type as a global declaration.".to_string())
-        )        
+    fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
+        Err(errors::Error::internal(
+            ErrorType::Internal,
+            "Can't compile this statement type as a global declaration.".to_string(),
+        ))
     }
-    
 }
 
 #[derive(Clone, Debug)]
@@ -62,7 +61,6 @@ impl Stmt {
         }
     }
 
-
     pub fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         use Stmt::*;
         match self {
@@ -76,7 +74,7 @@ impl Stmt {
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
-			NoOp => Ok(()),
+            NoOp => Ok(()),
             _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
     }
@@ -98,17 +96,18 @@ impl Stmt {
         }
     }
 
-
-    pub fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
+    pub fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
         use Stmt::*;
-        match self {                        
+        match self {
             Var(n) => n.compile_global(symbols),
-            Fun(n) => n.compile_global(symbols),            
+            Fun(n) => n.compile_global(symbols),
             // TODO add Type statement types
             _ => panic!("Statement type compilation not supported yet."),
         }
-	}
-        
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -116,12 +115,12 @@ pub struct PrintStmtNode {
     expressions: Vec<Expr>,
 }
 
-impl  PrintStmtNode {
+impl PrintStmtNode {
     fn print(&self) -> String {
         format!("print {:?}", &self.expressions)
     }
 }
-    
+
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // print can take any type
@@ -145,20 +144,19 @@ impl Compiler for PrintStmtNode {
                 DataType::Bool => "%d",
                 _ => "%s",
             };
-			
-			let printable = match obj_code.data_type {
-				DataType::Str =>  format!("rci_value_to_c_str({})",&obj_code.code),
-				DataType::Number => format!("rci_value_to_c_double({})",&obj_code.code),
-				DataType::Bool => format!("rci_value_to_c_boolean({})",&obj_code.code),
-				_ => "** PRINTING NOT SUPPORTED **".to_string(),
-			};
-			
+
+            let printable = match obj_code.data_type {
+                DataType::Str => format!("rci_value_to_c_str({})", &obj_code.code),
+                DataType::Number => format!("rci_value_to_c_double({})", &obj_code.code),
+                DataType::Bool => format!("rci_value_to_c_boolean({})", &obj_code.code),
+                _ => "** PRINTING NOT SUPPORTED **".to_string(),
+            };
+
             subst_codes = subst_codes + subst_code;
             values.push(printable);
         }
 
-        let mut code = format!("printf(\"{}\\n\",{});\n", 
-			&subst_codes, &values.join(","));
+        let mut code = format!("printf(\"{}\\n\",{});\n", &subst_codes, &values.join(","));
         Ok(code)
     }
 }
@@ -173,7 +171,7 @@ impl ExpressionStmtNode {
         format!("{}", &self.expression.print())
     }
 }
-    
+
 impl TypeChecking for ExpressionStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // Trigger type checks from the expression contained
@@ -184,8 +182,8 @@ impl TypeChecking for ExpressionStmtNode {
 
 impl Compiler for ExpressionStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-            let expr_code = self.expression.compile(symbols)?;
-		let code = format!("{};",&expr_code.code);
+        let expr_code = self.expression.compile(symbols)?;
+        let code = format!("{};", &expr_code.code);
         Ok(code)
     }
 }
@@ -224,15 +222,15 @@ impl TypeChecking for BlockStmtNode {
 
 impl Compiler for BlockStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let mut stmts = Vec::new();
-		for stmt in &self.statements {
-			let stmt_code = stmt.compile(&self.symbols)?;
-			stmts.push(stmt_code);
-		}
-		let stmts_code = stmts.join("\n");
-		
+        let mut stmts = Vec::new();
+        for stmt in &self.statements {
+            let stmt_code = stmt.compile(&self.symbols)?;
+            stmts.push(stmt_code);
+        }
+        let stmts_code = stmts.join("\n");
+
         let code = format!("{{\n\t{}\n}}", &stmts_code);
-		Ok(code)
+        Ok(code)
     }
 }
 
@@ -261,7 +259,6 @@ impl IfStmtNode {
     }
 }
 
-
 impl TypeChecking for IfStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let cond_type = self.condition.determine_type(symbols)?;
@@ -278,21 +275,21 @@ impl TypeChecking for IfStmtNode {
 }
 
 impl Compiler for IfStmtNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {        
-		let cond_code = self.condition.compile(symbols)?;
-		let then_branch_code = self.then_branch.compile(symbols)?;
-		
-		let code = if self.has_else {
-			let else_branch_code = self.else_branch.compile(symbols)?;
-			format!("if (AS_BOOL({}))\n{} else\n{}\n",
-				&cond_code.code,&then_branch_code, &else_branch_code)
-		} else {
-			format!("if (AS_BOOL({}))\n{}\n",
-				&cond_code.code, &then_branch_code)
-		};
-		
-		Ok(code)
-			
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        let cond_code = self.condition.compile(symbols)?;
+        let then_branch_code = self.then_branch.compile(symbols)?;
+
+        let code = if self.has_else {
+            let else_branch_code = self.else_branch.compile(symbols)?;
+            format!(
+                "if (AS_BOOL({}))\n{} else\n{}\n",
+                &cond_code.code, &then_branch_code, &else_branch_code
+            )
+        } else {
+            format!("if (AS_BOOL({}))\n{}\n", &cond_code.code, &then_branch_code)
+        };
+
+        Ok(code)
     }
 }
 
@@ -311,7 +308,6 @@ impl VarStmtNode {
     }
 }
 
-
 impl TypeChecking for VarStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let init_type = self.initializer.determine_type(symbols)?;
@@ -328,33 +324,37 @@ impl TypeChecking for VarStmtNode {
 
 impl Compiler for VarStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let lhs = format!("rci_value {}",self.name);
-		let rhs =  self.initializer.compile(symbols)?;
-		let code = format!("{} = {};",&lhs, &rhs.code);
-		Ok(code)		        
+        let lhs = format!("rci_value {}", self.name);
+        let rhs = self.initializer.compile(symbols)?;
+        let code = format!("{} = {};", &lhs, &rhs.code);
+        Ok(code)
     }
 
-
-    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error> {
-        let ste = symbols.lookup(&self.name).expect("Major compiler bug: Symbol should be in symbol table.");
-		let lhs = format!("rci_value {};\n",self.name);
+    fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
+        let ste = symbols
+            .lookup(&self.name)
+            .expect("Major compiler bug: Symbol should be in symbol table.");
+        let lhs = format!("rci_value {};\n", self.name);
         // make an initializer function to be called from an init_globals() function called first in main()
-        let initializer_name = format!("__INITIALIZER_FOR_{}()", &self.name);        
-		let rhs =  self.initializer.compile(symbols)?;
-        let init_func = format!("void {} {{\n {} = {}; \n }}\n",
-            &initializer_name,  self.name, &rhs.code);
+        let initializer_name = format!("__INITIALIZER_FOR_{}()", &self.name);
+        let rhs = self.initializer.compile(symbols)?;
+        let init_func = format!(
+            "void {} {{\n {} = {}; \n }}\n",
+            &initializer_name, self.name, &rhs.code
+        );
 
-
-		let code = GlobalStatementObjectCode{
+        let code = GlobalStatementObjectCode {
             decl_type: ste.entry_type.clone(),
             base_code: lhs,
             decl_name: self.name.clone(),
             init_code: init_func,
             init_name: initializer_name,
         };
-		Ok(code)		        
+        Ok(code)
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -371,8 +371,8 @@ impl FunStmtNode {
         format!("fun {}", &self.name.identifier_string())
     }
 }
- 
-impl TypeChecking 	for FunStmtNode {
+
+impl TypeChecking for FunStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
@@ -383,49 +383,51 @@ impl TypeChecking 	for FunStmtNode {
 
 impl Compiler for FunStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-            
-		let fun_name = self.name.token_type.print_value();		
-		let mut params_code:Vec<String> = Vec::new();
-		for p in &self.params {
-			let param_code = match p.entry_type {
-				DeclarationType::Var => {
-					format!("rci_value * {}",&p.name) 
-				},
-				DeclarationType::Val => {
-					format!("const rci_value {}",&p.name)
-				},
-				DeclarationType::Cpy => {
-					// NOTE: at the call site a deep copy should have been
-					// made by the compiler.
-					format!("rci_value {}",&p.name)
-				},
-				_ => {
-				 panic!("Internal compiler error. Only val, var,, cpy allowed as param decl types.")
-				}				
-			};
-			params_code.push(param_code);
-		}
-		
-		let mut stmts_code:Vec<String> = Vec::new();
-		for stmt in &self.body {
-			let stmt_code = stmt.compile(&self.symbols)?;
-			stmts_code.push(stmt_code);
-		}
+        let fun_name = self.name.token_type.print_value();
+        let mut params_code: Vec<String> = Vec::new();
+        for p in &self.params {
+            let param_code = match p.entry_type {
+                DeclarationType::Var => {
+                    format!("rci_value * {}", &p.name)
+                }
+                DeclarationType::Val => {
+                    format!("const rci_value {}", &p.name)
+                }
+                DeclarationType::Cpy => {
+                    // NOTE: at the call site a deep copy should have been
+                    // made by the compiler.
+                    format!("rci_value {}", &p.name)
+                }
+                _ => {
+                    panic!(
+                        "Internal compiler error. Only val, var,, cpy allowed as param decl types."
+                    )
+                }
+            };
+            params_code.push(param_code);
+        }
 
-        let decl = format!("rci_value {}({})", 
-			&fun_name, &params_code.join(","));
+        let mut stmts_code: Vec<String> = Vec::new();
+        for stmt in &self.body {
+            let stmt_code = stmt.compile(&self.symbols)?;
+            stmts_code.push(stmt_code);
+        }
 
-		let body = format!("{{\n{}\n}}", 
-			&stmts_code.join("\n"));
-		Ok(format!("{}\n{}\n",&decl, &body))		
+        let decl = format!("rci_value {}({})", &fun_name, &params_code.join(","));
+
+        let body = format!("{{\n{}\n}}", &stmts_code.join("\n"));
+        Ok(format!("{}\n{}\n", &decl, &body))
     }
 
-    fn compile_global(&self, symbols: &SymbolTable) -> Result<GlobalStatementObjectCode, errors::Error>{
+    fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
         let function_name = self.name.token_type.print_value();
-        let code = GlobalStatementObjectCode{            
+        let code = GlobalStatementObjectCode {
             decl_type: DeclarationType::Fun,
-            base_code: self.compile(&symbols)?,        
-            decl_name:  function_name.clone(),
+            base_code: self.compile(&symbols)?,
+            decl_name: function_name.clone(),
             init_code: "".to_string(),
             init_name: function_name.clone(),
         };
@@ -462,7 +464,7 @@ impl TypeChecking for ReturnStmtNode {
 
 impl Compiler for ReturnStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let return_value = self.expr.compile(symbols)?;
+        let return_value = self.expr.compile(symbols)?;
         Ok(format!("return {};", &return_value.code))
     }
 }
@@ -477,7 +479,7 @@ impl BreakStmtNode {
         "break-statement".to_string()
     }
 }
-    
+
 impl TypeChecking for BreakStmtNode {
     // We could add a special symbol to any block's symbol table and then the
     // break statement could check if it was valid ...
@@ -508,7 +510,7 @@ impl WhileStmtNode {
         )
     }
 }
- 
+
 impl TypeChecking for WhileStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         let cond_type = self.condition.determine_type(symbols)?;
@@ -527,8 +529,8 @@ impl TypeChecking for WhileStmtNode {
 impl Compiler for WhileStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let cond = self.condition.compile(symbols)?;
-		let body_code = self.body.compile(symbols)?;
-		Ok( format!("while(AS_BOOL({}))\n{}",&cond.code, &body_code))
+        let body_code = self.body.compile(symbols)?;
+        Ok(format!("while(AS_BOOL({}))\n{}", &cond.code, &body_code))
     }
 }
 #[derive(Clone, Debug)]
@@ -546,9 +548,9 @@ impl ProgramNode {
 impl TypeChecking for ProgramNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         for decl in &self.declarations {
-			decl.check_types(symbols)?;
-		}
-		self.imperatives.check_types(symbols)
+            decl.check_types(symbols)?;
+        }
+        self.imperatives.check_types(symbols)
     }
 }
 
@@ -556,42 +558,49 @@ impl TypeChecking for ProgramNode {
 // and minimal standard library functions.
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        let  compiler_support = "#include \"./ir/compiler_support.h\"";
-		let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
+        let compiler_support = "#include \"./ir/compiler_support.h\"";
+        let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
 
-		for decl in &self.declarations {
-			let decl_code = decl.compile_global(symbols)?;                    
-			decls.push(decl_code);
-		}
+        for decl in &self.declarations {
+            let decl_code = decl.compile_global(symbols)?;
+            decls.push(decl_code);
+        }
 
-        let declarations_code =decls.iter().map(|decl|{
-            match decl.decl_type {
-                DeclarationType::Val | DeclarationType::Var =>{                    
-                    format!("{}\n{}\n",&decl.base_code,&decl.init_code)
+        let declarations_code = decls
+            .iter()
+            .map(|decl| match decl.decl_type {
+                DeclarationType::Val | DeclarationType::Var => {
+                    format!("{}\n{}\n", &decl.base_code, &decl.init_code)
                 }
                 _ => decl.base_code.clone(),
-            }
-            
-        }).collect::<Vec<String>>().join("\n");
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
 
+        let initializer_stmts: Vec<String> = decls
+            .iter()
+            .filter(|d| {
+                matches!(d.decl_type, DeclarationType::Var)
+                    || matches!(d.decl_type, DeclarationType::Val)
+            })
+            .map(|decl| format!("{};", &decl.init_name))
+            .collect();
 
-        let initializer_stmts:Vec<String> = decls.iter()
-            .filter(|d| matches!(d.decl_type, DeclarationType::Var) || matches!(d.decl_type, DeclarationType::Val))
-            .map(|decl|{
-            format!("{};",&decl.init_name)
-        }).collect();
-		
-		let imperatives_code = self.imperatives.compile(symbols)?;		
-		let init_globals = format!("void init_globals() {{\n {} \n}}\n", &initializer_stmts.join("\n"));
-		
-		let main_fn = format!("int main(int argc, const char ** argv) {{\n{}\n{}\nreturn 0;\n}}",
-			"\tinit_globals();\n",&imperatives_code);
-			
-		Ok(format!("{}\n{}\n\n{}\n{}\n", 
-			compiler_support, 
-			&declarations_code,
-            &init_globals,
-			&main_fn))				        
+        let imperatives_code = self.imperatives.compile(symbols)?;
+        let init_globals = format!(
+            "void init_globals() {{\n {} \n}}\n",
+            &initializer_stmts.join("\n")
+        );
+
+        let main_fn = format!(
+            "int main(int argc, const char ** argv) {{\n{}\n{}\nreturn 0;\n}}",
+            "\tinit_globals();\n", &imperatives_code
+        );
+
+        Ok(format!(
+            "{}\n{}\n\n{}\n{}\n",
+            compiler_support, &declarations_code, &init_globals, &main_fn
+        ))
     }
 }
 

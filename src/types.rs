@@ -1,4 +1,3 @@
-
 use crate::errors;
 use crate::errors::*;
 use crate::lex::TokenType;
@@ -21,7 +20,7 @@ pub enum DeclarationType {
 }
 
 #[derive(Clone)]
-pub struct CollectionType{
+pub struct CollectionType {
     pub index_type: DataType,
     pub contains_type: DataType,
     pub size: Option<usize>,
@@ -45,7 +44,7 @@ pub struct ObjectCode {
     pub code: String,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct GlobalStatementObjectCode {
     pub decl_type: DeclarationType,
     pub base_code: String,
@@ -137,16 +136,14 @@ impl DataValue {
     }
 
     pub fn to_c_ir(&self) -> String {
-		let lexeme = self.print_value();
-		match self {
-			DataValue::Str(_) => format!("(rci_value) string_literal({})",&lexeme),
-            DataValue::Number(_) =>format!("NUMBER_VAL({})",&lexeme),
-            DataValue::Bool(_) =>format!("BOOL_VAL({})",&lexeme),
+        let lexeme = self.print_value();
+        match self {
+            DataValue::Str(_) => format!("(rci_value) string_literal({})", &lexeme),
+            DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
+            DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
             DataValue::Array(ref data) => "//not implemented".to_string(),
             DataValue::User(ref u) => "//not implemented".to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
-		}
-		
+        }
     }
 }
-
