@@ -169,8 +169,8 @@ impl Compiler for BinaryNode {
 		TokenType::GreaterEqual => ">=",
 		TokenType::Equal => "_EQ_",
 		TokenType::LessGreater => "_NE_",
-		_ => panic!(format!("Compilation error, operator not supported yet: {}",
-			&self.operator.token_type.print())),		
+		_ => panic!("Compilation error, operator not supported yet: {}",
+			&self.operator.token_type.print()),		
 	  };
 	  
 	  if matches!(data_type, DataType::Str) {

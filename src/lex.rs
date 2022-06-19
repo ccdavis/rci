@@ -1,5 +1,4 @@
 use core::str::Chars;
-
 use std::collections::HashMap;
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
@@ -25,9 +24,16 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
+	DotDot,
 
     // literals
     Number(f64),
+	Integer(i64),
+	Float(f64),
+	Range(i64,i64),
+	AsciiChar(u8),
+	Byte(u8),
+			
     Identifier(String),
     Str(String),
     Bool,
@@ -35,10 +41,15 @@ pub enum TokenType {
     Comment(String),
 
     NumberType,
-    StringType,
+	IntegerType,
+	FloatType,
+    StringType,	
     BooleanType,
+	ByteType,
+	CharType,
     SetType,
     ArrayType,
+	RecordType,
 
     // keywords
     Set,
@@ -69,6 +80,7 @@ pub enum TokenType {
     Val,
     Cpy,
     While,
+	To,	
 	Eol,
 
     ScanError(String),
@@ -82,6 +94,11 @@ impl TokenType {
         match self {
             Identifier(name) => format!("{}", &name),
             Number(value) => format!("{}", value),
+			Integer(value) => format!("{}",value),
+			Float(value) => format!("{}",value),
+			AsciiChar(value) => format!("{}",value),
+			Byte(value) => format!("{}", value),
+			Range(l,r) => format!("{}..{}", l,r),
             Str(value) => format!("{}", &value),
             Comment(value) => format!("{}", &value),
             ScanError(msg) => format!("{}", &msg),
@@ -92,6 +109,7 @@ impl TokenType {
     // Prints only the name of the token type.
     pub fn print(&self) -> String {
         use TokenType::*;
+		let mut formatted: Option<String> =  None;
         let name = match self {
             LeftParen => "(",
             RightParen => ")",
@@ -114,6 +132,7 @@ impl TokenType {
             ColonEqual => ":=",
             Greater => ">",
             GreaterEqual => ">=",
+			DotDot => "..",
 
             Set => "set",
             Enum => "Enum",
@@ -144,24 +163,43 @@ impl TokenType {
             Val => "val",
             Cpy => "cpy",
             While => "while",
+			To =>"to",			
+			Eol => "newline",
 
             // Type names
-            NumberType => "number",
-            StringType => "string",
-            BooleanType => "boolean",
+            NumberType => "num",
+			IntegerType => "int",
+			FloatType => "flt",
+			CharType => "char",
+			ByteType => "byte",
+			
+            StringType => "str",			
+            BooleanType => "bool",
             SetType => "set",
             ArrayType => "array",
-
-            // literals
-            Number(_) => "Number",
-            Str(_) => "String",
-            Identifier(_) => "identifier",
-            Bool => "bool",
-			Eol => "newline",
-            Comment(_) => "comment",
-            _ => panic!("Unhandled {:?}", self),
+			RecordType => "rec",
+			_ => {
+				formatted = Some(match self {
+					// literals
+					Number(n) => format!("num({})",n),
+					Integer(i) =>format!("int({})",i),
+					Float(f) => format!("flt({})",f),
+					AsciiChar(c) => format!("char({})",c),
+					Byte(b) => format!("byte({})",b),
+					Str(s) => format!("str({})",&s),
+					Identifier(s) => format!("identifier({})",&s),
+					Bool => "bool".to_string(),					
+					Comment(c) => format!("comment({})",&c),
+					_ => panic!("Printing of literal value unhandled {:?}", self),
+				});
+				""
+			}		
         };
-        name.to_string()
+        if formatted.is_none() {
+			name.to_string()
+		} else {
+			formatted.unwrap()
+		}
     }
 
     pub fn is_comparison_operator(&self) -> bool {
@@ -186,9 +224,14 @@ impl TokenType {
         let words = vec![
             StringType,
             NumberType,
+			IntegerType,
+			FloatType,
+			ByteType,
+			CharType,
             BooleanType,
             SetType,
             ArrayType,
+			RecordType,
             Enum,
             In,
             Intersects,
@@ -216,6 +259,8 @@ impl TokenType {
             Val,
             Cpy,
             While,
+			To,
+			
         ];
 
         let mut types_by_name: HashMap<String, TokenType> = HashMap::new();
@@ -380,7 +425,13 @@ impl Scanner {
             '[' => TokenType::LeftBracket,
             ']' => TokenType::RightBracket,
             ',' => TokenType::Comma,
-            '.' => TokenType::Dot,
+            '.' =>{
+				if self.match_char('.') {
+					TokenType::DotDot
+				} else {
+					TokenType::Dot
+				}
+			}
             '-' => TokenType::Minus,
             '*' => TokenType::Star,
             '+' => TokenType::Plus,

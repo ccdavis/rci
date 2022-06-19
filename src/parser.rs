@@ -4,19 +4,23 @@ use crate::lex::TokenType;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types::*;
+use crate::errors::parse_err;
+use crate::errors::Error;
+
+type ParseError = crate::errors::Error;
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
     errors: Vec<ParseError>,
 }
-
+/*
 #[derive(Clone)]
 pub struct ParseError {
     t: Token,
     message: String,
 }
-
+*/
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -26,21 +30,10 @@ impl Parser {
         }
     }
 
-    pub fn report_error(&mut self, error: ParseError) {
-        // TODO: Call interpreter.error() here to report errors
-        match error.t.token_type {
-            TokenType::Eof => {
-                eprintln!("{} at {:?}. At end of input. ", error.message, error.t);
-            }
-            _ => {
-                eprintln!("{} at {:?}", error.message, error.t);
-            }
-        }
-        self.errors.push(error);
-    }
-
+    
     pub fn error(&mut self, error: ParseError) {
-        self.report_error(error);
+        eprintln!("{}",&error.format());
+		self.errors.push(error);
     }
 
     fn matches(&mut self, types: &[TokenType]) -> bool {
@@ -92,10 +85,10 @@ impl Parser {
         if self.check(&token_type) {
             Ok(self.advance())
         } else {
-            Err(ParseError {
-                t: self.peek().clone(),
-                message: message.to_string(),
-            })
+            Err(parse_err(
+                &self.peek(),
+                message,
+            ))
         }
     }
 
@@ -104,10 +97,10 @@ impl Parser {
     fn consume_identifier(&mut self, message: &str) -> Result<Token, ParseError> {
         match self.peek().token_type {
             TokenType::Identifier(_) => Ok(self.advance()),
-            _ => Err(ParseError {
-                t: self.peek().clone(),
-                message: message.to_string(),
-            }),
+            _ => Err(parse_err(
+                &self.peek(),
+                message
+            )),
         }
     }
 	
@@ -123,10 +116,10 @@ impl Parser {
 			Ok(true)
 		} else {
 			let message = "Expected ';' or newline";		
-			Err(ParseError {
-				t: self.peek().clone(),
-				message: message.to_string(),
-			})
+			Err(parse_err(
+				&self.peek(),
+				message
+			))
 		}
 	}
 	
@@ -195,6 +188,9 @@ impl Parser {
                 Err(parse_error) => self.error(parse_error),
             }
         }
+		if self.errors.len() > 0 {
+		}
+		
         statements
     }
 	
@@ -207,27 +203,31 @@ impl Parser {
 				
         while !self.is_finished() {
 			if found_main {
+				let message = format!("Program entry point block already found,no more statements allowed.");
 				return Err(
-					ParseError { 
-						t: self.previous(),
-						message: format!("Program entry point block already found,no more statements allowed." )
-					}
+					parse_err(
+						&self.previous(),
+						&message						
+					)
 				);
 			}
 			let stmt = self.declaration(global_symbols)?;
             match stmt {
                Stmt::Var(_) | 
 			   Stmt::Fun(_) => decls.push(stmt),
-			   Stmt::Block(_) =>  {				
+			   Stmt::Block(_) =>  {	
 				imperatives = stmt;
 				found_main = true;
 			   },
-			   _ => return Err(ParseError{ 
-				t: self.previous(),
-				message: format!("Programs can only have declarations (fun, var, val) and a block '{{','}}' at the end.")}),			   
-            }
-			
-        }				
+			   _ => {
+					let message = 
+						format!("Programs can only have declarations (fun, var, val) and a block '{{','}}' at the end.");
+					return Err(
+						parse_err(&self.previous(), &message));
+				}
+					
+			}
+        }
 		// If we get to this point without finding {} (main) the
 		// imperatives will be a NoOp which is fine for a module.
 		Ok(Stmt::program(decls, Box::new(imperatives)))
@@ -263,10 +263,10 @@ impl Parser {
         if !self.check(&RightParen) {
             loop {
                 if parameters.len() >= 255 {
-                    let parse_error = ParseError {
-                        t: self.peek(),
-                        message: "More than 255 parameters not allowed".to_string(),
-                    };
+                    let parse_error = parse_err(
+                        &self.peek(),
+                        "More than 255 parameters not allowed"
+                    );
                     self.error(parse_error);
                 }
 
@@ -287,34 +287,34 @@ impl Parser {
                 let mut param_type = match DataType::from_token_type(&type_name.token_type) {
                     Some(valid_type) => valid_type,
                     None => {
-                        return Err(ParseError {
-                            t: type_name,
-                            message: "Types must be built-in or user defined.".to_string(),
-                        });
+                        return Err(parse_err(
+                            &type_name,
+                            "Types must be built-in or user defined."
+                        ));
                     }
                 };
 
                 if let DataType::Array(_) = param_type {
-                    self.consume(Less, "expect '<' after 'array' to complete type signature.");
+                    self.consume(Less, "expect '<' after 'array' to complete type signature.")?;
                     let array_type_name = self.advance();
                     if matches!(array_type_name.token_type, TokenType::ArrayType) {
-                        return Err(ParseError {
-                            t: array_type_name,
-                            message: "Can't nest arrays in function parameters.".to_string(),
-                        });
+                        return Err(parse_err(
+                            &array_type_name,
+                            "Can't nest arrays in function parameters."
+                        ));
                     }
 
                     let array_type = match DataType::from_token_type(&array_type_name.token_type) {
                         Some(valid_type) => valid_type,
                         None => {
-                            return Err(ParseError {
-								t: array_type_name,
-								message: "Can't make an array of this type. Types must be built-in or user defined.".to_string(),
-							});
+                            return Err(parse_err(
+								&array_type_name,
+								"Can't make an array of this type. Types must be built-in or user defined."
+							));
                         }
                     };
 
-                    self.consume(Greater, "expect '>' after array member type.");
+                    self.consume(Greater, "expect '>' after array member type.")?;
                     param_type = DataType::Array(Box::new(array_type))
                 }
 
@@ -342,10 +342,10 @@ impl Parser {
             return_type = match DataType::from_token_type(&return_type_name.token_type) {
                 Some(valid_type) => valid_type,
                 None => {
-                    return Err(ParseError {
-                        t: return_type_name,
-                        message: "Types must be built-in or user defined.".to_string(),
-                    });
+                    return Err(parse_err(
+                        &return_type_name,
+                        "Types must be built-in or user defined."
+                    ));
                 }
             };
         }
@@ -441,26 +441,26 @@ impl Parser {
                 Some(valid_type) => match valid_type {
 					
 					DataType::Array(_) => {						
-						self.consume(TokenType::Less, "expect '<' after 'array' to complete type signature.");
+						self.consume(TokenType::Less, "expect '<' after 'array' to complete type signature.")?;
 						let array_type_name = self.advance();
 						if matches!(array_type_name.token_type, TokenType::ArrayType) {
-							return Err(ParseError {
-								t: array_type_name,
-								message: "Can't nest arrays in variable type declarations.".to_string(),
-							});
+							return Err(parse_err(
+								&array_type_name,
+								"Can't nest arrays in variable type declarations."
+							));
 						}
 
 						let array_type = match DataType::from_token_type(&array_type_name.token_type) {
 							Some(simple_type) => simple_type,
 							None => {
-								return Err(ParseError {
-									t: array_type_name,
-									message: "Can't make an array of this type. Types must be built-in or user defined.".to_string(),
-								});
+								return Err(parse_err(
+									&array_type_name,
+									"Can't make an array of this type. Types must be built-in or user defined."
+								));
 							}
 						};
 
-						self.consume(TokenType::Greater, "expect '>' after array member type.");
+						self.consume(TokenType::Greater, "expect '>' after array member type.")?;
 						DataType::Array(Box::new(array_type))		
 					},
 					
@@ -468,10 +468,10 @@ impl Parser {
 					_ => valid_type,
 				},
                 None => {
-                    return Err(ParseError {
-                        t: type_name,
-                        message: "Types must be built-in or user defined.".to_string(),
-                    });
+                    return Err(parse_err(
+                        &type_name,
+                        "Types must be built-in or user defined."
+                    ));
                 }
             };
 												
@@ -482,10 +482,7 @@ impl Parser {
                         "Type named {} not declared in this scope or an outer scope.",
                         u
                     );
-                    return Err(ParseError {
-                        t: v,
-                        message: message,
-                    });
+                    return Err(parse_err(&v, &message));
                 }
             }
 
@@ -518,14 +515,13 @@ impl Parser {
                 } else {
                     // Already defined
                     let message = format!("Variable already declared in this scope!");
-                    Err(ParseError { t: v, message })
+                    Err(parse_err(&v, &message ))
                 }
             } else {
-                Err(ParseError {
-                    t: v,
-                    message: "Variable declaration requires initial value assignment with '='."
-                        .to_string(),
-                })
+                Err(parse_err(
+                    &v,
+                    "Variable declaration requires initial value assignment with '='."                        
+                ))
             }
         } else {
             // infer data type
@@ -534,19 +530,19 @@ impl Parser {
                 let initializer = self.expression(symbols)?;
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
-                        self.error(ParseError {
-                            t: self.previous(),
-                            message: type_error.message.clone(),
-                        });
+                        self.error(parse_err(
+                            &self.previous(),
+                            &type_error.message
+                        ));
 
                         let message = format!("Can't infer type for {}, initial value can't be resolved. Please put a specific type next to the variable name. ",&v.print());
-                        return Err(ParseError { t: v, message });
+                        return Err(parse_err(&v, &message));
                     }
                     Ok(data_type) => data_type,
                 };
 
                 //self.consume(TokenType::SemiColon, "expect ';'")?;
-				self.match_terminator();
+				self.match_terminator()?;
                 let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
                     SymbolTableEntry::new_var(
@@ -571,14 +567,13 @@ impl Parser {
                 } else {
                     // Already defined
                     let message = format!("Variable already declared in this scope!");
-                    Err(ParseError { t: v, message })
+                    Err(parse_err(&v, &message ))
                 }
             } else {
-                Err(ParseError {
-                    t: v,
-                    message: "Variable declaration requires initial value assignment with '='."
-                        .to_string(),
-                })
+                Err(parse_err(
+                    &v,
+                    "Variable declaration requires initial value assignment with '='."                        
+                ))
             }
         }
     }
@@ -629,10 +624,11 @@ impl Parser {
                 ste.data_type.clone(),
             ))
         } else {
-            Err(ParseError {
-                t: location,
-                message: format!("Return statement not in a function!"),
-            })
+			let message = format!("Return statement not in a function!");
+            Err(parse_err(
+                &location,
+				&message                
+            ))
         }
     }
 
@@ -644,10 +640,11 @@ impl Parser {
         if let Ok(ste) = symbols.lookup("IN_BLOCK") {
             Ok(Stmt::break_stmt(location))
         } else {
-            Err(ParseError {
-                t: location,
-                message: format!("Break statement not in a block ( between '{{' and '}}')!"),
-            })
+			let message = format!("Break statement not in a block ( between '{{' and '}}')!");
+            Err(parse_err(
+                &location,
+				&message                
+            ))
         }
     }
 
@@ -759,7 +756,7 @@ impl Parser {
                 }
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
-                    Err(ParseError { t: change, message })
+                    Err(parse_err(&change, &message ))
                 }
             };
         } // assignment operator
@@ -874,10 +871,10 @@ impl Parser {
                 self.consume(RightBracket, "expect ']' to complete lookup expression.")?;
             Ok(Expr::lookup(callee, right_bracket, index))
         } else {
-            let parse_error = ParseError {
-                t: self.previous(),
-                message: "Lookup expression needs an index but was empty.".to_string(),
-            };
+            let parse_error =parse_err(
+                &self.previous(),
+                "Lookup expression needs an index but was empty."
+            );
             self.error(parse_error.clone());
             Err(parse_error)
         }
@@ -892,10 +889,10 @@ impl Parser {
                 let next_arg = self.expression(symbols)?;
                 args.push(next_arg);
                 if args.len() >= 255 {
-                    let parse_error = ParseError {
-                        t: self.previous(),
-                        message: "Exceeded maximum arguments to function.".to_string(),
-                    };
+                    let parse_error = parse_err(
+                        &self.previous(),
+                        "Exceeded maximum arguments to function."
+                    );
                     self.error(parse_error.clone());
                     return Err(parse_error);
                 }
@@ -940,7 +937,7 @@ impl Parser {
             LeftBracket => {
                 self.advance();
                 let mut elements = Vec::new();
-                self.consume(LeftBracket, "expect '['");				
+                self.consume(LeftBracket, "expect '['")?;				
                 let mut expr = self.expression(symbols)?;
                 elements.push(expr);
                 while self.matches(&[Comma]) {
@@ -960,10 +957,10 @@ impl Parser {
                 let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
                 self.advance(); // move past the bad token
-                Err(ParseError {
-                    t: self.peek(),
-                    message,
-                })
+                Err(parse_err(
+                    &self.peek(),
+                    &message
+                ))
             }
         }
     }

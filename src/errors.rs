@@ -73,6 +73,10 @@ impl Error {
 
 // Convenience
 pub fn compiler_err(t: &Token, msg: &str) -> Result<ObjectCode,Error> {
-    return  Err(Error::new(t, ErrorType::Compiler, msg.to_string()))
+    Err(Error::new(t, ErrorType::Compiler, msg.to_string()))
 }
 
+// Convenience
+pub fn parse_err(t: &Token, msg: &str) -> Error {
+    Error::new(t, ErrorType::Parse, msg.to_string())
+}

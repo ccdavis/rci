@@ -20,8 +20,9 @@ pub fn compile(code: &str) {
 	let mut global_symbols = symbol_table::SymbolTable::global();
 	let mut scanner = lex::Scanner::new(code.to_string());
 	let tokens = scanner.tokenize();
-	let mut parser = Parser::new(tokens);
-	let statements = parser.parse(&mut global_symbols);
+	let mut ast = Parser::new(tokens);
+	
+	let statements = ast.parse(&mut global_symbols);
 	statements
 		.iter()
 		.for_each(|stmt| 
