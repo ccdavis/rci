@@ -26,6 +26,28 @@ pub struct CollectionType {
     pub size: Option<usize>,
 }
 
+// Named fields
+pub struct FieldType {
+	pub name: String,
+	pub field_type: DataType,
+}
+
+pub struct RecordType {
+	pub fields: Vec<FieldType>,
+}
+
+pub struct SetType {
+	pub member_type: DataType,
+	pub members: Vec<DataValue>,
+}
+
+pub struct EnumerationType {
+	pub enum_name: String,
+	// Each enum value (location in vec) gets a default name
+	// or user-defined name.
+	pub items: Vec<String>,
+}
+
 // Simple data types and values
 #[derive(Clone, Debug, PartialEq)]
 pub enum DataType {
@@ -33,6 +55,7 @@ pub enum DataType {
     Number,
     Bool,
     Array(Box<DataType>),
+	Enumeration(EnumerationType),
     User(String),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results

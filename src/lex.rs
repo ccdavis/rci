@@ -274,6 +274,8 @@ impl TokenType {
         use TokenType::*;
         match self {
             Number(_) => NumberType,
+			Integer(_) => IntegerType,
+			Float(_) => FloatType,
             Str(_) => StringType,
             True => BooleanType,
             False => BooleanType,

@@ -277,7 +277,7 @@ impl Parser {
                         ));
                     }
 
-                    let array_type = match DataType::from_token_type(&array_type_name.token_type) {
+                    let array_contains_type = match DataType::from_token_type(&array_type_name.token_type) {
                         Some(valid_type) => valid_type,
                         None => {
                             return Err(parse_err(
@@ -288,7 +288,7 @@ impl Parser {
                     };
 
                     self.consume(Greater, "expect '>' after array member type.")?;
-                    param_type = DataType::Array(Box::new(array_type))
+                    param_type = DataType::Array(Box::new(array_contains_type))
                 }
 
                 // Add param to local symbol table
