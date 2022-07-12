@@ -24,6 +24,14 @@ pub struct CollectionType {
     pub index_type: DataType,
     pub contains_type: DataType,
     pub size: Option<usize>,
+    pub min_index: Option<DataValue>,
+    pub max_index: Option<DataValue>,
+}
+
+pub enum Lookup {
+    pub DirectMap(CollectionType),
+    pub HashedMap(CollectionType),
+    pub Vector(CollectionType),
 }
 
 // Named fields
@@ -36,9 +44,13 @@ pub struct RecordType {
 	pub fields: Vec<FieldType>,
 }
 
-pub struct SetType {
-	pub member_type: DataType,
-	pub members: Vec<DataValue>,
+pub struct TupleType {
+    pub members: Vec<DataType>,
+}
+
+pub struct EnumValue {
+    pub enum_name: String,
+    pub value: String,
 }
 
 pub struct EnumerationType {
@@ -48,18 +60,51 @@ pub struct EnumerationType {
 	pub items: Vec<String>,
 }
 
+
+pub struct SetType {
+	pub member_type: DataType,
+	pub members: Vec<DataValue>,
+}
+
+pub struct RangeType {
+    pub member_type: DataType,
+    pub low: DataValue,
+    pub high: DataValue,
+}
+
+pub struct UserType {
+    pub name: String,
+    definition: DataType,
+}
+
 // Simple data types and values
 #[derive(Clone, Debug, PartialEq)]
 pub enum DataType {
     Str,
     Number,
+    Integer,
+    Float,
     Bool,
-    Array(Box<DataType>),
-	Enumeration(EnumerationType),
+    Lookup(CollectionType),	
+    Tuple(TupleType),
     User(String),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
 }
+
+#[derive(Clone, Debug)]
+pub enum DataValue {
+    Str(String),
+    Number(f64),
+    Bool(bool),
+    Integer(int64),
+    Float(f64),
+    Tuple(Vec<DataValue>),
+    Lookup(Vec<DataValue>), // not all lookup types can be literals
+    User(String), // just give the name for now
+    Unresolved,   // for the type-checker to figure out later
+}
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjectCode {
@@ -74,16 +119,6 @@ pub struct GlobalStatementObjectCode {
     pub decl_name: String, // variable name, function name, type name etc
     pub init_code: String, // Compiled init code that must be called elsewhere
     pub init_name: String, // Name of initializer function
-}
-
-#[derive(Clone, Debug)]
-pub enum DataValue {
-    Str(String),
-    Number(f64),
-    Bool(bool),
-    Array(Vec<DataValue>),
-    User(String), // just give the name for now
-    Unresolved,   // for the type-checker to figure out later
 }
 
 impl fmt::Display for DataType {

@@ -79,8 +79,11 @@ fun calc(x1:num, y1:num, x2:num, y2:num):num {
 	return points;
 }
 
+var abc: num = 5;
+
 {
-//	var a:num = calc("abc");
+	//var a:num = calc("abc", true,1,2);
+	//val z = 1 + "abc" + true;
 
 	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;
 	//val start = clock();
