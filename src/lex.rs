@@ -1,4 +1,4 @@
-use core::str::Chars;
+
 use std::collections::HashMap;
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {

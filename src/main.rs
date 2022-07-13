@@ -5,10 +5,8 @@ mod parser;
 mod statement;
 mod symbol_table;
 mod types;
-
 use parser::*;
-use symbol_table::SymbolTable;
-use types::*;
+
 
 use std::fs;
 

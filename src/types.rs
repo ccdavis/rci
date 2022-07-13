@@ -1,10 +1,6 @@
-use crate::errors;
-use crate::errors::*;
-use crate::lex::TokenType;
-use crate::symbol_table::SymbolTableEntry;
 
+use crate::lex::TokenType;
 use std::fmt;
-use std::rc::Rc;
 
 // Types of declarations that can be stored in the symbol table which will
 // hold data of the different types
@@ -20,39 +16,55 @@ pub enum DeclarationType {
 }
 
 #[derive(Clone)]
-pub struct CollectionType {
-    pub index_type: DataType,
-    pub contains_type: DataType,
-    pub size: Option<usize>,
-    pub min_index: Option<DataValue>,
-    pub max_index: Option<DataValue>,
+pub enum LookupType {
+    DirectMap {
+        index_type: DataType, 
+        contains_type: DataType,
+        size: usize,
+    },
+    HashedMap {
+        index_type: DataType,
+        contains_type: DataType,
+    },
+    Vector {
+        index_type: DataType,
+        contains_type: DataType,        
+    },
+    Array {
+        index_type: DataType,
+        contains_type: DataType,
+        size: Option<usize>,
+        low_index: Box<DataValue>,
+        high_index: Box<DataValue>,
+    },
 }
 
-pub enum Lookup {
-    pub DirectMap(CollectionType),
-    pub HashedMap(CollectionType),
-    pub Vector(CollectionType),
-}
+
 
 // Named fields
+#[derive(Clone)]
 pub struct FieldType {
 	pub name: String,
 	pub field_type: DataType,
 }
 
+#[derive(Clone)]
 pub struct RecordType {
 	pub fields: Vec<FieldType>,
 }
 
+#[derive(Clone)]
 pub struct TupleType {
     pub members: Vec<DataType>,
 }
 
+#[derive(Clone)]
 pub struct EnumValue {
     pub enum_name: String,
     pub value: String,
 }
 
+#[derive(Clone)]
 pub struct EnumerationType {
 	pub enum_name: String,
 	// Each enum value (location in vec) gets a default name
@@ -60,21 +72,23 @@ pub struct EnumerationType {
 	pub items: Vec<String>,
 }
 
-
+#[derive(Clone)]
 pub struct SetType {
 	pub member_type: DataType,
 	pub members: Vec<DataValue>,
 }
 
+#[derive(Clone)]
 pub struct RangeType {
-    pub member_type: DataType,
-    pub low: DataValue,
-    pub high: DataValue,
+    pub member_type: Box<DataType>,
+    pub low: Box<DataValue>,
+    pub high: Box<DataValue>,
 }
 
+#[derive(Clone)]
 pub struct UserType {
     pub name: String,
-    definition: DataType,
+    definition: Box<DataType>,
 }
 
 // Simple data types and values
@@ -85,9 +99,10 @@ pub enum DataType {
     Integer,
     Float,
     Bool,
-    Lookup(CollectionType),	
-    Tuple(TupleType),
-    User(String),
+    Lookup(Box<LookupType>),
+    Tuple(Box<TupleType>),
+    Range(Box<RangeType>),
+    User(Box<UserType>),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
 }
@@ -97,10 +112,11 @@ pub enum DataValue {
     Str(String),
     Number(f64),
     Bool(bool),
-    Integer(int64),
+    Integer(i64),
     Float(f64),
     Tuple(Vec<DataValue>),
-    Lookup(Vec<DataValue>), // not all lookup types can be literals
+    Lookup { varient: LookupType, content: Vec<DataValue> }, // not all lookup types can be literals
+    Range { low: Box<DataValue>, high: Box<DataValue> },
     User(String), // just give the name for now
     Unresolved,   // for the type-checker to figure out later
 }

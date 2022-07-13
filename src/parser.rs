@@ -267,9 +267,9 @@ impl Parser {
                     }
                 };
 
-                if let DataType::Array(_) = param_type {
-                    self.consume(Less, "expect '<' after 'array' to complete type signature.")?;
-                    let array_type_name = self.advance();
+                if let DataType::Lookup(_) = param_type {
+                    self.consume(Less, "expect '<' after 'Array, DirectMap, HashMap' to complete type signature.")?;
+                    let lookup_type_name = self.advance();
                     if matches!(array_type_name.token_type, TokenType::ArrayType) {
                         return Err(parse_err(
                             &array_type_name,
@@ -288,7 +288,8 @@ impl Parser {
                     };
 
                     self.consume(Greater, "expect '>' after array member type.")?;
-                    param_type = DataType::Array(Box::new(array_contains_type))
+                    let array_type = LookupType::Array { size: None, DataType::Number, contains_type: array_contains_type};
+                    param_type = DataType::Lookup(Box::new(array_type))
                 }
 
                 // Add param to local symbol table
@@ -409,9 +410,9 @@ impl Parser {
 
             let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
                 // For the most part complex types should be declared elsewhere, but
-                // we allow Map or Array or Set.
+                // we allow Map or Array.
                 Some(valid_type) => match valid_type {
-                    DataType::Array(_) => {
+                    DataType::Lookup(_) => {
                         self.consume(
                             TokenType::Less,
                             "expect '<' after 'array' to complete type signature.",
