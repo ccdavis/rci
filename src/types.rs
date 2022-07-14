@@ -34,8 +34,8 @@ pub enum LookupType {
         index_type: DataType,
         contains_type: DataType,
         size: Option<usize>,
-        low_index: Box<DataValue>,
-        high_index: Box<DataValue>,
+        low_index: Option<Box<DataValue>>,
+        high_index: Option<Box<DataValue>>,
     },
 }
 

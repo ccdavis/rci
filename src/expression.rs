@@ -4,6 +4,7 @@ use crate::errors::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::*;
+use crate::types::LookupType;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
@@ -324,10 +325,48 @@ impl TypeCheck for LookupNode {
             println!("In lookup type checker");
         }
         let callee_return_type = self.callee.determine_type(symbols)?;
-        if let DataType::Array(element_type) = callee_return_type {
-            Ok(*element_type)
+
+        if let DataType::Lookup(lookup_variety) = callee_return_type {
+            let index_type = self.index.determine_type(symbols)?;
+            match *lookup_variety {
+                LookupType::DirectMap { index_type: t, contains_type: c, ..} => {
+                    if index_type != t {
+                        let message = format!("Index type doesn't match DirectMap index type");    
+                        return Err(Error::new(&self.bracket, ErrorType::Type, message));
+                    }
+                    Ok(c)
+                },
+                LookupType::HashedMap { index_type: t, contains_type: c, ..} => {
+                    if index_type != t {
+                        let message = format!("Index type doesn't match HashedMap index type");    
+                        return Err(Error::new(&self.bracket, ErrorType::Type, message));
+                    }
+                    Ok(c)
+                },
+                LookupType::Array { index_type: t, contains_type: c, ..} => {
+                    if index_type != t {
+                        let message = format!("Index type doesn't match Vector index type");    
+                        return Err(Error::new(&self.bracket, ErrorType::Type, message));
+                    }
+                    Ok(c)
+                },
+                LookupType::Vector { index_type: t, contains_type: c, ..} => {
+                    if index_type != t {
+                        let message = format!("Index type doesn't match Array index type");    
+                        return Err(Error::new(&self.bracket, ErrorType::Type, message));
+                    }
+                    Ok(c)
+                },
+                _ => {
+                    let message = format!("Lookups  type expected.");
+                    Err(Error::new(&self.bracket, ErrorType::Type, message))
+                }
+
+            }
+            
+            
         } else {
-            let message = format!("Only array lookups supported currently.");
+            let message = format!("Lookups  type expected.");
             Err(Error::new(&self.bracket, ErrorType::Type, message))
         }
     }
@@ -378,6 +417,9 @@ impl TypeCheck for ArrayNode {
 
         let first_type = self.elements[0].determine_type(symbols)?;
         let mut last_type = first_type.clone();
+        let array_length = self.elements.len();
+        let low_ind = DataValue::Number(0.0);
+        let high_ind = DataValue::Number(array_length as f64 -1.0);
 
         // Use enumerate to give an index to any error messages?
         for (index, t) in self.elements.iter().enumerate() {
@@ -392,7 +434,16 @@ impl TypeCheck for ArrayNode {
             }
             last_type = this_type;
         }
-        Ok(DataType::Array(Box::new(first_type.clone())))
+        Ok(
+            DataType::Lookup(Box::new(
+                LookupType::Array {
+                    contains_type: first_type.clone(), 
+                    size: Some(array_length), 
+                    index_type: DataType::Number,
+                    low_index: Some(Box::new(low_ind)),
+                    high_index: Some(Box::new(high_ind)),
+                }
+        )))
     }
 }
 

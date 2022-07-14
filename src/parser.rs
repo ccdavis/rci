@@ -270,25 +270,31 @@ impl Parser {
                 if let DataType::Lookup(_) = param_type {
                     self.consume(Less, "expect '<' after 'Array, DirectMap, HashMap' to complete type signature.")?;
                     let lookup_type_name = self.advance();
-                    if matches!(array_type_name.token_type, TokenType::ArrayType) {
+                    if matches!(lookup_type_name.token_type, TokenType::ArrayType) {
                         return Err(parse_err(
-                            &array_type_name,
+                            &lookup_type_name,
                             "Can't nest arrays in function parameters.",
                         ));
                     }
 
-                    let array_contains_type = match DataType::from_token_type(&array_type_name.token_type) {
+                    let array_contains_type = match DataType::from_token_type(&lookup_type_name.token_type) {
                         Some(valid_type) => valid_type,
                         None => {
                             return Err(parse_err(
-								&array_type_name,
-								"Can't make an array of this type. Types must be built-in or user defined."
+								&lookup_type_name,
+								"Can't make a lookup of this type. Types must be built-in or user defined."
 							));
                         }
                     };
 
-                    self.consume(Greater, "expect '>' after array member type.")?;
-                    let array_type = LookupType::Array { size: None, DataType::Number, contains_type: array_contains_type};
+                    self.consume(Greater, "expect '>' after lookup member type.")?;
+                    let array_type = LookupType::Array{ 
+                            size: None, 
+                            index_type: DataType::Number, 
+                            low_index: None,
+                            high_index: None,
+                            contains_type: array_contains_type
+                        };
                     param_type = DataType::Lookup(Box::new(array_type))
                 }
 
