@@ -15,8 +15,9 @@ pub enum DeclarationType {
     Type,  // user defined, the name in the symbol table entry will have the definition
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LookupType {
+    Unresolved,
     DirectMap {
         index_type: DataType, 
         contains_type: DataType,
@@ -42,29 +43,29 @@ pub enum LookupType {
 
 
 // Named fields
-#[derive(Clone)]
+#[derive(Clone,Debug,PartialEq)]
 pub struct FieldType {
 	pub name: String,
 	pub field_type: DataType,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RecordType {
 	pub fields: Vec<FieldType>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TupleType {
     pub members: Vec<DataType>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EnumValue {
     pub enum_name: String,
     pub value: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EnumerationType {
 	pub enum_name: String,
 	// Each enum value (location in vec) gets a default name
@@ -72,27 +73,27 @@ pub struct EnumerationType {
 	pub items: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SetType {
 	pub member_type: DataType,
 	pub members: Vec<DataValue>,
 }
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq, Debug)]
 pub struct RangeType {
     pub member_type: Box<DataType>,
     pub low: Box<DataValue>,
     pub high: Box<DataValue>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UserType {
     pub name: String,
     definition: Box<DataType>,
 }
 
 // Simple data types and values
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug,PartialEq)]
 pub enum DataType {
     Str,
     Number,
@@ -107,7 +108,7 @@ pub enum DataType {
     Unresolved, // Incomplete type checker results
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DataValue {
     Str(String),
     Number(f64),
@@ -140,12 +141,16 @@ pub struct GlobalStatementObjectCode {
 impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {
-            DataType::Number => "number".to_string(),
-            DataType::Str => "string".to_string(),
-            DataType::Bool => "boolean".to_string(),
-            DataType::Array(ref dt) => format!("Array[{}]", &dt),
+            DataType::Number => "num".to_string(),
+			DataType::Integer => "int".to_string(),
+			DataType::Float => "flt".to_string(),
+			DataType::Tuple(_) => "tuple".to_string(),
+			DataType::Range(_) => "range".to_string(),
+            DataType::Str => "str".to_string(),
+            DataType::Bool => "bool".to_string(),
+            DataType::Lookup(_) => "Lookup".to_string(),  
             DataType::Empty => "empty".to_string(),
-            DataType::User(u) => u.as_str().to_string(),
+            DataType::User(u) => u.name.clone(),
             DataType::Unresolved => "UNRESOLVED".to_string(),
         };
         write!(f, "{}", &name)
@@ -158,8 +163,24 @@ impl DataType {
             TokenType::NumberType => Some(DataType::Number),
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
-            TokenType::ArrayType => Some(DataType::Array(Box::new(DataType::Unresolved))),
-            TokenType::Identifier(n) => Some(DataType::User(n.to_owned())),
+            TokenType::ArrayType => 
+				Some(
+					DataType::Lookup(
+						Box::new(LookupType::Unresolved)
+					)
+				),
+            TokenType::Identifier(n) => 
+				Some(
+					DataType::User(
+						Box::new( 
+							UserType{
+								name:n.to_owned(),
+								definition: Box::new(DataType::Unresolved),
+							}
+						)
+					)
+				),
+						
             _ => None,
         }
     }
@@ -168,17 +189,34 @@ impl DataType {
         match dv {
             DataValue::Str(_) => DataType::Str,
             DataValue::Number(_) => DataType::Number,
+			DataValue::Integer(_) => DataType::Integer,
+			DataValue::Float(_) => DataType::Float,
+			DataValue::Range {..} => panic!("DataValue literal to DataType::Range(.,.) not implemented yet!"),
+			DataValue::Tuple(_) => panic!("Literal value to type not implemented for Tuple type yet.!"),
             DataValue::Bool(_) => DataType::Bool,
-            DataValue::Array(ref value) => {
-                let element_type = if value.len() == 0 {
-                    Box::new(DataType::Unresolved)
+            DataValue::Lookup {varient: v, content: c} => {
+                let element_type = if c.len() == 0 {
+                    DataType::Unresolved
                 } else {
-                    Box::new(DataType::from_data_value(&value[0]))
+                    DataType::from_data_value(&c[0])
                 };
-                DataType::Array(element_type)
+                DataType::Lookup(Box::new(LookupType::Array {
+						contains_type: element_type,
+						index_type: DataType::Number,
+						size: Some(c.len()),
+						low_index: None,
+						high_index: None,
+					}))
             }
-            DataValue::User(n) => DataType::User(n.to_owned()),
+            DataValue::User(n) => DataType::User(
+				Box::new(
+					UserType {
+						name: n.to_owned(),
+						definition: Box::new(DataType::Unresolved),
+					}
+				)),
             DataValue::Unresolved => DataType::Unresolved,
+			_=> panic!("DataValue to DataType not implemented for this type."),
         }
     }
 }
@@ -189,9 +227,11 @@ impl DataValue {
             DataValue::Str(s) => s.to_string(),
             DataValue::Number(n) => format!("{}", n),
             DataValue::Bool(b) => format!("{}", b),
-            DataValue::Array(ref data) => format!("{:?}", data),
+            DataValue::Lookup{varient: v, content: data} => 
+				format!("{:?}", &data),
             DataValue::User(u) => format!("{}", u.to_string()),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
+			_ => panic!("Print not implemented for this DataValue varient!"),
         }
     }
 
@@ -215,9 +255,10 @@ impl DataValue {
             DataValue::Str(_) => format!("(rci_value) string_literal({})", &lexeme),
             DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
             DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
-            DataValue::Array(ref data) => "//not implemented".to_string(),
+            DataValue::Lookup {..} => "//not implemented".to_string(),
             DataValue::User(ref u) => "//not implemented".to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
+			_ => panic!("Not implemented: DataValue can't be translated to object code!"),
         }
     }
 }

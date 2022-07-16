@@ -1,5 +1,5 @@
 use crate::errors::parse_err;
-use crate::errors::Error;
+
 use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
@@ -402,6 +402,7 @@ impl Parser {
 
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        // 'val' is the default
         let mut decl_type = DeclarationType::Val;
         if matches!(self.previous().token_type, TokenType::Var) {
             decl_type = DeclarationType::Var;
@@ -443,7 +444,14 @@ impl Parser {
                             };
 
                         self.consume(TokenType::Greater, "expect '>' after array member type.")?;
-                        DataType::Array(Box::new(array_type))
+                        DataType::Lookup(Box::new(LookupType::Array {
+                                index_type: DataType::Number,
+                                contains_type: array_type,
+                                low_index: None,
+                                high_index: None,
+                                size: None,
+
+                        }))
                     }
 
                     // TODO Map and Set go here
@@ -458,11 +466,11 @@ impl Parser {
             };
 
             if let DataType::User(ref u) = valid_type_name {
-                let has_type = symbols.lookup(u);
+                let has_type = symbols.lookup(&u.name);
                 if has_type.is_err() {
                     let message = format!(
                         "Type named {} not declared in this scope or an outer scope.",
-                        u
+                        &u.name
                     );
                     return Err(parse_err(&v, &message));
                 }
