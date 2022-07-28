@@ -50,10 +50,9 @@ pub enum TokenType {
     SetType,
     ArrayType,
     RecordType,
-
-    // keywords
-    Set,
-    Enum,
+	EnumType,
+	
+    // keywords    
     In,
     Intersects,
     Intersection,
@@ -81,6 +80,7 @@ pub enum TokenType {
     Cpy,
     While,
     To,
+	Type,
     Eol,
 
     ScanError(String),
@@ -133,9 +133,7 @@ impl TokenType {
             Greater => ">",
             GreaterEqual => ">=",
             DotDot => "..",
-
-            Set => "set",
-            Enum => "Enum",
+            
             In => "in",
             Intersects => "intersects",
             Intersection => "intersection",
@@ -164,20 +162,23 @@ impl TokenType {
             Cpy => "cpy",
             While => "while",
             To => "to",
+			Type =>"type",
             Eol => "newline",
+			
 
             // Type names
-            NumberType => "num",
-            IntegerType => "int",
-            FloatType => "flt",
-            CharType => "char",
-            ByteType => "byte",
+            NumberType => "Num",
+            IntegerType => "Int",
+            FloatType => "Flt",
+            CharType => "Char",
+            ByteType => "Byte",
 
-            StringType => "str",
-            BooleanType => "bool",
-            SetType => "set",
-            ArrayType => "array",
-            RecordType => "rec",
+            StringType => "Str",
+            BooleanType => "Bool",
+            SetType => "Set",
+            ArrayType => "Array",
+            RecordType => "Rec",
+			EnumType => "Enum",
             _ => {
                 formatted = Some(match self {
                     // literals
@@ -232,7 +233,8 @@ impl TokenType {
             SetType,
             ArrayType,
             RecordType,
-            Enum,
+            EnumType,
+			Type,
             In,
             Intersects,
             Intersection,

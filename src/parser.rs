@@ -214,6 +214,11 @@ impl Parser {
 
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {        
         self.skip_all_newlines();
+		
+		if self.matches(&[TokenType::Type]) {
+			return self.type_declaration(symbols);
+		}
+		
         if self.matches(&[TokenType::Fun]) {
             return self.function("function", symbols);
         }
@@ -399,7 +404,70 @@ impl Parser {
         // If none are found it's a parse error.
         Ok(stmt_list)
     }
-
+	
+	fn type_declaration(&mut self, symbols: &mut SymbolTable)-> Result<Stmt, ParseError> {
+		use TokenType::*;
+		
+		let decl_type = DeclarationType::Type;		
+		let type_name_token: Token = self.consume_identifier("Expect variable name")?;
+		let type_name = type_name_token.identifier_string();
+		self.consume(Equal, "Expect '=' after type name.")?;
+		let next_token_type = self.peek().token_type;
+		match next_token_type {
+			NumberType | IntegerType | FloatType |
+			StringType |  CharType | ByteType |
+			BooleanType | SetType | EnumType | 
+			RecordType | ArrayType  => {},
+			_ => {
+				let message = format!("'{}' Not a valid type name to use in a type declaration.", 
+					&next_token_type.print());
+				return Err(parse_err(&self.peek(), &message));
+			}					
+		}
+		
+		if self.matches(&[EnumType]) {
+			self.skip_all_newlines();
+			return self.enum_type_declaration(&type_name, symbols);
+		}
+		
+		if self.matches(&[SetType]) {
+			self.skip_all_newlines();
+			return self.set_type_declaration(&type_name, symbols);
+		}
+		
+		if self.matches(&[ArrayType]) {
+			self.skip_all_newlines();
+			return self.array_type_declaration(&type_name, symbols);
+		}
+		
+		panic!("Type declaration for {} not implemented yet!", &next_token_type.print());
+	}
+	
+	fn enum_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
+		use TokenType::*;
+		let mut enum_list = Vec::new();
+		let location = self.consume(LeftParen, "expect '('. '(', ')' enclose enumeration lists.")?;
+		self.skip_all_newlines();
+		while matches!(self.peek().token_type, Identifier(_)) {
+			let enum_token = self.consume_identifier("Expect identifier")?;
+			let enum_name = enum_token.identifier_string();
+			enum_list.push(enum_name.clone());
+			// TODO add symbol table
+			self.skip_all_newlines();
+		}				
+		self.consume(RightParen, "expect ')'. '(', ')' enclose enumeration lists.")?;
+		self.match_terminator()?;
+		Ok(Stmt::enum_type(location, &type_name, enum_list))
+	}
+	
+	fn set_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
+		panic!("Not implemented")
+	}
+	
+	fn array_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
+		panic!("Not implemented!")
+	}
+	
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         // 'val' is the default
@@ -932,7 +1000,8 @@ impl Parser {
                 let l = self.peek().line;
                 let c = self.peek().column;
                 let type_name = self.peek().token_type.print();
-                let message = format!("Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
+                let message = format!(
+					"Error parsing primary expression at {}, {}. Found {} but expected a number, string, true, false, or nil.",
 					l,c,&type_name);
                 self.advance(); // move past the bad token
                 Err(parse_err(&self.peek(), &message))

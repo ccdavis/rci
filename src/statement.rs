@@ -7,6 +7,7 @@ use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
 use crate::types::DataType;
+use crate::types::EnumerationType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
 use crate::types::GlobalStatementObjectCode;
@@ -42,6 +43,7 @@ pub enum Stmt {
     Return(ReturnStmtNode),
     Break(BreakStmtNode),
     Program(ProgramNode),
+	Type(TypeNode),
     NoOp,
 }
 
@@ -74,6 +76,7 @@ impl Stmt {
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
+			Type(n) => n.check_types(symbols),
             NoOp => Ok(()),
             _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
@@ -92,6 +95,7 @@ impl Stmt {
             Return(n) => n.compile(symbols),
             Break(n) => n.compile(symbols),
             Program(n) => n.compile(symbols),
+			Type(n) => n.compile(symbols),
             _ => panic!("Statement type compilation not supported yet."),
         }
     }
@@ -604,7 +608,40 @@ impl Compiler for ProgramNode {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct TypeNode {
+	location: Token,
+	name: String,
+	definition: DataType,
+}
+
+impl TypeChecking for TypeNode {
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+        Ok(())
+    }
+}
+
+impl Compiler for TypeNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+		Ok("// Type node Not implemented ".to_string())
+	}
+}
+  
 impl Stmt {
+
+	pub fn enum_type(location: Token, enum_name: &str, enum_list: Vec<String>)-> Stmt {
+		let enum_definition = EnumerationType{ 
+			enum_name: enum_name.to_string(),
+			items:  enum_list 
+		};
+		
+		Stmt::Type( TypeNode { 
+			location,
+			name: enum_name.to_string(),
+			definition: DataType::Enumeration(enum_definition),
+		})						
+	}
+
     pub fn print_stmt(expressions: Vec<Expr>) -> Stmt {
         Stmt::Print(PrintStmtNode { expressions })
     }
@@ -657,6 +694,7 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
+	
 
     pub fn return_stmt(location: Token, expr: Expr, return_type: DataType) -> Stmt {
         Stmt::Return(ReturnStmtNode {

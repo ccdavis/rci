@@ -103,6 +103,7 @@ pub enum DataType {
     Lookup(Box<LookupType>),
     Tuple(Box<TupleType>),
     Range(Box<RangeType>),
+	Enumeration(EnumerationType),
     User(Box<UserType>),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
