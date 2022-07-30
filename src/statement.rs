@@ -629,16 +629,11 @@ impl Compiler for TypeNode {
   
 impl Stmt {
 
-	pub fn enum_type(location: Token, enum_name: &str, enum_list: Vec<String>)-> Stmt {
-		let enum_definition = EnumerationType{ 
-			enum_name: enum_name.to_string(),
-			items:  enum_list 
-		};
-		
+	pub fn type_decl(location: &Token, name: &str, definition: &DataType) -> Stmt {				
 		Stmt::Type( TypeNode { 
-			location,
-			name: enum_name.to_string(),
-			definition: DataType::Enumeration(enum_definition),
+			location: location.clone(),
+			name: name.to_string(),
+			definition:  definition.clone(),
 		})						
 	}
 

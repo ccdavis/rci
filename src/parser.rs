@@ -195,7 +195,7 @@ impl Parser {
             }
             let stmt = self.declaration(global_symbols)?;
             match stmt {
-                Stmt::Var(_) | Stmt::Fun(_) => decls.push(stmt),
+                Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
                 Stmt::Block(_) => {
                     imperatives = stmt;
                     found_main = true;
@@ -412,35 +412,21 @@ impl Parser {
 		let type_name_token: Token = self.consume_identifier("Expect variable name")?;
 		let type_name = type_name_token.identifier_string();
 		self.consume(Equal, "Expect '=' after type name.")?;
-		let next_token_type = self.peek().token_type;
-		match next_token_type {
-			NumberType | IntegerType | FloatType |
-			StringType |  CharType | ByteType |
-			BooleanType | SetType | EnumType | 
-			RecordType | ArrayType  => {},
+		// Instead of self.match([]) grab whatever, then match exhaustively after
+		// advancing past the supposed type.
+		let assigned_type = self.advance().token_type;		
+		self.skip_all_newlines();
+		
+		match assigned_type {
+			EnumType => self.enum_type_declaration(&type_name, symbols),
+			SetType => self.set_type_declaration(&type_name, symbols),
+			ArrayType => self.array_type_declaration(&type_name, symbols),
 			_ => {
-				let message = format!("'{}' Not a valid type name to use in a type declaration.", 
-					&next_token_type.print());
-				return Err(parse_err(&self.peek(), &message));
-			}					
-		}
-		
-		if self.matches(&[EnumType]) {
-			self.skip_all_newlines();
-			return self.enum_type_declaration(&type_name, symbols);
-		}
-		
-		if self.matches(&[SetType]) {
-			self.skip_all_newlines();
-			return self.set_type_declaration(&type_name, symbols);
-		}
-		
-		if self.matches(&[ArrayType]) {
-			self.skip_all_newlines();
-			return self.array_type_declaration(&type_name, symbols);
-		}
-		
-		panic!("Type declaration for {} not implemented yet!", &next_token_type.print());
+			  let message = format!("'{}' Not a valid type name to use in a type declaration.", 
+					&assigned_type.print());
+				Err(parse_err(&self.peek(), &message))
+			}
+		}						
 	}
 	
 	fn enum_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
@@ -457,7 +443,29 @@ impl Parser {
 		}				
 		self.consume(RightParen, "expect ')'. '(', ')' enclose enumeration lists.")?;
 		self.match_terminator()?;
-		Ok(Stmt::enum_type(location, &type_name, enum_list))
+		
+		let enum_definition = EnumerationType{ 
+			enum_name: type_name.to_string(),
+			items:  enum_list 
+		};
+		let type_definition = DataType::Enumeration(enum_definition);
+		let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
+				
+		let entry_number = symbols.entries.len();
+		let ste = SymbolTableEntry::new_type(
+			entry_number,
+			&location,
+			type_name,
+			&type_definition,
+			&DataValue::Unresolved,									
+		);		
+		if symbols.add(ste) {
+			Ok(type_definition_node)
+		} else {
+			// Already defined
+			let message = format!("Type '{}' already declared in this scope!", type_name);
+			Err(parse_err(&location, &message))
+		}		
 	}
 	
 	fn set_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {

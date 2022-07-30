@@ -26,6 +26,29 @@ pub struct SymbolTableEntry {
 
 impl SymbolTableEntry {
     // TODO: Change these init methods to take the Declaration / Statement Node struct types
+	
+	pub fn new_type(
+		entry_number: usize,
+        location: &Token,
+		name: &str,
+		data_type: &DataType,
+        data_value: &DataValue, // default value if any
+	) -> Self {
+		Self {
+            entry_number,
+            location: Some(location.clone()),
+            name: name.to_owned(),
+            is_arg: false,
+            entry_type: DeclarationType::Type,
+            data_type: data_type.clone(),
+            data_value: data_value.clone(),
+            size: 1,
+            contains_type: DataType::Empty,
+			indexed_by_type: DataType::Empty,
+            fields: Vec::new(),
+        }		
+	}
+		
 
     pub fn new_var(
         entry_number: usize,
