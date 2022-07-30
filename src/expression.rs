@@ -13,7 +13,7 @@ use crate::types::ObjectCode;
 
 
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
@@ -96,7 +96,9 @@ impl TypeCheck for BinaryNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         use TokenType::*;
         let left_type = self.left.determine_type(symbols)?;
+		if TRACE { println!("In binary type check left: {:?}",&left_type);}
         let right_type = self.right.determine_type(symbols)?;
+		if TRACE { println!("In binary type check right: {:?}",&right_type);}
 
         if self.operator.is_comparison_operator() {
             if matches!(left_type, DataType::Number) && matches!(right_type, DataType::Number) {

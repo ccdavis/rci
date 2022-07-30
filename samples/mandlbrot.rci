@@ -23,12 +23,12 @@ val max_iterations = 50;
 val escape_radius = 2.0;
 
 
-fun not_escaped(x:num,iy:num):bool {
+fun not_escaped(x:Num,iy:Num):Bool {
 	return (x*x + iy*iy) < 2*escape_radius; 	
 }
 
 // Check a point in the complex plane for membership
-fun in_mandelbrot(c_x:num, c_iy:num): bool {
+fun in_mandelbrot(c_x:Num, c_iy:Num): Bool {
 	var iterations = 0;
 	var zn_x = 0.0;
 	var zn_iy = 0.0;
@@ -44,7 +44,7 @@ fun in_mandelbrot(c_x:num, c_iy:num): bool {
 	return iterations < max_iterations;
 }
 
-fun calc(x1:num, y1:num, x2:num, y2:num):num {
+fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 	var left = x1;
 	val right = x2;
 	var top = y1;
@@ -79,10 +79,10 @@ fun calc(x1:num, y1:num, x2:num, y2:num):num {
 	return points;
 }
 
-var abc: num = 5;
+var abc: Num = 5;
 
 {
-	//var a:num = calc("abc", true,1,2);
+	//var a:Num = calc("abc", true,1,2);
 	//val z = 1 + "abc" + true;
 
 	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;

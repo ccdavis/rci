@@ -104,6 +104,7 @@ pub enum DataType {
     Tuple(Box<TupleType>),
     Range(Box<RangeType>),
 	Enumeration(EnumerationType),
+	Record(RecordType),
     User(Box<UserType>),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
@@ -150,6 +151,8 @@ impl fmt::Display for DataType {
             DataType::Str => "str".to_string(),
             DataType::Bool => "bool".to_string(),
             DataType::Lookup(_) => "Lookup".to_string(),  
+			DataType::Enumeration(_)=> "Enum".to_string(),
+			DataType::Record(_)=>"Rec".to_string(),
             DataType::Empty => "empty".to_string(),
             DataType::User(u) => u.name.clone(),
             DataType::Unresolved => "UNRESOLVED".to_string(),

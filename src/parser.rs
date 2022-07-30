@@ -9,7 +9,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE:bool = false;
+const TRACE:bool = true;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -586,6 +586,7 @@ impl Parser {
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
+				if TRACE { println!("Initializer: {:?}", &initializer);}
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
                         self.error(parse_err(&self.previous(), &type_error.message));
