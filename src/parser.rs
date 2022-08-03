@@ -436,9 +436,16 @@ impl Parser {
 		self.skip_all_newlines();
 		while matches!(self.peek().token_type, Identifier(_)) {
 			let enum_token = self.consume_identifier("Expect identifier")?;
-			let enum_name = enum_token.identifier_string();
-			enum_list.push(enum_name.clone());
-			// TODO add symbol table
+			let value = enum_token.identifier_string();
+			let string_representation = value.clone();
+			let enum_value = EnumValue { 
+				member_of_enum: type_name.to_string(),
+				value, 
+				string_representation
+			};
+				
+			let data_value = DataValue::Enumeration(enum_value.clone());						
+			enum_list.push(enum_value.clone());									
 			self.skip_all_newlines();
 		}				
 		self.consume(RightParen, "expect ')'. '(', ')' enclose enumeration lists.")?;
@@ -446,11 +453,26 @@ impl Parser {
 		
 		let enum_definition = EnumerationType{ 
 			enum_name: type_name.to_string(),
-			items:  enum_list 
+			items:  enum_list.clone() 
 		};
 		let type_definition = DataType::Enumeration(enum_definition);
-		let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
-				
+		
+		for enum_value  in &enum_list {			
+			let entry_number = symbols.entries.len();
+			let ste = SymbolTableEntry::new_type(
+				entry_number,
+				&location,
+				&enum_value.value,
+				&type_definition,
+				&DataValue::Enumeration(enum_value.clone()),
+			);		
+			if !symbols.add(ste) {											
+				let message = format!("Enum member '{}' already declared in this scope!", type_name);
+				return Err(parse_err(&location, &message));
+			}									
+		}
+								
+		let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);				
 		let entry_number = symbols.entries.len();
 		let ste = SymbolTableEntry::new_type(
 			entry_number,
@@ -541,17 +563,24 @@ impl Parser {
                 }
             };
 
-            if let DataType::User(ref u) = valid_type_name {
-                let has_type = symbols.lookup(&u.name);
-                if has_type.is_err() {
-                    let message = format!(
-                        "Type named {} not declared in this scope or an outer scope.",
-                        &u.name
-                    );
-                    return Err(parse_err(&v, &message));
-                }
-            }
-
+			// If it's a user-defined type we need to look it up by name
+			// in the symbol table.
+			let lhs_type = match valid_type_name {				
+				DataType::User(ref u) => {
+					let has_type = symbols.lookup(&u.name);
+					if has_type.is_err() {
+						let message = format!(
+							"Type named {} not declared in this scope or an outer scope.",
+							&u.name
+						);
+						return Err(parse_err(&v, &message));
+					 } 
+					 has_type.unwrap().data_type.clone()
+				},
+				_=> valid_type_name,				
+			};
+			
+			
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
@@ -563,7 +592,7 @@ impl Parser {
                         entry_number,
                         &v,
                         &variable_name,
-                        &valid_type_name,
+                        &lhs_type,
                         &DataValue::Unresolved,
                     )
                 } else {
@@ -571,13 +600,13 @@ impl Parser {
                         entry_number,
                         &v,
                         &variable_name,
-                        &valid_type_name,
+                        &lhs_type,
                         &DataValue::Unresolved,
                     )
                 };
 
                 if symbols.add(entry) {
-                    Ok(Stmt::var_stmt(v, valid_type_name, initializer))
+                    Ok(Stmt::var_stmt(v, lhs_type, initializer))
                 } else {
                     // Already defined
                     let message = format!("Variable already declared in this scope!");

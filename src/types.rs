@@ -60,17 +60,9 @@ pub struct TupleType {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct EnumValue {
-    pub enum_name: String,
-    pub value: String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct EnumerationType {
-	pub enum_name: String,
-	// Each enum value (location in vec) gets a default name
-	// or user-defined name.
-	pub items: Vec<String>,
+	pub enum_name: String,	
+	pub items: Vec<EnumValue>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -103,11 +95,18 @@ pub enum DataType {
     Lookup(Box<LookupType>),
     Tuple(Box<TupleType>),
     Range(Box<RangeType>),
-	Enumeration(EnumerationType),
+	Enumeration(EnumerationType),	
 	Record(RecordType),
     User(Box<UserType>),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnumValue {	
+    pub member_of_enum: String,
+    pub value: String,
+	pub string_representation: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -120,6 +119,7 @@ pub enum DataValue {
     Tuple(Vec<DataValue>),
     Lookup { varient: LookupType, content: Vec<DataValue> }, // not all lookup types can be literals
     Range { low: Box<DataValue>, high: Box<DataValue> },
+	Enumeration(EnumValue),
     User(String), // just give the name for now
     Unresolved,   // for the type-checker to figure out later
 }
@@ -151,7 +151,7 @@ impl fmt::Display for DataType {
             DataType::Str => "str".to_string(),
             DataType::Bool => "bool".to_string(),
             DataType::Lookup(_) => "Lookup".to_string(),  
-			DataType::Enumeration(_)=> "Enum".to_string(),
+			DataType::Enumeration(ref enum_type)=> format!("Enum({})",&enum_type.enum_name),
 			DataType::Record(_)=>"Rec".to_string(),
             DataType::Empty => "empty".to_string(),
             DataType::User(u) => u.name.clone(),
@@ -197,7 +197,8 @@ impl DataType {
 			DataValue::Float(_) => DataType::Float,
 			DataValue::Range {..} => panic!("DataValue literal to DataType::Range(.,.) not implemented yet!"),
 			DataValue::Tuple(_) => panic!("Literal value to type not implemented for Tuple type yet.!"),
-            DataValue::Bool(_) => DataType::Bool,
+			DataValue::Enumeration(enum_value) =>  panic!("Can't create type from enum value"),            
+			DataValue::Bool(_) => DataType::Bool,
             DataValue::Lookup {varient: v, content: c} => {
                 let element_type = if c.len() == 0 {
                     DataType::Unresolved
