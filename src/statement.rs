@@ -636,7 +636,7 @@ impl Compiler for TypeNode {
 					.map(|i| format!("\"{}\"",&i.value))
 					.collect::<Vec<String>>()
 					.join(",");
-				let str_conversions = format!("static const char * {}_strings = [{}];\n",
+				let str_conversions = format!("static const char * {}_strings[] = {{ {} }};\n",
 					&self.name, &string_rep_list);
 				format!("{}{}",&enum_decl, &str_conversions)
 			},		

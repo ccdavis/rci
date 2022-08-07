@@ -535,7 +535,9 @@ impl TypeCheck for VariableNode {
 impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let var_type = self.determine_type(symbols)?;
+		if TRACE { println!("var type for {} is {}",&self.name.print(), &var_type)}
         if let TokenType::Identifier(ref var_name) = self.name.token_type {
+			if TRACE { println!("var name is {}",&var_name);}
             let ste = match symbols.lookup(&var_name) {
                 Ok(ref entry) => entry.clone(),
                 Err(error_msg) => {
@@ -546,17 +548,21 @@ impl Compiler for VariableNode {
                     ));
                 }
             };
-
-            Ok(ObjectCode {
-                data_type: var_type,
-                code: {
-                    if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
-                        format!("(*{})", &var_name)
-                    } else {
-                        format!("{}", &var_name)
-                    }
-                },
-            })
+			if TRACE { println!("ste: {:?}",&ste);}
+					
+			Ok(ObjectCode {
+				data_type: var_type,
+				code: {
+					if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+						format!("(*{})", &var_name)
+					// If the STE has a data_value of EnumerationValue it's an enum literal
+					} else if let DataValue::Enumeration(ref enum_value) = ste.data_value { 
+						format!("ENUM_VAL({}_{})",&enum_value.member_of_enum, &enum_value.value)
+					} else {
+						format!("{}", &var_name)
+					}
+				},
+			})
         } else {
             panic!("Compiler error. A variable node must have an identifier token type.");
         }
