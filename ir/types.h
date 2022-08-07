@@ -11,13 +11,16 @@ typedef unsigned char rci_bool;
 #define false 0
 typedef long rci_int;
 typedef double rci_number;
+typedef long rci_integer;
+typedef double rci_float;
+typedef long rci_enumeration;
 
 typedef enum { utf_8_encoded, byte_encoded} 
 	char_encoding;
 	
 
 // All the types that can have literals
-typedef enum { _number_, _string_ , _boolean_, _array_, _object_ } 
+typedef enum { _integer_,_float_, _enumeration_, _number_, _string_ , _boolean_, _array_, _object_ } 
 	rci_type;	
 
 

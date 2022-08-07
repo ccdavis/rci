@@ -17,6 +17,8 @@ void check(unsigned char result, const char * test_name) {
 	printf("\n");	
 }
 
+rci_value  x_type = ENUM_VAL(5);
+abc
 void test_number_macros() {	
 	 rci_value  x = NUMBER_VAL(5);
 	rci_value  y = NUMBER_VAL(1.25);

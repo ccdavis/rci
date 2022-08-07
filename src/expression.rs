@@ -105,6 +105,8 @@ impl TypeCheck for BinaryNode {
                 return Ok(DataType::Bool);
 
             // Allow boolean comparison with = or <>
+			} else if matches!(left_type, DataType::Enumeration(_)) && matches!(right_type, DataType::Enumeration(_)) {
+			   return Ok(DataType::Bool);
             } else if matches!(left_type, DataType::Bool)
                 && matches!(right_type, DataType::Bool)
                 && (matches!(self.operator.token_type, Equal)

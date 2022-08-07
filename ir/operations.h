@@ -12,6 +12,22 @@ typedef enum { _ADD_, _SUB_, _MUL_, _DIV_, _MOD_, _POW_, _SHL_, _SHR_,
 	
 rci_value comparison_binary_operation(rci_binary_operators op, rci_value left, rci_value  right) {
 	rci_value result = BOOL_VAL(false);
+	if (IS_ENUM(left) && IS_ENUM(right)) {
+		switch (op) {
+			case _EQ_ : {				
+				result = BOOL_VAL(AS_ENUM(left) == AS_ENUM(right));
+			}break;
+			case _NE_: {
+				result = BOOL_VAL(AS_ENUM(left) != AS_ENUM(right));
+			}break;
+			default:{
+				code_gen_error("Comparison operator not implemented for enumeration values.");
+			}
+		}
+		
+		return result;			
+	}
+	
 	switch(op) {
 		case _LT_ :{
 			result = BOOL_VAL(AS_NUMBER(left) < AS_NUMBER(right));

@@ -7,8 +7,7 @@ use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
 use crate::types::DataType;
-use crate::types::EnumerationType;
-use crate::types::DataValue;
+
 use crate::types::DeclarationType;
 use crate::types::GlobalStatementObjectCode;
 
@@ -108,6 +107,7 @@ impl Stmt {
         match self {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
+			Type(n) => n.compile_global(symbols),
             // TODO add Type statement types
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -623,8 +623,43 @@ impl TypeChecking for TypeNode {
 
 impl Compiler for TypeNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		Ok("// Type node Not implemented ".to_string())
+		let code = match self.definition {
+			DataType::Enumeration(ref enumeration_type) => {
+				let enumeration_list = enumeration_type.items.iter()
+					.map(|i| 
+						format!("{}_{}",&self.name, &i.value))
+					.collect::<Vec<String>>()
+					.join(",");
+				let enum_decl = format!("enum {} {{ {} }};\n",&self.name, enumeration_list);
+				
+				let string_rep_list = enumeration_type.items.iter()
+					.map(|i| format!("\"{}\"",&i.value))
+					.collect::<Vec<String>>()
+					.join(",");
+				let str_conversions = format!("static const char * {}_strings = [{}];\n",
+					&self.name, &string_rep_list);
+				format!("{}{}",&enum_decl, &str_conversions)
+			},		
+			_ => panic!("Not implemented yet: Type declaration"),
+		};
+		Ok(code)
 	}
+	
+	
+	fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {	
+		
+        let code = GlobalStatementObjectCode {
+            decl_type: DeclarationType::Type,
+            base_code: self.compile(symbols)?,
+            decl_name: self.name.clone(),
+            init_code: "".to_string(),
+            init_name: self.name.clone(),
+        };
+        Ok(code)
+    }
 }
   
 impl Stmt {

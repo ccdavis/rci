@@ -6,6 +6,9 @@
 typedef union {	
 	rci_bool _boolean;	
 	rci_number _number;
+	rci_float _float;
+	rci_integer _integer;
+	rci_enumeration _enumeration;
 	rci_object * _object;
 } rci_data;
 
@@ -50,21 +53,27 @@ typedef struct ArrayObject {
 
 #define BOOL_VAL(value) ((rci_value) {_boolean_, (rci_data){._boolean = value}})
 #define NUMBER_VAL(value) ((rci_value) {.type = _number_, .as = (rci_data){._number = value}})
+#define INTEGER_VAL(value) ((rci_value) {.type = _integer_, .as = (rci_data){._integer = value}})
+#define FLOAT_VAL(value) ((rci_value) {.type = _float_, .as = (rci_data){._float = value}})
+#define ENUM_VAL(value) ((rci_value) {.type = _enumeration_, .as = (rci_data){._enumeration = value}})
 
 #define AS_BOOL(value) ((value).as._boolean)
 #define AS_NUMBER(value) ((value).as._number)
+#define AS_INTEGER(value) ((value).as._integer)
+#define AS_FLOAT(value) ((value).as._float)
+#define AS_ENUM(value) ((value).as._enumeration)
 #define AS_OBJECT(value) ((value).as._object)
-
-
 
 #define IS_BOOL(value) ((value).type == _boolean_)
 #define IS_NUMBER(value) ((value).type == _number_)
+#define IS_INTEGER(value) ((value).type == _integer_)
+#define IS_FLOAT(value) ((value).type == _float_)
+#define IS_ENUM(value) ((value).type == _enumeration_)
 #define IS_OBJECT(value) ((value).type == _object_ )
 
 // String, Array are 'Object' types
 #define IS_STRING(value) ((value).type == _string_)
 #define IS_ARRAY(value) ((value).type == _array_ )
-
 
 
 #endif
