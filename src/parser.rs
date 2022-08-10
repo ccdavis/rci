@@ -6,6 +6,7 @@ use crate::lex::TokenType;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types::*;
+use crate::types;
 
 type ParseError = crate::errors::Error;
 
@@ -421,6 +422,7 @@ impl Parser {
 			EnumType => self.enum_type_declaration(&type_name, symbols),
 			SetType => self.set_type_declaration(&type_name, symbols),
 			ArrayType => self.array_type_declaration(&type_name, symbols),
+            RecordType => self.record_type_declaration(&type_name, symbols),
 			_ => {
 			  let message = format!("'{}' Not a valid type name to use in a type declaration.", 
 					&assigned_type.print());
@@ -428,7 +430,59 @@ impl Parser {
 			}
 		}						
 	}
-	
+	fn record_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError>{
+        use TokenType::*;
+        let mut field_list = Vec::new();
+        let location = self.consume(LeftParen, "expect '('. '(', ')' enclose a record's fields.")?;
+		self.skip_all_newlines();
+        while !matches!(self.peek().token_type, RightParen) {
+            let field_name_token = self.consume_identifier( "Expect field name.")?;
+            self.consume(Colon, "Expect ':' before field type.")?;
+            let field_type_token = match self.peek().token_type {
+				IntegerType | 
+				StringType | 
+				FloatType | 
+				NumberType | 
+				Identifier(_) | 
+				BooleanType | 
+				ArrayType  => self.advance(),
+				_ =>
+					{               
+						let message = format!("Record type can't have a field of '{}' type.!", self.peek().print());
+						return Err(parse_err(&self.peek(), &message));
+					}
+			};
+					
+            if !matches!(self.peek().token_type,RightParen) {
+                self.consume(Comma,"Expect comma after field type.")?;
+            }
+
+            let field_name = field_name_token.identifier_string();
+            let field_type = DataType::from_token_type(&field_type_token.token_type).unwrap();
+            field_list.push(FieldType { name: field_name, field_type});
+        }
+        self.advance();
+        let record_definition = types::RecordType{fields: field_list};
+        let type_definition = DataType::Record(record_definition);
+        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);				
+		let entry_number = symbols.entries.len();
+		let ste = SymbolTableEntry::new_type(
+			entry_number,
+			&location,
+			type_name,
+			&type_definition,
+			&DataValue::Unresolved,									
+		);		
+		if symbols.add(ste) {
+			Ok(type_definition_node)
+		} else {
+			// Already defined
+			let message = format!("Type '{}' already declared in this scope!", type_name);
+			Err(parse_err(&location, &message))
+		}		
+
+    }
+    
 	fn enum_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
 		use TokenType::*;
 		let mut enum_list = Vec::new();
