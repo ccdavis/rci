@@ -16,7 +16,7 @@ typedef union {
 typedef struct rci_value{
 	rci_type type;	
 	rci_data as;	
-}  rci_value;
+} rci_value;
 
 
 /* ************************************************************************************************
@@ -25,6 +25,15 @@ typedef struct rci_value{
 Definitions for complex types
 
 */
+typedef struct rci_record {
+	rci_value * fields;
+	int field_count;
+} rci_record;
+
+typedef struct RecordObject {
+	rci_object obj;
+	rci_record record_data;
+}RecordObject;
 
 typedef struct rci_str {		
 	long len;	 // number of bytes
@@ -74,6 +83,6 @@ typedef struct ArrayObject {
 // String, Array are 'Object' types
 #define IS_STRING(value) ((value).type == _string_)
 #define IS_ARRAY(value) ((value).type == _array_ )
-
+#define IS_RECORD(value) ((value).type == _object_ && (value).as._object->type == object_record )
 
 #endif
