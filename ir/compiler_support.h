@@ -29,8 +29,6 @@ rci_value record_new(rci_value data[], int field_count) {
 }
 
 
-
-
 rci_str rci_str_ascii_literal(char  str[]) {
 	rci_str result = {		
 		.len = strlen(str),

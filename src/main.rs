@@ -6,8 +6,6 @@ mod statement;
 mod symbol_table;
 mod types;
 use parser::*;
-
-
 use std::fs;
 
 const TRACE: bool = false;
@@ -22,7 +20,7 @@ pub fn compile(code: &str) {
     let statements = match ast.parse(&mut global_symbols) {
 		Ok(stmts) => stmts,
 		Err(parse_errors) => {
-			eprintln!("Parse errors in source code. Comp8ilation halted.");
+			eprintln!("Parse errors in source code. Compilation halted.");
 			std::process::exit(3);
 		}
 	};
@@ -82,4 +80,62 @@ fn main() {
     let code =
         fs::read_to_string(program_file).expect(&format!("File at {} unreadable.", program_file));
     compile(&code);
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::statement::Stmt;
+
+use super::*;
+	
+	const SRC_ENUMS:&str = "type Days = Enum(Monday Tuesday Wednesday)\n
+							fun check_enum(d: Days): Bool {\n
+								if d = Tuesday {\n
+									return true\n
+								}\n
+								var another_day: Days = Wednesday\n
+								if another_day == d {\n
+									print another_day\n
+								}\n
+								if d = Monday {\n
+									print \"A case of the Mondays\"\n
+									return false\n
+								}\n
+								return false\n 								
+							}\n
+							";
+
+
+  pub fn parse(code:&str) -> Result<Vec<Stmt>,Vec<errors::Error>> {
+        let mut global_symbols = symbol_table::SymbolTable::global();
+		let mut scanner = lex::Scanner::new(code.to_string());
+		let tokens = scanner.tokenize();
+		let mut ast = Parser::new(tokens);		
+		ast.parse(&mut global_symbols)
+  }
+
+
+  pub fn type_check(code:&str) -> Result<(),Vec<errors::Error>> {
+    let mut type_errors:Vec<errors::Error> = Vec::new();
+    let mut global_symbols = symbol_table::SymbolTable::global();
+    let mut scanner = lex::Scanner::new(code.to_string());
+    let tokens = scanner.tokenize();
+    let mut ast = Parser::new(tokens);		
+    let statements = ast.parse(&mut global_symbols)?;
+    for s in statements {
+        if let Err(type_error) = s.check_types(&global_symbols){
+            type_errors.push(type_error);
+        }
+
+    }
+    if type_errors.is_empty() { return Ok(())}
+    Err(type_errors)
+}
+
+	#[test]
+	fn test_enums() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_ENUMS)?.len()>0);
+        assert!(type_check(SRC_ENUMS)? == ());
+        Ok(())
+	}
 }
