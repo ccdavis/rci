@@ -86,25 +86,46 @@ fn main() {
 mod tests {
 	use crate::statement::Stmt;
 
-use super::*;
+	use super::*;
 	
-	const SRC_ENUMS:&str = "type Days = Enum(Monday Tuesday Wednesday)\n
-							fun check_enum(d: Days): Bool {\n
-								if d = Tuesday {\n
-									return true\n
-								}\n
-								var another_day: Days = Wednesday\n
-								if another_day == d {\n
-									print another_day\n
-								}\n
-								if d = Monday {\n
-									print \"A case of the Mondays\"\n
-									return false\n
-								}\n
-								return false\n 								
-							}\n
+	const SRC_ENUMS:&str = "type Days = Enum(Monday Tuesday Wednesday)
+							fun check_enum(d: Days): Bool {
+								if d = Tuesday {
+									return true
+								}
+								var another_day:Days = Wednesday
+								if another_day = d {
+									print another_day
+								}
+								if d = Monday {
+									print \"A case of the Mondays\"
+									return false
+								}
+								return false
+							}
+							
+							{
+								check_enum(Monday)
+							}
 							";
 
+	const SRC_ENUMS2:&str = "type Days = Enum(Monday Tuesday Wednesday)
+				type Weekends = Enum(Saturday Sunday)
+
+				fun test_types(): Bool {
+					var d: Days = Wednesday
+					var e = Monday
+					if e = Monday {
+						print \"A case of the Mondays\"
+					}
+					e := Wednesday
+					
+					return d = Tuesday 
+				}
+
+				{
+					test_types()
+				}";
 
   pub fn parse(code:&str) -> Result<Vec<Stmt>,Vec<errors::Error>> {
         let mut global_symbols = symbol_table::SymbolTable::global();
@@ -134,8 +155,8 @@ use super::*;
 
 	#[test]
 	fn test_enums() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_ENUMS)?.len()>0);
-        assert!(type_check(SRC_ENUMS)? == ());
+        assert!(parse(SRC_ENUMS2)?.len()>0);
+        assert!(type_check(SRC_ENUMS2)? == ());
         Ok(())
 	}
 }
