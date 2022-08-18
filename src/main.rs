@@ -159,4 +159,13 @@ mod tests {
         assert!(type_check(SRC_ENUMS2)? == ());
         Ok(())
 	}
+	
+	#[test]
+	fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_ENUMS)?.len()>0);
+        assert!(type_check(SRC_ENUMS)? == ());
+        Ok(())
+	}
+	
+	
 }
