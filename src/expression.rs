@@ -514,6 +514,28 @@ pub struct VariableNode {
     pub index: Option<usize>,
 }
 
+pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType,String> {
+	match symbols.lookup(name) {
+		Ok(ref symbol_table_entry) => {			
+			if let DataType::User(ref user_type) = symbol_table_entry.data_type {								
+				if matches!(DataType::Unresolved, user_type) {
+					match symbols.outer {
+						Some(ref outer_scope) => data_type_for_symbol(outer_scope,&user_type.name),
+						None => Err(format!("Type named {} not defined.",&user_type.name)),
+					}
+					
+				} else {
+					Ok(*user_type.definition.clone())
+				}
+			} else {
+				Ok(symbol_table_entry.data_type.clone())
+			}
+		},
+		Err(declaration_error) => Err(format!("{}", &declaration_error.message)),          
+	}
+}
+
+
 impl TypeCheck for VariableNode {
     // Doing this right requires a symbol table built up from
     // visiting all the variable declarations and using the right
@@ -521,11 +543,10 @@ impl TypeCheck for VariableNode {
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if let TokenType::Identifier(variable_name) = &self.name.token_type {
-            match symbols.lookup(&variable_name) {
-                Ok(ref symbol_table_entry) => Ok(symbol_table_entry.data_type.clone()),
-                Err(declaration_error) => {
-                    let message = format!("{}", &declaration_error.message);
-                    Err(Error::new(&self.name, ErrorType::Type, message))
+			match data_type_for_symbol(symbols, &variable_name) {
+				Ok(data_type) =>Ok(data_type),							            
+                Err(msg) => {                    
+                    Err(Error::new(&self.name, ErrorType::Type, msg))
                 }
             }
         } else {

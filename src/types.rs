@@ -81,7 +81,7 @@ pub struct RangeType {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserType {
     pub name: String,
-    definition: Box<DataType>,
+    pub definition: Box<DataType>,
 }
 
 // Simple data types and values
