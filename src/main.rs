@@ -7,10 +7,18 @@ mod symbol_table;
 mod types;
 use parser::*;
 use std::fs;
+use std::env;
+use std::ffi::OsStr;
+use std::ffi::OsString;
 
 const TRACE: bool = false;
+static mut had_compiler_error: bool = false;
+const tmp_compiler_output_directory:&str = "./";
+const target_directory: &str = "./";
+const tcc_path: &str = "/usr/bin/tcc";
+static mut cc_path: &str = "/usr/bin/cc";
 
-pub fn compile(code: &str) {
+pub fn compile(code: &str) -> String {
     let mut had_type_error = false;
     let mut global_symbols = symbol_table::SymbolTable::global();
     let mut scanner = lex::Scanner::new(code.to_string());
@@ -40,7 +48,7 @@ pub fn compile(code: &str) {
         std::process::exit(3);
     }
 
-    let mut had_compiler_error = false;
+unsafe {    had_compiler_error = false;}
 
     let mut compiled_statements: Vec<String> = Vec::new();
     for stmt in &statements {
@@ -48,25 +56,52 @@ pub fn compile(code: &str) {
             Ok(code) => compiled_statements.push(code),
             Err(msg) => {
                 eprintln!("{}", &msg.format());
-                had_compiler_error = true;
+                unsafe{had_compiler_error = true;}
             }
         };
     }
-    let object_code = compiled_statements.join("\n");
+	compiled_statements.join("\n")
+}
 
-    // TODO configure this path and make it a cache for object code. Also, have one sub-directory
-    // per program and make the dir hidden with a "." name.
-    let tmp_ir_path = "./tmp_ir.c";
-    fs::write(tmp_ir_path, object_code).expect("Problem writing intermediate representation code.");
+// TODO here is where we might react to configuration information such as where a project resides
+// and how to automatically create temporary output directories etc.
+fn  prepare_build(object_code: &str, tmp_build_dir: &str, program_name: &str)-> String {
+	let tmp_ir_path = format!("{}/{}.c",tmp_build_dir, program_name);
+    fs::write(&tmp_ir_path, object_code)
+		.expect(&format!("Problem writing intermediate representation code to {}",&tmp_ir_path));
+	tmp_ir_path
+}
 
-    if had_compiler_error {
-        eprintln!("Error during compilation. Will not link or run.");
-        std::process::exit(4);
-    }
 
-    println!("Success!");
-
-    // TODO Call tcc or gcc on the output source
+fn build(tmp_build_dir: &str, ir_src: &str, target_dir: &str, program_name: &str) -> bool   {    
+    
+	// TODO check for existence of target_dir first
+	
+	let target_bin = if !target_dir.ends_with("/") {
+		OsString::from(format!("{}{}",target_dir, program_name))
+	} else {
+		OsString::from(format!("{}/{}",target_dir, program_name))
+	};
+		    
+	let mut cmd = std::process::Command::new(tcc_path);
+	cmd.arg(&ir_src);
+	cmd.arg("-o");
+	cmd.arg(&target_bin);
+	match cmd.status() {
+		Ok(status) => {
+			if status.success() {
+//					println!("{:?}",output);
+			 } else {
+				eprintln!("BUILD ERROR: {}",status);
+				std::process::exit(1);
+			 }
+		},
+		Err(error) => {
+			eprintln!("BUILD ERROR: {}", &error);
+			std::process::exit(1);
+		}			
+	}				    	
+	true
 }
 
 fn main() {
@@ -77,9 +112,23 @@ fn main() {
     }
 
     let program_file = &args[1];
-    let code =
-        fs::read_to_string(program_file).expect(&format!("File at {} unreadable.", program_file));
-    compile(&code);
+    let code = fs::read_to_string(program_file)
+		.expect(&format!("File at {} unreadable.", program_file));
+		
+	// TODO form a proper program name
+	let program_name = "program";
+    let object_code = compile(&code);
+	let ir_src = prepare_build(&object_code, tmp_compiler_output_directory, program_name);
+	if unsafe{had_compiler_error} {
+        eprintln!("Error during compilation. Will not link or run.");
+        std::process::exit(4);
+    }
+	if build(tmp_compiler_output_directory, &ir_src, target_directory, program_name) {
+		println!("Success!");
+		
+		// TODO automatically run the binary with supplied args, like 'cargo run'
+	} 	
+	
 }
 
 #[cfg(test)]
