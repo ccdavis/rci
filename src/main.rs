@@ -147,6 +147,7 @@ fn build(&self, ir_src: &std::path::Path,program_name: &str) -> bool   {
 		Ok(status) => {
 			if status.success() {
 //					println!("{:?}",output);
+				println!("[Compiled] {}",&target_bin.to_string_lossy())
 			 } else {
 				eprintln!("BUILD ERROR: {}",status);
 				std::process::exit(1);
