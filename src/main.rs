@@ -10,15 +10,72 @@ use std::fs;
 use std::env;
 use std::ffi::OsStr;
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 const TRACE: bool = false;
-static mut had_compiler_error: bool = false;
-const tmp_compiler_output_directory:&str = "./";
-const target_directory: &str = "./";
-const tcc_path: &str = "/usr/bin/tcc";
-static mut cc_path: &str = "/usr/bin/cc";
 
-pub fn compile(code: &str) -> String {
+struct Builder {
+	had_compiler_error: bool ,
+	source_directory: std::path::PathBuf,
+	tmp_compiler_output_directory: std::path::PathBuf,
+	target_directory: std::path::PathBuf,
+	tcc_path: std::path::PathBuf,
+	cc_path: std::path::PathBuf,
+}
+// TODO eventually this should read from external config
+impl Builder {
+
+	// If in a "project", we assume build_dir is the top level of the project structure
+	// Otherwise it's the directory where the source files are.
+	fn new(build_dir: &std::path::Path, in_project: bool) -> Self{
+		let cache_path = std::path::Path::new(".rci_tmp_cache").to_path_buf();
+		if in_project {			
+			let src_path = std::path::Path::new("src").to_path_buf();
+			Builder { 
+				had_compiler_error: false, 
+				tmp_compiler_output_directory: build_dir.join(cache_path),
+				source_directory: build_dir.join(src_path),
+				target_directory: build_dir.join("target"),
+				tcc_path: Builder::checked_tcc_path(),
+				cc_path: Builder::checked_cc_path(),	
+			}
+		} else {
+			Builder { 
+				had_compiler_error: false, 
+				tmp_compiler_output_directory:build_dir.join(cache_path),
+				source_directory: build_dir.to_path_buf(),
+				target_directory: build_dir.to_path_buf(),
+				tcc_path: Builder::checked_tcc_path(),
+				cc_path: Builder::checked_cc_path(),				
+			}
+
+		}
+	}
+
+	// TODO search out C compilers and prompt for installation if missing
+	fn checked_cc_path() ->std::path::PathBuf{
+		std::path::Path::new("/usr/bin/cc").to_path_buf()
+	}
+
+	fn checked_tcc_path() -> std::path::PathBuf {
+		std::path::Path::new("/usr/bin/tcc").to_path_buf()
+	}
+
+	pub fn read_source(&self, program_filename: &OsStr) -> String {		
+		let src_full_path =self.source_directory.join(program_filename);
+
+		let code = match fs::read_to_string(&src_full_path) {
+			Ok(file_content) => file_content,
+			Err(msg) => {
+				eprintln!("Error reading file {}: {}", &src_full_path.to_string_lossy(),&msg);
+				std::process::exit(1);
+			}
+		};
+	
+		code
+	}
+
+pub fn compile(&mut self,code: &str) -> String {
     let mut had_type_error = false;
     let mut global_symbols = symbol_table::SymbolTable::global();
     let mut scanner = lex::Scanner::new(code.to_string());
@@ -48,7 +105,7 @@ pub fn compile(code: &str) -> String {
         std::process::exit(3);
     }
 
-unsafe {    had_compiler_error = false;}
+	self.had_compiler_error = false;
 
     let mut compiled_statements: Vec<String> = Vec::new();
     for stmt in &statements {
@@ -56,35 +113,34 @@ unsafe {    had_compiler_error = false;}
             Ok(code) => compiled_statements.push(code),
             Err(msg) => {
                 eprintln!("{}", &msg.format());
-                unsafe{had_compiler_error = true;}
+                self.had_compiler_error = true;
             }
         };
     }
 	compiled_statements.join("\n")
 }
 
-// TODO here is where we might react to configuration information such as where a project resides
-// and how to automatically create temporary output directories etc.
-fn  prepare_build(object_code: &str, tmp_build_dir: &str, program_name: &str)-> String {
-	let tmp_ir_path = format!("{}/{}.c",tmp_build_dir, program_name);
+fn  prepare_build(&self, object_code: &str,program_name: &str)-> std::path::PathBuf{
+	match std::fs::create_dir_all(&self.tmp_compiler_output_directory) {
+		_ => (),
+		Err(msg) => {
+			eprintln!("Could not create directory '{}' needed to build: {}",
+			self.tmp_compiler_output_directory.to_str().unwrap(), msg);
+			std::process::exit(1);
+		}
+	}
+	let tmp_output_filename =format!("{}.c", &program_name);
+	let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
+	
     fs::write(&tmp_ir_path, object_code)
-		.expect(&format!("Problem writing intermediate representation code to {}",&tmp_ir_path));
+		.expect(&format!("Problem writing intermediate representation code to {}",&tmp_ir_path.to_str().unwrap()));
 	tmp_ir_path
 }
 
-
-fn build(tmp_build_dir: &str, ir_src: &str, target_dir: &str, program_name: &str) -> bool   {    
-    
-	// TODO check for existence of target_dir first
-	
-	let target_bin = if !target_dir.ends_with("/") {
-		OsString::from(format!("{}{}",target_dir, program_name))
-	} else {
-		OsString::from(format!("{}/{}",target_dir, program_name))
-	};
-		    
-	let mut cmd = std::process::Command::new(tcc_path);
-	cmd.arg(&ir_src);
+fn build(&self, ir_src: &std::path::Path,program_name: &str) -> bool   {        	
+	let target_bin = self.target_directory.join(program_name);		    
+	let mut cmd = std::process::Command::new(&self.tcc_path);
+	cmd.arg(ir_src);
 	cmd.arg("-o");
 	cmd.arg(&target_bin);
 	match cmd.status() {
@@ -103,6 +159,7 @@ fn build(tmp_build_dir: &str, ir_src: &str, target_dir: &str, program_name: &str
 	}				    	
 	true
 }
+}
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
@@ -112,18 +169,27 @@ fn main() {
     }
 
     let program_file = &args[1];
-    let code = fs::read_to_string(program_file)
-		.expect(&format!("File at {} unreadable.", program_file));
-		
-	// TODO form a proper program name
-	let program_name = "program";
-    let object_code = compile(&code);
-	let ir_src = prepare_build(&object_code, tmp_compiler_output_directory, program_name);
-	if unsafe{had_compiler_error} {
+	let src_dir = std::path::Path::new(program_file).parent();
+	let program_filename = std::path::Path::new(program_file).file_name();
+	let program_name = match program_filename {
+		Some(filename) => filename.to_str().unwrap().trim_end_matches(".rci"),
+		None => {
+			eprintln!("Incomplete path to program file: {}", program_file);
+			std::process::exit(1);
+
+		}
+
+	};
+
+	let mut builder = Builder::new(src_dir.unwrap(), false);	
+	let code = builder.read_source(program_filename.unwrap());
+    let object_code = builder.compile(&code);
+	let ir_src = builder.prepare_build(&object_code,  program_name);
+	if builder.had_compiler_error{
         eprintln!("Error during compilation. Will not link or run.");
         std::process::exit(4);
     }
-	if build(tmp_compiler_output_directory, &ir_src, target_directory, program_name) {
+	if builder.build( &ir_src, program_name) {
 		println!("Success!");
 		
 		// TODO automatically run the binary with supplied args, like 'cargo run'
