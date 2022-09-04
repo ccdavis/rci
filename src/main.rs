@@ -204,6 +204,37 @@ mod tests {
 
 	use super::*;
 	
+	// Only test declaring record type 
+	const SRC_RECORD_DECL: &str = "type Customer = Rec( name: Str, id: Num, discount: Bool)		
+		{{
+			print \"Hello\"
+		}}
+		
+	";
+	
+	// Only test passing record type param, not using it
+	const SRC_RECORD_PARAM: &str  = "type Customer = Rec( name: Str, id: Num, discount: Bool)
+		
+		fun display(cust: Customer): Str {{
+			return \"customer\"		
+		}}
+		
+		{{
+			print display(c)
+		}}
+	";
+	
+	const SRC_RECORD_RETURN: &str = "type Customer = Rec(name: Str, balance: Num)
+		fun new_customer(n: Str): Customer {
+			val cust: Customer = Customer(name: n, balance: 0)
+			return cust
+		}
+		
+		{
+			var c: Customer =  new_customer(\"Joe\")
+		}
+	";
+	
 	const SRC_ENUMS:&str = "type Days = Enum(Monday Tuesday Wednesday)
 							fun check_enum(d: Days): Bool {
 								if d = Tuesday {
@@ -283,5 +314,24 @@ mod tests {
         Ok(())
 	}
 	
+	#[test]
+	fn test_record_decl() ->  Result<(), Vec<errors::Error>> {
+		assert!(parse(SRC_RECORD_DECL)?.len()>0);
+		assert!(type_check(SRC_ENUMS)? == ());
+		Ok(())
+	}
+	#[test]
+	fn test_record_param() ->  Result<(), Vec<errors::Error>> {
+		assert!(parse(SRC_RECORD_PARAM)?.len()>0);
+		assert!(type_check(SRC_RECORD_PARAM)? == ());
+		Ok(())
+	}
+	
+	#[test]
+	fn test_record_return() ->  Result<(), Vec<errors::Error>> {
+		assert!(parse(SRC_RECORD_RETURN)?.len()>0);
+		assert!(type_check(SRC_RECORD_RETURN)? == ());
+		Ok(())
+	}
 	
 }
