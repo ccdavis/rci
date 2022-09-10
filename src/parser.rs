@@ -430,6 +430,7 @@ impl Parser {
 			}
 		}						
 	}
+	
 	fn record_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError>{
         use TokenType::*;
         let mut field_list = Vec::new();
