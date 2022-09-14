@@ -325,7 +325,7 @@ impl Compiler for CallNode {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct UserTypeLiteralNode {
     type_name: Box<Expr>,
     location: Token,
@@ -335,20 +335,17 @@ pub struct UserTypeLiteralNode {
 }
 
 impl TypeCheck for UserTypeLiteralNode {
-
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         Ok(DataType::Unresolved)
     }
-
 }
 
-impl Compiler for  UserTypeLiteralNode {
+impl Compiler for UserTypeLiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         Ok(ObjectCode {
             data_type: DataType::Unresolved,
             code: " // unimplemented ".to_string(),
         })
-    
     }
 }
 
@@ -766,19 +763,23 @@ impl Expr {
     }
 
     pub fn literal(value: Token) -> Expr {
-        let data_value = DataValue::from_token_type(&value.token_type);        
+        let data_value = DataValue::from_token_type(&value.token_type);
         Expr::Literal(data_value)
     }
 
-    pub fn record_type_literal(type_name: Expr,location: Token, field_names: Vec<String>, field_values: Vec<Expr> ) -> Expr {
-        let field_keys: Vec<DataValue>= Vec::new();
+    pub fn record_type_literal(
+        type_name: Expr,
+        location: Token,
+        field_names: Vec<String>,
+        field_values: Vec<Expr>,
+    ) -> Expr {
+        let field_keys: Vec<DataValue> = Vec::new();
         let node = UserTypeLiteralNode {
             type_name: Box::new(type_name),
             location,
             field_names,
             field_values,
             field_keys,
-
         };
 
         Expr::UserTypeLiteral(node)

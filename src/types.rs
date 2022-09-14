@@ -105,17 +105,16 @@ pub struct EnumValue {
     pub value: String,
     pub string_representation: String,
 }
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct FieldValue {
     pub name: String,
     pub value: Box<DataValue>,
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct RecordValue {
-    pub fields: Vec<FieldValue>
+    pub fields: Vec<FieldValue>,
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DataValue {

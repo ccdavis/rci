@@ -1030,9 +1030,9 @@ impl Parser {
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
-			} else if self.matches(&[LeftBrace]) {
-			// For Rec or Map literals with field-value pairs, or Set literals 
-				expr = self.finish_record_literal(expr, symbols)?;
+            } else if self.matches(&[LeftBrace]) {
+                // For Rec or Map literals with field-value pairs, or Set literals
+                expr = self.finish_record_literal(expr, symbols)?;
             } else {
                 break;
             }
@@ -1080,15 +1080,23 @@ impl Parser {
         let paren = self.consume(RightParen, "expect ')' after arguments.")?;
         Ok(Expr::call(callee, paren, args))
     }
-	
-	fn finish_record_literal(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+
+    fn finish_record_literal(
+        &mut self,
+        callee: Expr,
+        symbols: &SymbolTable,
+    ) -> Result<Expr, ParseError> {
         let field_values = Vec::new();
         let field_names = Vec::new();
-		let brace = self.consume(TokenType::RightBrace, "expect '}' after field-values.")?;
-		// TODO finish this
-	   Ok(Expr::record_type_literal(callee, brace, field_values, field_names))
-	   
-	}
+        let brace = self.consume(TokenType::RightBrace, "expect '}' after field-values.")?;
+        // TODO finish this
+        Ok(Expr::record_type_literal(
+            callee,
+            brace,
+            field_values,
+            field_names,
+        ))
+    }
 
     fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
