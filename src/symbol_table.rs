@@ -18,7 +18,7 @@ pub struct SymbolTableEntry {
 
     pub size: usize,             // compile-time number of items if a collection type
     pub contains_type: DataType, // type inside of collection if any
-	pub indexed_by_type: DataType, 
+    pub indexed_by_type: DataType,
 
     // For record / class members
     pub fields: Vec<Box<SymbolTableEntry>>,
@@ -26,15 +26,15 @@ pub struct SymbolTableEntry {
 
 impl SymbolTableEntry {
     // TODO: Change these init methods to take the Declaration / Statement Node struct types
-	
-	pub fn new_type(
-		entry_number: usize,
+
+    pub fn new_type(
+        entry_number: usize,
         location: &Token,
-		name: &str,
-		data_type: &DataType,
+        name: &str,
+        data_type: &DataType,
         data_value: &DataValue, // default value if any
-	) -> Self {
-		Self {
+    ) -> Self {
+        Self {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
@@ -44,11 +44,10 @@ impl SymbolTableEntry {
             data_value: data_value.clone(),
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
-        }		
-	}
-		
+        }
+    }
 
     pub fn new_var(
         entry_number: usize,
@@ -67,7 +66,7 @@ impl SymbolTableEntry {
             data_value: data_value.clone(),
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -89,7 +88,7 @@ impl SymbolTableEntry {
             data_value: data_value.clone(),
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -111,7 +110,7 @@ impl SymbolTableEntry {
             data_value: data_value.clone(),
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -131,7 +130,7 @@ impl SymbolTableEntry {
             data_value: DataValue::Unresolved,
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -151,7 +150,7 @@ impl SymbolTableEntry {
             data_value: DataValue::Unresolved,
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -171,7 +170,7 @@ impl SymbolTableEntry {
             data_value: DataValue::Unresolved,
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: Vec::new(),
         }
     }
@@ -234,7 +233,7 @@ impl SymbolTableEntry {
             data_value: DataValue::Unresolved,
             size: 1,
             contains_type: DataType::Empty,
-			indexed_by_type: DataType::Empty,
+            indexed_by_type: DataType::Empty,
             fields: params,
         }
     }

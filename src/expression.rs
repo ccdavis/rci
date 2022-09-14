@@ -4,14 +4,12 @@ use crate::errors::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::*;
-use crate::types::LookupType;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
+use crate::types::FieldValue;
+use crate::types::LookupType;
 use crate::types::ObjectCode;
-
-
-
 
 const TRACE: bool = false;
 
@@ -33,6 +31,7 @@ pub enum Expr {
     Grouping(GroupingNode),
     Array(ArrayNode),
     Literal(DataValue),
+    UserTypeLiteral(UserTypeLiteralNode),
     Variable(VariableNode),
     Assignment(AssignmentNode),
 }
@@ -53,6 +52,7 @@ impl Expr {
             Expr::Variable(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value)),
+            Expr::UserTypeLiteral(n) => n.determine_type(symbols),
         }
     }
 
@@ -67,6 +67,7 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
+            Expr::UserTypeLiteral(n) => n.compile(symbols),
             Expr::Literal(ref value) => {
                 let literal_type = DataType::from_data_value(value);
                 let object_code = match value {
@@ -96,19 +97,25 @@ impl TypeCheck for BinaryNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         use TokenType::*;
         let left_type = self.left.determine_type(symbols)?;
-		if TRACE { println!("In binary type check left: {:?}",&left_type);}
+        if TRACE {
+            println!("In binary type check left: {:?}", &left_type);
+        }
         let right_type = self.right.determine_type(symbols)?;
-		if TRACE { println!("In binary type check right: {:?}",&right_type);}
+        if TRACE {
+            println!("In binary type check right: {:?}", &right_type);
+        }
 
         if self.operator.is_comparison_operator() {
             if matches!(left_type, DataType::Number) && matches!(right_type, DataType::Number) {
                 return Ok(DataType::Bool);
 
-            // Allow boolean comparison with = or <>
-			} else if matches!(left_type, DataType::Enumeration(_)) && matches!(right_type, DataType::Enumeration(_)) 
+                // Allow boolean comparison with = or <>
+            } else if matches!(left_type, DataType::Enumeration(_))
+                && matches!(right_type, DataType::Enumeration(_))
                 && (matches!(self.operator.token_type, Equal)
-                    || matches!(self.operator.token_type, LessGreater)){
-			   return Ok(DataType::Bool);
+                    || matches!(self.operator.token_type, LessGreater))
+            {
+                return Ok(DataType::Bool);
             } else if matches!(left_type, DataType::Bool)
                 && matches!(right_type, DataType::Bool)
                 && (matches!(self.operator.token_type, Equal)
@@ -318,6 +325,33 @@ impl Compiler for CallNode {
     }
 }
 
+#[derive(Clone,Debug)]
+pub struct UserTypeLiteralNode {
+    type_name: Box<Expr>,
+    location: Token,
+    field_names: Vec<String>,
+    field_values: Vec<Expr>,
+    field_keys: Vec<DataValue>,
+}
+
+impl TypeCheck for UserTypeLiteralNode {
+
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
+        Ok(DataType::Unresolved)
+    }
+
+}
+
+impl Compiler for  UserTypeLiteralNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        Ok(ObjectCode {
+            data_type: DataType::Unresolved,
+            code: " // unimplemented ".to_string(),
+        })
+    
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct LookupNode {
     callee: Box<Expr>,
@@ -335,42 +369,55 @@ impl TypeCheck for LookupNode {
         if let DataType::Lookup(lookup_variety) = callee_return_type {
             let index_type = self.index.determine_type(symbols)?;
             match *lookup_variety {
-                LookupType::DirectMap { index_type: t, contains_type: c, ..} => {
+                LookupType::DirectMap {
+                    index_type: t,
+                    contains_type: c,
+                    ..
+                } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match DirectMap index type");    
+                        let message = format!("Index type doesn't match DirectMap index type");
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
-                },
-                LookupType::HashedMap { index_type: t, contains_type: c, ..} => {
+                }
+                LookupType::HashedMap {
+                    index_type: t,
+                    contains_type: c,
+                    ..
+                } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match HashedMap index type");    
+                        let message = format!("Index type doesn't match HashedMap index type");
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
-                },
-                LookupType::Array { index_type: t, contains_type: c, ..} => {
+                }
+                LookupType::Array {
+                    index_type: t,
+                    contains_type: c,
+                    ..
+                } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match Vector index type");    
+                        let message = format!("Index type doesn't match Vector index type");
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
-                },
-                LookupType::Vector { index_type: t, contains_type: c, ..} => {
+                }
+                LookupType::Vector {
+                    index_type: t,
+                    contains_type: c,
+                    ..
+                } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match Array index type");    
+                        let message = format!("Index type doesn't match Array index type");
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
-                },
+                }
                 _ => {
                     let message = format!("Lookups  type expected.");
                     Err(Error::new(&self.bracket, ErrorType::Type, message))
                 }
-
             }
-            
-            
         } else {
             let message = format!("Lookups  type expected.");
             Err(Error::new(&self.bracket, ErrorType::Type, message))
@@ -425,7 +472,7 @@ impl TypeCheck for ArrayNode {
         let mut last_type = first_type.clone();
         let array_length = self.elements.len();
         let low_ind = DataValue::Number(0.0);
-        let high_ind = DataValue::Number(array_length as f64 -1.0);
+        let high_ind = DataValue::Number(array_length as f64 - 1.0);
 
         // Use enumerate to give an index to any error messages?
         for (index, t) in self.elements.iter().enumerate() {
@@ -440,16 +487,13 @@ impl TypeCheck for ArrayNode {
             }
             last_type = this_type;
         }
-        Ok(
-            DataType::Lookup(Box::new(
-                LookupType::Array {
-                    contains_type: first_type.clone(), 
-                    size: Some(array_length), 
-                    index_type: DataType::Number,
-                    low_index: Some(Box::new(low_ind)),
-                    high_index: Some(Box::new(high_ind)),
-                }
-        )))
+        Ok(DataType::Lookup(Box::new(LookupType::Array {
+            contains_type: first_type.clone(),
+            size: Some(array_length),
+            index_type: DataType::Number,
+            low_index: Some(Box::new(low_ind)),
+            high_index: Some(Box::new(high_ind)),
+        })))
     }
 }
 
@@ -514,27 +558,25 @@ pub struct VariableNode {
     pub index: Option<usize>,
 }
 
-pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType,String> {
-	match symbols.lookup(name) {
-		Ok(ref symbol_table_entry) => {			
-			if let DataType::User(ref user_type) = symbol_table_entry.data_type {								
-				if matches!(DataType::Unresolved, user_type) {
-					match symbols.outer {
-						Some(ref outer_scope) => data_type_for_symbol(outer_scope,&user_type.name),
-						None => Err(format!("Type named {} not defined.",&user_type.name)),
-					}
-					
-				} else {
-					Ok(*user_type.definition.clone())
-				}
-			} else {
-				Ok(symbol_table_entry.data_type.clone())
-			}
-		},
-		Err(declaration_error) => Err(format!("{}", &declaration_error.message)),          
-	}
+pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType, String> {
+    match symbols.lookup(name) {
+        Ok(ref symbol_table_entry) => {
+            if let DataType::User(ref user_type) = symbol_table_entry.data_type {
+                if matches!(DataType::Unresolved, user_type) {
+                    match symbols.outer {
+                        Some(ref outer_scope) => data_type_for_symbol(outer_scope, &user_type.name),
+                        None => Err(format!("Type named {} not defined.", &user_type.name)),
+                    }
+                } else {
+                    Ok(*user_type.definition.clone())
+                }
+            } else {
+                Ok(symbol_table_entry.data_type.clone())
+            }
+        }
+        Err(declaration_error) => Err(format!("{}", &declaration_error.message)),
+    }
 }
-
 
 impl TypeCheck for VariableNode {
     // Doing this right requires a symbol table built up from
@@ -543,11 +585,9 @@ impl TypeCheck for VariableNode {
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if let TokenType::Identifier(variable_name) = &self.name.token_type {
-			match data_type_for_symbol(symbols, &variable_name) {
-				Ok(data_type) =>Ok(data_type),							            
-                Err(msg) => {                    
-                    Err(Error::new(&self.name, ErrorType::Type, msg))
-                }
+            match data_type_for_symbol(symbols, &variable_name) {
+                Ok(data_type) => Ok(data_type),
+                Err(msg) => Err(Error::new(&self.name, ErrorType::Type, msg)),
             }
         } else {
             panic!("Fatal error during type-checking: A variable expression must have a TokenType::Identifier(name) token type!");
@@ -558,9 +598,13 @@ impl TypeCheck for VariableNode {
 impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let var_type = self.determine_type(symbols)?;
-		if TRACE { println!("var type for {} is {}",&self.name.print(), &var_type)}
+        if TRACE {
+            println!("var type for {} is {}", &self.name.print(), &var_type)
+        }
         if let TokenType::Identifier(ref var_name) = self.name.token_type {
-			if TRACE { println!("var name is {}",&var_name);}
+            if TRACE {
+                println!("var name is {}", &var_name);
+            }
             let ste = match symbols.lookup(&var_name) {
                 Ok(ref entry) => entry.clone(),
                 Err(error_msg) => {
@@ -571,21 +615,26 @@ impl Compiler for VariableNode {
                     ));
                 }
             };
-			if TRACE { println!("ste: {:?}",&ste);}
-					
-			Ok(ObjectCode {
-				data_type: var_type,
-				code: {
-					if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
-						format!("(*{})", &var_name)
-					// If the STE has a data_value of EnumerationValue it's an enum literal
-					} else if let DataValue::Enumeration(ref enum_value) = ste.data_value { 
-						format!("ENUM_VAL({}_{})",&enum_value.member_of_enum, &enum_value.value)
-					} else {
-						format!("{}", &var_name)
-					}
-				},
-			})
+            if TRACE {
+                println!("ste: {:?}", &ste);
+            }
+
+            Ok(ObjectCode {
+                data_type: var_type,
+                code: {
+                    if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+                        format!("(*{})", &var_name)
+                    // If the STE has a data_value of EnumerationValue it's an enum literal
+                    } else if let DataValue::Enumeration(ref enum_value) = ste.data_value {
+                        format!(
+                            "ENUM_VAL({}_{})",
+                            &enum_value.member_of_enum, &enum_value.value
+                        )
+                    } else {
+                        format!("{}", &var_name)
+                    }
+                },
+            })
         } else {
             panic!("Compiler error. A variable node must have an identifier token type.");
         }
@@ -717,9 +766,22 @@ impl Expr {
     }
 
     pub fn literal(value: Token) -> Expr {
-        let data_value = DataValue::from_token_type(&value.token_type);
-        //Expr::Literal(ReturnValue::new_ref(data_value))
+        let data_value = DataValue::from_token_type(&value.token_type);        
         Expr::Literal(data_value)
+    }
+
+    pub fn record_type_literal(type_name: Expr,location: Token, field_names: Vec<String>, field_values: Vec<Expr> ) -> Expr {
+        let field_keys: Vec<DataValue>= Vec::new();
+        let node = UserTypeLiteralNode {
+            type_name: Box::new(type_name),
+            location,
+            field_names,
+            field_values,
+            field_keys,
+
+        };
+
+        Expr::UserTypeLiteral(node)
     }
 
     pub fn array(location: Token, elements: Vec<Expr>) -> Expr {

@@ -42,7 +42,7 @@ pub enum Stmt {
     Return(ReturnStmtNode),
     Break(BreakStmtNode),
     Program(ProgramNode),
-	Type(TypeNode),
+    Type(TypeNode),
     NoOp,
 }
 
@@ -75,7 +75,7 @@ impl Stmt {
             Return(n) => n.check_types(symbols),
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
-			Type(n) => n.check_types(symbols),
+            Type(n) => n.check_types(symbols),
             NoOp => Ok(()),
             _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
@@ -94,7 +94,7 @@ impl Stmt {
             Return(n) => n.compile(symbols),
             Break(n) => n.compile(symbols),
             Program(n) => n.compile(symbols),
-			Type(n) => n.compile(symbols),
+            Type(n) => n.compile(symbols),
             _ => panic!("Statement type compilation not supported yet."),
         }
     }
@@ -107,7 +107,7 @@ impl Stmt {
         match self {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
-			Type(n) => n.compile_global(symbols),
+            Type(n) => n.compile_global(symbols),
             // TODO add Type statement types
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -610,9 +610,9 @@ impl Compiler for ProgramNode {
 
 #[derive(Clone, Debug)]
 pub struct TypeNode {
-	location: Token,
-	name: String,
-	definition: DataType,
+    location: Token,
+    name: String,
+    definition: DataType,
 }
 
 impl TypeChecking for TypeNode {
@@ -623,34 +623,37 @@ impl TypeChecking for TypeNode {
 
 impl Compiler for TypeNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		let code = match self.definition {
-			DataType::Enumeration(ref enumeration_type) => {
-				let enumeration_list = enumeration_type.items.iter()
-					.map(|i| 
-						format!("{}_{}",&self.name, &i.value))
-					.collect::<Vec<String>>()
-					.join(",");
-				let enum_decl = format!("enum {} {{ {} }};\n",&self.name, enumeration_list);
-				
-				let string_rep_list = enumeration_type.items.iter()
-					.map(|i| format!("\"{}\"",&i.value))
-					.collect::<Vec<String>>()
-					.join(",");
-				let str_conversions = format!("static const char * {}_strings[] = {{ {} }};\n",
-					&self.name, &string_rep_list);
-				format!("{}{}",&enum_decl, &str_conversions)
-			},		
-			_ => panic!("Not implemented yet: Type declaration"),
-		};
-		Ok(code)
-	}
-	
-	
-	fn compile_global(
+        let code = match self.definition {
+            DataType::Enumeration(ref enumeration_type) => {
+                let enumeration_list = enumeration_type
+                    .items
+                    .iter()
+                    .map(|i| format!("{}_{}", &self.name, &i.value))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let enum_decl = format!("enum {} {{ {} }};\n", &self.name, enumeration_list);
+
+                let string_rep_list = enumeration_type
+                    .items
+                    .iter()
+                    .map(|i| format!("\"{}\"", &i.value))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let str_conversions = format!(
+                    "static const char * {}_strings[] = {{ {} }};\n",
+                    &self.name, &string_rep_list
+                );
+                format!("{}{}", &enum_decl, &str_conversions)
+            }
+            _ => panic!("Not implemented yet: Type declaration"),
+        };
+        Ok(code)
+    }
+
+    fn compile_global(
         &self,
         symbols: &SymbolTable,
-    ) -> Result<GlobalStatementObjectCode, errors::Error> {	
-		
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
         let code = GlobalStatementObjectCode {
             decl_type: DeclarationType::Type,
             base_code: self.compile(symbols)?,
@@ -661,16 +664,15 @@ impl Compiler for TypeNode {
         Ok(code)
     }
 }
-  
-impl Stmt {
 
-	pub fn type_decl(location: &Token, name: &str, definition: &DataType) -> Stmt {				
-		Stmt::Type( TypeNode { 
-			location: location.clone(),
-			name: name.to_string(),
-			definition:  definition.clone(),
-		})						
-	}
+impl Stmt {
+    pub fn type_decl(location: &Token, name: &str, definition: &DataType) -> Stmt {
+        Stmt::Type(TypeNode {
+            location: location.clone(),
+            name: name.to_string(),
+            definition: definition.clone(),
+        })
+    }
 
     pub fn print_stmt(expressions: Vec<Expr>) -> Stmt {
         Stmt::Print(PrintStmtNode { expressions })
@@ -724,7 +726,6 @@ impl Stmt {
             _ => panic!("Can't add variable at {:?}", &name),
         }
     }
-	
 
     pub fn return_stmt(location: Token, expr: Expr, return_type: DataType) -> Stmt {
         Stmt::Return(ReturnStmtNode {

@@ -5,12 +5,12 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
-use crate::types::*;
 use crate::types;
+use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE:bool =  false;
+const TRACE: bool = false;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -55,7 +55,9 @@ impl Parser {
     }
 
     fn advance(&mut self) -> Token {
-        if TRACE { self.print_next();}
+        if TRACE {
+            self.print_next();
+        }
         if !self.is_finished() {
             self.current += 1
         }
@@ -94,7 +96,7 @@ impl Parser {
         }
     }
 
-    fn match_terminator(&mut self) -> Result<bool, ParseError> {                        
+    fn match_terminator(&mut self) -> Result<bool, ParseError> {
         if self.check(&TokenType::SemiColon) {
             self.advance();
             self.skip_if_newline();
@@ -163,8 +165,10 @@ impl Parser {
 
     */
 
-    pub fn parse(&mut self, global_symbols: &mut SymbolTable) -> 
-		Result< Vec<Stmt>, Vec<ParseError>> {
+    pub fn parse(
+        &mut self,
+        global_symbols: &mut SymbolTable,
+    ) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
         while !self.is_finished() {
             // Here is where we'd put imports or module includes
@@ -175,10 +179,10 @@ impl Parser {
             }
         }
         if self.errors.len() > 0 {
-			Err(self.errors.clone())
-		} else {
-			Ok(statements)
-		}
+            Err(self.errors.clone())
+        } else {
+            Ok(statements)
+        }
     }
 
     // A program is a statement. It is a list of declarations followed by a block
@@ -213,13 +217,13 @@ impl Parser {
         Ok(Stmt::program(decls, Box::new(imperatives)))
     }
 
-    fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {        
+    fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         self.skip_all_newlines();
-		
-		if self.matches(&[TokenType::Type]) {
-			return self.type_declaration(symbols);
-		}
-		
+
+        if self.matches(&[TokenType::Type]) {
+            return self.type_declaration(symbols);
+        }
+
         if self.matches(&[TokenType::Fun]) {
             return self.function("function", symbols);
         }
@@ -236,7 +240,7 @@ impl Parser {
     }
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
-        use TokenType::*;        
+        use TokenType::*;
         let name = self.consume_identifier(&format!("expect {} name.", kind))?;
         self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
         let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
@@ -274,7 +278,10 @@ impl Parser {
                 };
 
                 if let DataType::Lookup(_) = param_type {
-                    self.consume(Less, "expect '<' after 'Array, DirectMap, HashMap' to complete type signature.")?;
+                    self.consume(
+                        Less,
+                        "expect '<' after 'Array, DirectMap, HashMap' to complete type signature.",
+                    )?;
                     let lookup_type_name = self.advance();
                     if matches!(lookup_type_name.token_type, TokenType::ArrayType) {
                         return Err(parse_err(
@@ -283,24 +290,25 @@ impl Parser {
                         ));
                     }
 
-                    let array_contains_type = match DataType::from_token_type(&lookup_type_name.token_type) {
-                        Some(valid_type) => valid_type,
-                        None => {
-                            return Err(parse_err(
+                    let array_contains_type =
+                        match DataType::from_token_type(&lookup_type_name.token_type) {
+                            Some(valid_type) => valid_type,
+                            None => {
+                                return Err(parse_err(
 								&lookup_type_name,
 								"Can't make a lookup of this type. Types must be built-in or user defined."
 							));
-                        }
-                    };
+                            }
+                        };
 
                     self.consume(Greater, "expect '>' after lookup member type.")?;
-                    let array_type = LookupType::Array{ 
-                            size: None, 
-                            index_type: DataType::Number, 
-                            low_index: None,
-                            high_index: None,
-                            contains_type: array_contains_type
-                        };
+                    let array_type = LookupType::Array {
+                        size: None,
+                        index_type: DataType::Number,
+                        low_index: None,
+                        high_index: None,
+                        contains_type: array_contains_type,
+                    };
                     param_type = DataType::Lookup(Box::new(array_type))
                 }
 
@@ -390,7 +398,7 @@ impl Parser {
 
     // Like a block_statement but without its own AST node or symbols -- those are owned
     // by the function.
-    fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {        
+    fn function_body(&mut self, local_symbols: &mut SymbolTable) -> Result<Vec<Stmt>, ParseError> {
         use TokenType::*;
         let mut stmt_list: Vec<Stmt> = Vec::new();
         self.skip_all_newlines();
@@ -405,154 +413,179 @@ impl Parser {
         // If none are found it's a parse error.
         Ok(stmt_list)
     }
-	
-	fn type_declaration(&mut self, symbols: &mut SymbolTable)-> Result<Stmt, ParseError> {
-		use TokenType::*;
-		
-		let decl_type = DeclarationType::Type;		
-		let type_name_token: Token = self.consume_identifier("Expect variable name")?;
-		let type_name = type_name_token.identifier_string();
-		self.consume(Equal, "Expect '=' after type name.")?;
-		// Instead of self.match([]) grab whatever, then match exhaustively after
-		// advancing past the supposed type.
-		let assigned_type = self.advance().token_type;		
-		self.skip_all_newlines();
-		
-		match assigned_type {
-			EnumType => self.enum_type_declaration(&type_name, symbols),
-			SetType => self.set_type_declaration(&type_name, symbols),
-			ArrayType => self.array_type_declaration(&type_name, symbols),
+
+    fn type_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+
+        let decl_type = DeclarationType::Type;
+        let type_name_token: Token = self.consume_identifier("Expect variable name")?;
+        let type_name = type_name_token.identifier_string();
+        self.consume(Equal, "Expect '=' after type name.")?;
+        // Instead of self.match([]) grab whatever, then match exhaustively after
+        // advancing past the supposed type.
+        let assigned_type = self.advance().token_type;
+        self.skip_all_newlines();
+
+        match assigned_type {
+            EnumType => self.enum_type_declaration(&type_name, symbols),
+            SetType => self.set_type_declaration(&type_name, symbols),
+            ArrayType => self.array_type_declaration(&type_name, symbols),
             RecordType => self.record_type_declaration(&type_name, symbols),
-			_ => {
-			  let message = format!("'{}' Not a valid type name to use in a type declaration.", 
-					&assigned_type.print());
-				Err(parse_err(&self.peek(), &message))
-			}
-		}						
-	}
-	
-	fn record_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError>{
+            _ => {
+                let message = format!(
+                    "'{}' Not a valid type name to use in a type declaration.",
+                    &assigned_type.print()
+                );
+                Err(parse_err(&self.peek(), &message))
+            }
+        }
+    }
+
+    fn record_type_declaration(
+        &mut self,
+        type_name: &str,
+        symbols: &mut SymbolTable,
+    ) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut field_list = Vec::new();
-        let location = self.consume(LeftParen, "expect '('. '(', ')' enclose a record's fields.")?;
-		self.skip_all_newlines();
+        let location =
+            self.consume(LeftParen, "expect '('. '(', ')' enclose a record's fields.")?;
+        self.skip_all_newlines();
         while !matches!(self.peek().token_type, RightParen) {
-            let field_name_token = self.consume_identifier( "Expect field name.")?;
+            let field_name_token = self.consume_identifier("Expect field name.")?;
             self.consume(Colon, "Expect ':' before field type.")?;
             let field_type_token = match self.peek().token_type {
-				IntegerType | 
-				StringType | 
-				FloatType | 
-				NumberType | 
-				Identifier(_) | 
-				BooleanType | 
-				ArrayType  => self.advance(),
-				_ =>
-					{               
-						let message = format!("Record type can't have a field of '{}' type.!", self.peek().print());
-						return Err(parse_err(&self.peek(), &message));
-					}
-			};
-					
-            if !matches!(self.peek().token_type,RightParen) {
-                self.consume(Comma,"Expect comma after field type.")?;
+                IntegerType | StringType | FloatType | NumberType | Identifier(_) | BooleanType
+                | ArrayType => self.advance(),
+                _ => {
+                    let message = format!(
+                        "Record type can't have a field of '{}' type.!",
+                        self.peek().print()
+                    );
+                    return Err(parse_err(&self.peek(), &message));
+                }
+            };
+
+            if !matches!(self.peek().token_type, RightParen) {
+                self.consume(Comma, "Expect comma after field type.")?;
             }
 
             let field_name = field_name_token.identifier_string();
             let field_type = DataType::from_token_type(&field_type_token.token_type).unwrap();
-            field_list.push(FieldType { name: field_name, field_type});
+            field_list.push(FieldType {
+                name: field_name,
+                field_type,
+            });
         }
         self.advance();
-        let record_definition = types::RecordType{fields: field_list};
+        let record_definition = types::RecordType { fields: field_list };
         let type_definition = DataType::Record(record_definition);
-        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);				
-		let entry_number = symbols.entries.len();
-		let ste = SymbolTableEntry::new_type(
-			entry_number,
-			&location,
-			type_name,
-			&type_definition,
-			&DataValue::Unresolved,									
-		);		
-		if symbols.add(ste) {
-			Ok(type_definition_node)
-		} else {
-			// Already defined
-			let message = format!("Type '{}' already declared in this scope!", type_name);
-			Err(parse_err(&location, &message))
-		}		
-
+        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
+        let entry_number = symbols.entries.len();
+        let ste = SymbolTableEntry::new_type(
+            entry_number,
+            &location,
+            type_name,
+            &type_definition,
+            &DataValue::Unresolved,
+        );
+        if symbols.add(ste) {
+            Ok(type_definition_node)
+        } else {
+            // Already defined
+            let message = format!("Type '{}' already declared in this scope!", type_name);
+            Err(parse_err(&location, &message))
+        }
     }
-    
-	fn enum_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
-		use TokenType::*;
-		let mut enum_list = Vec::new();
-		let location = self.consume(LeftParen, "expect '('. '(', ')' enclose enumeration lists.")?;
-		self.skip_all_newlines();
-		while matches!(self.peek().token_type, Identifier(_)) {
-			let enum_token = self.consume_identifier("Expect identifier")?;
-			let value = enum_token.identifier_string();
-			let string_representation = value.clone();
-			let enum_value = EnumValue { 
-				member_of_enum: type_name.to_string(),
-				value, 
-				string_representation
-			};
-				
-			let data_value = DataValue::Enumeration(enum_value.clone());						
-			enum_list.push(enum_value.clone());									
-			self.skip_all_newlines();
-		}				
-		self.consume(RightParen, "expect ')'. '(', ')' enclose enumeration lists.")?;
-		self.match_terminator()?;
-		
-		let enum_definition = EnumerationType{ 
-			enum_name: type_name.to_string(),
-			items:  enum_list.clone() 
-		};
-		let type_definition = DataType::Enumeration(enum_definition);
-		
-		for enum_value  in &enum_list {			
-			let entry_number = symbols.entries.len();
-			let ste = SymbolTableEntry::new_type(
-				entry_number,
-				&location,
-				&enum_value.value,
-				&type_definition,
-				&DataValue::Enumeration(enum_value.clone()),
-			);		
-			if !symbols.add(ste) {											
-				let message = format!("Enum member '{}' already declared in this scope!", type_name);
-				return Err(parse_err(&location, &message));
-			}									
-		}
-								
-		let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);				
-		let entry_number = symbols.entries.len();
-		let ste = SymbolTableEntry::new_type(
-			entry_number,
-			&location,
-			type_name,
-			&type_definition,
-			&DataValue::Unresolved,									
-		);		
-		if symbols.add(ste) {
-			Ok(type_definition_node)
-		} else {
-			// Already defined
-			let message = format!("Type '{}' already declared in this scope!", type_name);
-			Err(parse_err(&location, &message))
-		}		
-	}
-	
-	fn set_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
-		panic!("Not implemented")
-	}
-	
-	fn array_type_declaration(&mut self, type_name: &str, symbols: &mut SymbolTable)->Result<Stmt, ParseError> {
-		panic!("Not implemented!")
-	}
-	
+
+    fn enum_type_declaration(
+        &mut self,
+        type_name: &str,
+        symbols: &mut SymbolTable,
+    ) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+        let mut enum_list = Vec::new();
+        let location =
+            self.consume(LeftParen, "expect '('. '(', ')' enclose enumeration lists.")?;
+        self.skip_all_newlines();
+        while matches!(self.peek().token_type, Identifier(_)) {
+            let enum_token = self.consume_identifier("Expect identifier")?;
+            let value = enum_token.identifier_string();
+            let string_representation = value.clone();
+            let enum_value = EnumValue {
+                member_of_enum: type_name.to_string(),
+                value,
+                string_representation,
+            };
+
+            let data_value = DataValue::Enumeration(enum_value.clone());
+            enum_list.push(enum_value.clone());
+            self.skip_all_newlines();
+        }
+        self.consume(
+            RightParen,
+            "expect ')'. '(', ')' enclose enumeration lists.",
+        )?;
+        self.match_terminator()?;
+
+        let enum_definition = EnumerationType {
+            enum_name: type_name.to_string(),
+            items: enum_list.clone(),
+        };
+        let type_definition = DataType::Enumeration(enum_definition);
+
+        for enum_value in &enum_list {
+            let entry_number = symbols.entries.len();
+            let ste = SymbolTableEntry::new_type(
+                entry_number,
+                &location,
+                &enum_value.value,
+                &type_definition,
+                &DataValue::Enumeration(enum_value.clone()),
+            );
+            if !symbols.add(ste) {
+                let message = format!(
+                    "Enum member '{}' already declared in this scope!",
+                    type_name
+                );
+                return Err(parse_err(&location, &message));
+            }
+        }
+
+        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
+        let entry_number = symbols.entries.len();
+        let ste = SymbolTableEntry::new_type(
+            entry_number,
+            &location,
+            type_name,
+            &type_definition,
+            &DataValue::Unresolved,
+        );
+        if symbols.add(ste) {
+            Ok(type_definition_node)
+        } else {
+            // Already defined
+            let message = format!("Type '{}' already declared in this scope!", type_name);
+            Err(parse_err(&location, &message))
+        }
+    }
+
+    fn set_type_declaration(
+        &mut self,
+        type_name: &str,
+        symbols: &mut SymbolTable,
+    ) -> Result<Stmt, ParseError> {
+        panic!("Not implemented")
+    }
+
+    fn array_type_declaration(
+        &mut self,
+        type_name: &str,
+        symbols: &mut SymbolTable,
+    ) -> Result<Stmt, ParseError> {
+        panic!("Not implemented!")
+    }
+
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         // 'val' is the default
@@ -598,12 +631,11 @@ impl Parser {
 
                         self.consume(TokenType::Greater, "expect '>' after array member type.")?;
                         DataType::Lookup(Box::new(LookupType::Array {
-                                index_type: DataType::Number,
-                                contains_type: array_type,
-                                low_index: None,
-                                high_index: None,
-                                size: None,
-
+                            index_type: DataType::Number,
+                            contains_type: array_type,
+                            low_index: None,
+                            high_index: None,
+                            size: None,
                         }))
                     }
 
@@ -618,24 +650,23 @@ impl Parser {
                 }
             };
 
-			// If it's a user-defined type we need to look it up by name
-			// in the symbol table.
-			let lhs_type = match valid_type_name {				
-				DataType::User(ref u) => {
-					let has_type = symbols.lookup(&u.name);
-					if has_type.is_err() {
-						let message = format!(
-							"Type named {} not declared in this scope or an outer scope.",
-							&u.name
-						);
-						return Err(parse_err(&v, &message));
-					 } 
-					 has_type.unwrap().data_type.clone()
-				},
-				_=> valid_type_name,				
-			};
-			
-			
+            // If it's a user-defined type we need to look it up by name
+            // in the symbol table.
+            let lhs_type = match valid_type_name {
+                DataType::User(ref u) => {
+                    let has_type = symbols.lookup(&u.name);
+                    if has_type.is_err() {
+                        let message = format!(
+                            "Type named {} not declared in this scope or an outer scope.",
+                            &u.name
+                        );
+                        return Err(parse_err(&v, &message));
+                    }
+                    has_type.unwrap().data_type.clone()
+                }
+                _ => valid_type_name,
+            };
+
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
@@ -678,7 +709,9 @@ impl Parser {
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
                 let initializer = self.expression(symbols)?;
-				if TRACE { println!("Initializer: {:?}", &initializer);}
+                if TRACE {
+                    println!("Initializer: {:?}", &initializer);
+                }
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
                         self.error(parse_err(&self.previous(), &type_error.message));
@@ -861,7 +894,7 @@ impl Parser {
             &DataValue::Unresolved,
         );
 
-        local_symbols.add(block_entry);        
+        local_symbols.add(block_entry);
         while !self.check(&RightBrace) && !self.is_finished() {
             self.skip_all_newlines();
             let stmt = self.declaration(&mut local_symbols)?;
@@ -997,6 +1030,9 @@ impl Parser {
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
+			} else if self.matches(&[LeftBrace]) {
+			// For Rec or Map literals with field-value pairs, or Set literals 
+				expr = self.finish_record_literal(expr, symbols)?;
             } else {
                 break;
             }
@@ -1044,6 +1080,15 @@ impl Parser {
         let paren = self.consume(RightParen, "expect ')' after arguments.")?;
         Ok(Expr::call(callee, paren, args))
     }
+	
+	fn finish_record_literal(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        let field_values = Vec::new();
+        let field_names = Vec::new();
+		let brace = self.consume(TokenType::RightBrace, "expect '}' after field-values.")?;
+		// TODO finish this
+	   Ok(Expr::record_type_literal(callee, brace, field_values, field_names))
+	   
+	}
 
     fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;

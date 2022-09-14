@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 #[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
@@ -50,9 +49,9 @@ pub enum TokenType {
     SetType,
     ArrayType,
     RecordType,
-	EnumType,
-	
-    // keywords    
+    EnumType,
+
+    // keywords
     In,
     Intersects,
     Intersection,
@@ -80,7 +79,7 @@ pub enum TokenType {
     Cpy,
     While,
     To,
-	Type,
+    Type,
     Eol,
 
     ScanError(String),
@@ -133,7 +132,7 @@ impl TokenType {
             Greater => ">",
             GreaterEqual => ">=",
             DotDot => "..",
-            
+
             In => "in",
             Intersects => "intersects",
             Intersection => "intersection",
@@ -162,9 +161,8 @@ impl TokenType {
             Cpy => "cpy",
             While => "while",
             To => "to",
-			Type =>"type",
+            Type => "type",
             Eol => "newline",
-			
 
             // Type names
             NumberType => "Num",
@@ -178,7 +176,7 @@ impl TokenType {
             SetType => "Set",
             ArrayType => "Array",
             RecordType => "Rec",
-			EnumType => "Enum",
+            EnumType => "Enum",
             _ => {
                 formatted = Some(match self {
                     // literals
@@ -234,7 +232,7 @@ impl TokenType {
             ArrayType,
             RecordType,
             EnumType,
-			Type,
+            Type,
             In,
             Intersects,
             Intersection,
@@ -276,8 +274,8 @@ impl TokenType {
         use TokenType::*;
         match self {
             Number(_) => NumberType,
-			Integer(_) => IntegerType,
-			Float(_) => FloatType,
+            Integer(_) => IntegerType,
+            Float(_) => FloatType,
             Str(_) => StringType,
             True => BooleanType,
             False => BooleanType,

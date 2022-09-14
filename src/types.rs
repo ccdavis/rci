@@ -1,4 +1,3 @@
-
 use crate::lex::TokenType;
 use std::fmt;
 
@@ -19,7 +18,7 @@ pub enum DeclarationType {
 pub enum LookupType {
     Unresolved,
     DirectMap {
-        index_type: DataType, 
+        index_type: DataType,
         contains_type: DataType,
         size: usize,
     },
@@ -29,7 +28,7 @@ pub enum LookupType {
     },
     Vector {
         index_type: DataType,
-        contains_type: DataType,        
+        contains_type: DataType,
     },
     Array {
         index_type: DataType,
@@ -40,18 +39,16 @@ pub enum LookupType {
     },
 }
 
-
-
 // Named fields
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FieldType {
-	pub name: String,
-	pub field_type: DataType,
+    pub name: String,
+    pub field_type: DataType,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RecordType {
-	pub fields: Vec<FieldType>,
+    pub fields: Vec<FieldType>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,17 +58,17 @@ pub struct TupleType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnumerationType {
-	pub enum_name: String,	
-	pub items: Vec<EnumValue>,
+    pub enum_name: String,
+    pub items: Vec<EnumValue>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SetType {
-	pub member_type: DataType,
-	pub members: Vec<DataValue>,
+    pub member_type: DataType,
+    pub members: Vec<DataValue>,
 }
 
-#[derive(Clone,PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct RangeType {
     pub member_type: Box<DataType>,
     pub low: Box<DataValue>,
@@ -85,7 +82,7 @@ pub struct UserType {
 }
 
 // Simple data types and values
-#[derive(Clone, Debug,PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DataType {
     Str,
     Number,
@@ -95,19 +92,30 @@ pub enum DataType {
     Lookup(Box<LookupType>),
     Tuple(Box<TupleType>),
     Range(Box<RangeType>),
-	Enumeration(EnumerationType),	
-	Record(RecordType),
+    Enumeration(EnumerationType),
+    Record(RecordType),
     User(Box<UserType>),
     Empty,      // Like the '()' expressiontype in Rust
     Unresolved, // Incomplete type checker results
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct EnumValue {	
+pub struct EnumValue {
     pub member_of_enum: String,
     pub value: String,
-	pub string_representation: String,
+    pub string_representation: String,
 }
+#[derive(Clone,PartialEq)]
+pub struct FieldValue {
+    pub name: String,
+    pub value: Box<DataValue>,
+}
+
+#[derive(Clone,PartialEq)]
+pub struct RecordValue {
+    pub fields: Vec<FieldValue>
+}
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DataValue {
@@ -117,13 +125,18 @@ pub enum DataValue {
     Integer(i64),
     Float(f64),
     Tuple(Vec<DataValue>),
-    Lookup { varient: LookupType, content: Vec<DataValue> }, // not all lookup types can be literals
-    Range { low: Box<DataValue>, high: Box<DataValue> },
-	Enumeration(EnumValue),
+    Lookup {
+        varient: LookupType,
+        content: Vec<DataValue>,
+    }, // not all lookup types can be literals
+    Range {
+        low: Box<DataValue>,
+        high: Box<DataValue>,
+    },
+    Enumeration(EnumValue),
     User(String), // just give the name for now
     Unresolved,   // for the type-checker to figure out later
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjectCode {
@@ -144,15 +157,15 @@ impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {
             DataType::Number => "num".to_string(),
-			DataType::Integer => "int".to_string(),
-			DataType::Float => "flt".to_string(),
-			DataType::Tuple(_) => "tuple".to_string(),
-			DataType::Range(_) => "range".to_string(),
+            DataType::Integer => "int".to_string(),
+            DataType::Float => "flt".to_string(),
+            DataType::Tuple(_) => "tuple".to_string(),
+            DataType::Range(_) => "range".to_string(),
             DataType::Str => "str".to_string(),
             DataType::Bool => "bool".to_string(),
-            DataType::Lookup(_) => "Lookup".to_string(),  
-			DataType::Enumeration(ref enum_type)=> format!("Enum({})",&enum_type.enum_name),
-			DataType::Record(_)=>"Rec".to_string(),
+            DataType::Lookup(_) => "Lookup".to_string(),
+            DataType::Enumeration(ref enum_type) => format!("Enum({})", &enum_type.enum_name),
+            DataType::Record(_) => "Rec".to_string(),
             DataType::Empty => "empty".to_string(),
             DataType::User(u) => u.name.clone(),
             DataType::Unresolved => "UNRESOLVED".to_string(),
@@ -167,24 +180,12 @@ impl DataType {
             TokenType::NumberType => Some(DataType::Number),
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
-            TokenType::ArrayType => 
-				Some(
-					DataType::Lookup(
-						Box::new(LookupType::Unresolved)
-					)
-				),
-            TokenType::Identifier(n) => 
-				Some(
-					DataType::User(
-						Box::new( 
-							UserType{
-								name:n.to_owned(),
-								definition: Box::new(DataType::Unresolved),
-							}
-						)
-					)
-				),
-						
+            TokenType::ArrayType => Some(DataType::Lookup(Box::new(LookupType::Unresolved))),
+            TokenType::Identifier(n) => Some(DataType::User(Box::new(UserType {
+                name: n.to_owned(),
+                definition: Box::new(DataType::Unresolved),
+            }))),
+
             _ => None,
         }
     }
@@ -193,35 +194,39 @@ impl DataType {
         match dv {
             DataValue::Str(_) => DataType::Str,
             DataValue::Number(_) => DataType::Number,
-			DataValue::Integer(_) => DataType::Integer,
-			DataValue::Float(_) => DataType::Float,
-			DataValue::Range {..} => panic!("DataValue literal to DataType::Range(.,.) not implemented yet!"),
-			DataValue::Tuple(_) => panic!("Literal value to type not implemented for Tuple type yet.!"),
-			DataValue::Enumeration(enum_value) =>  panic!("Can't create type from enum value"),            
-			DataValue::Bool(_) => DataType::Bool,
-            DataValue::Lookup {varient: v, content: c} => {
+            DataValue::Integer(_) => DataType::Integer,
+            DataValue::Float(_) => DataType::Float,
+            DataValue::Range { .. } => {
+                panic!("DataValue literal to DataType::Range(.,.) not implemented yet!")
+            }
+            DataValue::Tuple(_) => {
+                panic!("Literal value to type not implemented for Tuple type yet.!")
+            }
+            DataValue::Enumeration(enum_value) => panic!("Can't create type from enum value"),
+            DataValue::Bool(_) => DataType::Bool,
+            DataValue::Lookup {
+                varient: v,
+                content: c,
+            } => {
                 let element_type = if c.len() == 0 {
                     DataType::Unresolved
                 } else {
                     DataType::from_data_value(&c[0])
                 };
                 DataType::Lookup(Box::new(LookupType::Array {
-						contains_type: element_type,
-						index_type: DataType::Number,
-						size: Some(c.len()),
-						low_index: None,
-						high_index: None,
-					}))
+                    contains_type: element_type,
+                    index_type: DataType::Number,
+                    size: Some(c.len()),
+                    low_index: None,
+                    high_index: None,
+                }))
             }
-            DataValue::User(n) => DataType::User(
-				Box::new(
-					UserType {
-						name: n.to_owned(),
-						definition: Box::new(DataType::Unresolved),
-					}
-				)),
+            DataValue::User(n) => DataType::User(Box::new(UserType {
+                name: n.to_owned(),
+                definition: Box::new(DataType::Unresolved),
+            })),
             DataValue::Unresolved => DataType::Unresolved,
-			_=> panic!("DataValue to DataType not implemented for this type."),
+            _ => panic!("DataValue to DataType not implemented for this type."),
         }
     }
 }
@@ -232,11 +237,13 @@ impl DataValue {
             DataValue::Str(s) => s.to_string(),
             DataValue::Number(n) => format!("{}", n),
             DataValue::Bool(b) => format!("{}", b),
-            DataValue::Lookup{varient: v, content: data} => 
-				format!("{:?}", &data),
+            DataValue::Lookup {
+                varient: v,
+                content: data,
+            } => format!("{:?}", &data),
             DataValue::User(u) => format!("{}", u.to_string()),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
-			_ => panic!("Print not implemented for this DataValue varient!"),
+            _ => panic!("Print not implemented for this DataValue varient!"),
         }
     }
 
@@ -260,10 +267,10 @@ impl DataValue {
             DataValue::Str(_) => format!("(rci_value) string_literal({})", &lexeme),
             DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
             DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
-            DataValue::Lookup {..} => "//not implemented".to_string(),
+            DataValue::Lookup { .. } => "//not implemented".to_string(),
             DataValue::User(ref u) => "//not implemented".to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
-			_ => panic!("Not implemented: DataValue can't be translated to object code!"),
+            _ => panic!("Not implemented: DataValue can't be translated to object code!"),
         }
     }
 }

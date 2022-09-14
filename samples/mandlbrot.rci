@@ -16,8 +16,8 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 100;
-val y_resolution = 132;
+val x_resolution = 1600
+val y_resolution = 1600
 
 val max_iterations = 50;
 val escape_radius = 2.0;
