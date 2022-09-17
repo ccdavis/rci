@@ -420,6 +420,11 @@ impl Parser {
         let decl_type = DeclarationType::Type;
         let type_name_token: Token = self.consume_identifier("Expect variable name")?;
         let type_name = type_name_token.identifier_string();
+        if type_name.chars().next().unwrap().is_lowercase() {
+            let msg = "Types must begin with upper-case ASCII letters.";
+            return Err(parse_err(&type_name_token,&msg));
+        }
+
         self.consume(Equal, "Expect '=' after type name.")?;
         // Instead of self.match([]) grab whatever, then match exhaustively after
         // advancing past the supposed type.
@@ -447,11 +452,12 @@ impl Parser {
         symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         use TokenType::*;
+        if TRACE { println!("In Record type declaration");}
         let mut field_list = Vec::new();
         let location =
-            self.consume(LeftParen, "expect '('. '(', ')' enclose a record's fields.")?;
+            self.consume(LeftBrace, "expect '{'. '{', '}' enclose a record's fields.")?;
         self.skip_all_newlines();
-        while !matches!(self.peek().token_type, RightParen) {
+        while !matches!(self.peek().token_type, RightBrace) {
             let field_name_token = self.consume_identifier("Expect field name.")?;
             self.consume(Colon, "Expect ':' before field type.")?;
             let field_type_token = match self.peek().token_type {
@@ -466,7 +472,7 @@ impl Parser {
                 }
             };
 
-            if !matches!(self.peek().token_type, RightParen) {
+            if matches!(self.peek().token_type, Comma) {
                 self.consume(Comma, "Expect comma after field type.")?;
             }
 
@@ -477,7 +483,7 @@ impl Parser {
                 field_type,
             });
         }
-        self.advance();
+        self.consume(RightBrace,"Expect '}' to complete record definition.")?;
         let record_definition = types::RecordType { fields: field_list };
         let type_definition = DataType::Record(record_definition);
         let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
@@ -504,9 +510,9 @@ impl Parser {
         symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        let mut enum_list = Vec::new();
-        let location =
-            self.consume(LeftParen, "expect '('. '(', ')' enclose enumeration lists.")?;
+        let mut enum_list = Vec::new();        
+        let location = self.consume(LeftBrace, "Expect '{' to begin enum list.")?;
+                //, "expect '{'. '{', '}' enclose enumeration lists.")?;
         self.skip_all_newlines();
         while matches!(self.peek().token_type, Identifier(_)) {
             let enum_token = self.consume_identifier("Expect identifier")?;
@@ -520,12 +526,15 @@ impl Parser {
 
             let data_value = DataValue::Enumeration(enum_value.clone());
             enum_list.push(enum_value.clone());
+            
+            if matches!(self.peek().token_type, Comma){
+                 self.advance();
+                }
             self.skip_all_newlines();
         }
-        self.consume(
-            RightParen,
-            "expect ')'. '(', ')' enclose enumeration lists.",
-        )?;
+        self.consume(RightBrace, "Expect '}' at end of enumeration definitions.")?;
+        
+        
         self.match_terminator()?;
 
         let enum_definition = EnumerationType {
@@ -1030,7 +1039,7 @@ impl Parser {
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
-            } else if self.matches(&[LeftBrace]) {
+            //} else if self.matches(&[LeftBrace]) {
                 // For Rec or Map literals with field-value pairs, or Set literals
                 expr = self.finish_record_literal(expr, symbols)?;
             } else {

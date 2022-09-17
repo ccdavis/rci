@@ -209,37 +209,37 @@ mod tests {
     use super::*;
 
     // Only test declaring record type
-    const SRC_RECORD_DECL: &str = "type Customer = Rec( name: Str, id: Num, discount: Bool)		
-		{{
+    const SRC_RECORD_DECL: &str = "type Customer = Rec { name: Str, id: Num, discount: Bool }
+		{
 			print \"Hello\"
-		}}
+		}
 		
 	";
 
     // Only test passing record type param, not using it
-    const SRC_RECORD_PARAM: &str = "type Customer = Rec( name: Str, id: Num, discount: Bool)
+    const SRC_RECORD_PARAM: &str = "type Customer = Rec{ name: Str, id: Num, discount: Bool}
 		
-		fun display(cust: Customer): Str {{
+		fun display(cust: Customer): Str {
 			return \"customer\"		
-		}}
+		}
 		
-		{{
+		{
 			print display(c)
-		}}
+		}
 	";
 
-    const SRC_RECORD_RETURN: &str = "type Customer = Rec(name: Str, balance: Num)
+    const SRC_RECORD_RETURN: &str = "type Customer = Rec{name: Str, balance: Num}
 		fun new_customer(n: Str): Customer {
-			val cust: Customer = Customer(name: n, balance: 0)
+			val cust: Customer = Customer {name: n, balance: 0}
 			return cust
 		}
 		
 		{
-			var c: Customer =  new_customer(\"Joe\")
+			var c: Customer =  new_customer{\"Joe\"}
 		}
 	";
 
-    const SRC_ENUMS: &str = "type Days = Enum(Monday Tuesday Wednesday)
+    const SRC_ENUMS: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
 							fun check_enum(d: Days): Bool {
 								if d = Tuesday {
 									return true
@@ -260,8 +260,8 @@ mod tests {
 							}
 							";
 
-    const SRC_ENUMS2: &str = "type Days = Enum(Monday Tuesday Wednesday)
-				type Weekends = Enum(Saturday Sunday)
+    const SRC_ENUMS2: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
+				//type Weekends = Enum {Saturday, Sunday}
 
 				fun test_types(): Bool {
 					var d: Days = Wednesday
@@ -304,7 +304,7 @@ mod tests {
         Err(type_errors)
     }
 
-    #[test]
+#[test]
     fn test_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS2)?.len() > 0);
         assert!(type_check(SRC_ENUMS2)? == ());
@@ -318,13 +318,13 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    
     fn test_record_decl() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_DECL)?.len() > 0);
-        assert!(type_check(SRC_ENUMS)? == ());
+        assert!(type_check(SRC_RECORD_DECL)? == ());
         Ok(())
     }
-    #[test]
+#[test]
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_PARAM)?.len() > 0);
         assert!(type_check(SRC_RECORD_PARAM)? == ());
