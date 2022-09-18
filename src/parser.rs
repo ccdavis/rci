@@ -1036,13 +1036,18 @@ impl Parser {
         loop {
             if self.matches(&[LeftParen]) {
                 // replace the expression with the full function call
-                expr = self.finish_call(expr, symbols)?;
+
+                expr = if expr.is_type_name() {
+                    self.finish_type_constructor(expr, symbols)?
+                } else {
+                    self.finish_call(expr, symbols)?
+                }
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
-            } else if self.matches(&[LeftBrace]) {
-                 //For Rec or Map literals with field-value pairs, or Set literals
-                expr = self.finish_record_literal(expr, symbols)?;
+            } else if self.matches(&[Dot]) {
+                panic!("Dot functions not implemented yet!"); 
+                
             } else {
                 break;
             }
@@ -1071,6 +1076,7 @@ impl Parser {
         use TokenType::*;
         let mut args: Vec<Expr> = Vec::new();
         self.skip_if_newline();
+        
         if !self.check(&RightParen) {
             loop {
                 let next_arg = self.expression(symbols)?;
@@ -1091,7 +1097,7 @@ impl Parser {
         Ok(Expr::call(callee, paren, args))
     }
 
-    fn finish_record_literal(
+    fn finish_type_constructor(
         &mut self,
         callee: Expr,
         symbols: &SymbolTable,
@@ -1101,22 +1107,22 @@ impl Parser {
         let mut field_values = Vec::new();
         let mut field_names = Vec::new();
 
-        while !self.check(&RightBrace){
+        while !self.check(&RightParen){
             let field_name_token = self.consume_identifier("Expect a field name.")?;
             self.consume(Colon, "Expect ':' before field type.")?;
             field_names.push(field_name_token.identifier_string());
             let value_expr = self.expression(symbols)?;
             field_values.push(value_expr);
-            if !self.check(&RightBrace) {
+            if !self.check(&RightParen) {
                 self.consume(Comma, "Expect comma after field value.")?;
             }
 
 
         }
-        let brace = self.consume(TokenType::RightBrace, "expect '}' after field-values.")?;
+        let paren = self.consume(TokenType::RightParen, "expect '}' after field-values.")?;
         Ok(Expr::record_type_literal(
             callee,
-            brace,
+            paren,
             field_names,
             field_values,
             

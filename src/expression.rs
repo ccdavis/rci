@@ -84,6 +84,21 @@ impl Expr {
             }
         }
     }
+
+    // Callees get apssed around as Expr type values but sometimes we need to know if they
+    // are names of variables or names of user types.
+pub fn is_type_name(&self) -> bool {
+    match self {
+        Expr::Variable(v) => {
+            v.name.identifier_string().chars().next().unwrap().is_uppercase()
+        }
+        _ => false,
+
+    }
+
+}
+
+
 } // impl expr
 
 #[derive(Clone, Debug)]
