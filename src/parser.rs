@@ -10,7 +10,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -1027,6 +1027,7 @@ impl Parser {
 
     fn call(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
+        if TRACE { println!("In call()");}
 
         // Possibly the start of a function call or just a bare
         // primary expression.
@@ -1039,8 +1040,8 @@ impl Parser {
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
-            //} else if self.matches(&[LeftBrace]) {
-                // For Rec or Map literals with field-value pairs, or Set literals
+            } else if self.matches(&[LeftBrace]) {
+                 //For Rec or Map literals with field-value pairs, or Set literals
                 expr = self.finish_record_literal(expr, symbols)?;
             } else {
                 break;
@@ -1095,20 +1096,36 @@ impl Parser {
         callee: Expr,
         symbols: &SymbolTable,
     ) -> Result<Expr, ParseError> {
-        let field_values = Vec::new();
-        let field_names = Vec::new();
+        use TokenType::*;
+        if TRACE { println!("In finish_record_literal");}
+        let mut field_values = Vec::new();
+        let mut field_names = Vec::new();
+
+        while !self.check(&RightBrace){
+            let field_name_token = self.consume_identifier("Expect a field name.")?;
+            self.consume(Colon, "Expect ':' before field type.")?;
+            field_names.push(field_name_token.identifier_string());
+            let value_expr = self.expression(symbols)?;
+            field_values.push(value_expr);
+            if !self.check(&RightBrace) {
+                self.consume(Comma, "Expect comma after field value.")?;
+            }
+
+
+        }
         let brace = self.consume(TokenType::RightBrace, "expect '}' after field-values.")?;
-        // TODO finish this
         Ok(Expr::record_type_literal(
             callee,
             brace,
-            field_values,
             field_names,
+            field_values,
+            
         ))
     }
 
     fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
+        if TRACE { println!("In primary() ");}
         match self.peek().token_type {
             True | False | Nil => {
                 self.advance();

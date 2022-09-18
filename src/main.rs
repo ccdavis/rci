@@ -257,9 +257,18 @@ mod tests {
 							
 							{
 								check_enum(Monday)
-							}
-							";
+							}";
+							
+    const SRC_ENUMS3: &str = " type Days = Enum {Monday, Tuesday, Wednesday}
+        type Weekends = Enum {Saturday, Sunday}
 
+        {
+            var d = Monday
+            print \"Day: \", d
+        }";
+
+    
+    
     const SRC_ENUMS2: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
 				//type Weekends = Enum {Saturday, Sunday}
 
@@ -304,7 +313,7 @@ mod tests {
         Err(type_errors)
     }
 
-#[test]
+
     fn test_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS2)?.len() > 0);
         assert!(type_check(SRC_ENUMS2)? == ());
@@ -312,6 +321,14 @@ mod tests {
     }
 
     #[test]
+    fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_ENUMS3)?.len() > 0);
+        assert!(type_check(SRC_ENUMS3)? == ());
+        Ok(())
+    }
+
+
+
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS)?.len() > 0);
         assert!(type_check(SRC_ENUMS)? == ());
@@ -324,14 +341,14 @@ mod tests {
         assert!(type_check(SRC_RECORD_DECL)? == ());
         Ok(())
     }
-#[test]
+
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_PARAM)?.len() > 0);
         assert!(type_check(SRC_RECORD_PARAM)? == ());
         Ok(())
     }
 
-    #[test]
+    
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_RETURN)?.len() > 0);
         assert!(type_check(SRC_RECORD_RETURN)? == ());
