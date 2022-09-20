@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_RETURN)?.len() > 0);
-        //assert!(type_check(SRC_RECORD_RETURN)? == ());
+        assert!(type_check(SRC_RECORD_RETURN)? == ());
         Ok(())
     }
 
