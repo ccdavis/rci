@@ -87,18 +87,18 @@ impl Expr {
 
     // Callees get apssed around as Expr type values but sometimes we need to know if they
     // are names of variables or names of user types.
-pub fn is_type_name(&self) -> bool {
-    match self {
-        Expr::Variable(v) => {
-            v.name.identifier_string().chars().next().unwrap().is_uppercase()
+    pub fn is_type_name(&self) -> bool {
+        match self {
+            Expr::Variable(v) => v
+                .name
+                .identifier_string()
+                .chars()
+                .next()
+                .unwrap()
+                .is_uppercase(),
+            _ => false,
         }
-        _ => false,
-
     }
-
-}
-
-
 } // impl expr
 
 #[derive(Clone, Debug)]
@@ -351,7 +351,18 @@ pub struct UserTypeLiteralNode {
 
 impl TypeCheck for UserTypeLiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        Ok(DataType::Unresolved)
+        
+        let  name = match *self.type_name {
+            Expr::Variable(ref v)=> v.name.identifier_string().clone(),
+            _ => panic!("Compiler error in type checking (determine_type) for User Type"),        
+        };
+
+        match symbols.lookup(&name) {
+            Ok(ref type_definition_ste) =>Ok(type_definition_ste.data_type.clone()),
+            Err(msg) => Err(
+                Error::new(&self.location, ErrorType::Type, 
+                format!("No type '{}' declared.",&name))),
+        }
     }
 }
 

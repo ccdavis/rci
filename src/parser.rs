@@ -422,7 +422,7 @@ impl Parser {
         let type_name = type_name_token.identifier_string();
         if type_name.chars().next().unwrap().is_lowercase() {
             let msg = "Types must begin with upper-case ASCII letters.";
-            return Err(parse_err(&type_name_token,&msg));
+            return Err(parse_err(&type_name_token, &msg));
         }
 
         self.consume(Equal, "Expect '=' after type name.")?;
@@ -452,7 +452,9 @@ impl Parser {
         symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        if TRACE { println!("In Record type declaration");}
+        if TRACE {
+            println!("In Record {} type declaration",type_name);
+        }
         let mut field_list = Vec::new();
         let location =
             self.consume(LeftBrace, "expect '{'. '{', '}' enclose a record's fields.")?;
@@ -483,7 +485,7 @@ impl Parser {
                 field_type,
             });
         }
-        self.consume(RightBrace,"Expect '}' to complete record definition.")?;
+        self.consume(RightBrace, "Expect '}' to complete record definition.")?;
         let record_definition = types::RecordType { fields: field_list };
         let type_definition = DataType::Record(record_definition);
         let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
@@ -510,9 +512,9 @@ impl Parser {
         symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        let mut enum_list = Vec::new();        
+        let mut enum_list = Vec::new();
         let location = self.consume(LeftBrace, "Expect '{' to begin enum list.")?;
-                //, "expect '{'. '{', '}' enclose enumeration lists.")?;
+        //, "expect '{'. '{', '}' enclose enumeration lists.")?;
         self.skip_all_newlines();
         while matches!(self.peek().token_type, Identifier(_)) {
             let enum_token = self.consume_identifier("Expect identifier")?;
@@ -526,15 +528,14 @@ impl Parser {
 
             let data_value = DataValue::Enumeration(enum_value.clone());
             enum_list.push(enum_value.clone());
-            
-            if matches!(self.peek().token_type, Comma){
-                 self.advance();
-                }
+
+            if matches!(self.peek().token_type, Comma) {
+                self.advance();
+            }
             self.skip_all_newlines();
         }
         self.consume(RightBrace, "Expect '}' at end of enumeration definitions.")?;
-        
-        
+
         self.match_terminator()?;
 
         let enum_definition = EnumerationType {
@@ -1027,7 +1028,9 @@ impl Parser {
 
     fn call(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-        if TRACE { println!("In call()");}
+        if TRACE {
+            println!("In call()");
+        }
 
         // Possibly the start of a function call or just a bare
         // primary expression.
@@ -1046,8 +1049,7 @@ impl Parser {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
             } else if self.matches(&[Dot]) {
-                panic!("Dot functions not implemented yet!"); 
-                
+                panic!("Dot functions not implemented yet!");
             } else {
                 break;
             }
@@ -1076,7 +1078,7 @@ impl Parser {
         use TokenType::*;
         let mut args: Vec<Expr> = Vec::new();
         self.skip_if_newline();
-        
+
         if !self.check(&RightParen) {
             loop {
                 let next_arg = self.expression(symbols)?;
@@ -1103,11 +1105,13 @@ impl Parser {
         symbols: &SymbolTable,
     ) -> Result<Expr, ParseError> {
         use TokenType::*;
-        if TRACE { println!("In finish_record_literal");}
+        if TRACE {
+            println!("In finish_record_literal");
+        }
         let mut field_values = Vec::new();
         let mut field_names = Vec::new();
 
-        while !self.check(&RightParen){
+        while !self.check(&RightParen) {
             let field_name_token = self.consume_identifier("Expect a field name.")?;
             self.consume(Colon, "Expect ':' before field type.")?;
             field_names.push(field_name_token.identifier_string());
@@ -1116,8 +1120,6 @@ impl Parser {
             if !self.check(&RightParen) {
                 self.consume(Comma, "Expect comma after field value.")?;
             }
-
-
         }
         let paren = self.consume(TokenType::RightParen, "expect '}' after field-values.")?;
         Ok(Expr::record_type_literal(
@@ -1125,13 +1127,14 @@ impl Parser {
             paren,
             field_names,
             field_values,
-            
         ))
     }
 
     fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
-        if TRACE { println!("In primary() ");}
+        if TRACE {
+            println!("In primary() ");
+        }
         match self.peek().token_type {
             True | False | Nil => {
                 self.advance();

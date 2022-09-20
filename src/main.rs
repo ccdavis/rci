@@ -221,21 +221,36 @@ mod tests {
 		
 		fun display(cust: Customer): Str {
 			return \"customer\"		
-		}
-		
+		}		
 		{
 			print display(c)
 		}
 	";
 
+    const SRC_RECORD_TYPE_INFERENCE: &str ="
+        type Customer = Rec{name: Str, balance: Num}
+        val cust  = Customer(name: \"abc\", balance: 0)
+    {
+        var c =  Customer(name: \"Joe Smith\", balance: 25)
+    }
+";
+
+    const SRC_RECORD_TYPE_EXPLICIT: &str = "
+        type Customer=Rec{name: Str, balance: Num}
+        val cust: Customer = Customer(name: n, balance: 0)
+    {
+        var c: Customer =  Customer(name: \"John Smith\", balance: 25)
+    }
+    ";
+
+
     const SRC_RECORD_RETURN: &str = "type Customer = Rec{name: Str, balance: Num}
 		fun new_customer(n: Str): Customer {
-			val cust: Customer = Customer(name: n, balance: 0)
+			val cust = Customer(name: n, balance: 0)
 			return cust
-		}
-		
+		}		
 		{
-			var c: Customer =  new_customer(\"Joe\")
+			var c =  new_customer(\"Joe\")
 		}
 	";
 
@@ -258,7 +273,7 @@ mod tests {
 							{
 								check_enum(Monday)
 							}";
-							
+
     const SRC_ENUMS3: &str = " type Days = Enum {Monday, Tuesday, Wednesday}
         type Weekends = Enum {Saturday, Sunday}
 
@@ -267,8 +282,6 @@ mod tests {
             print \"Day: \", d
         }";
 
-    
-    
     const SRC_ENUMS2: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
 				//type Weekends = Enum {Saturday, Sunday}
 
@@ -313,22 +326,21 @@ mod tests {
         Err(type_errors)
     }
 
-#[test]
+    #[test]
     fn test_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS2)?.len() > 0);
         assert!(type_check(SRC_ENUMS2)? == ());
         Ok(())
     }
 
-#[test]    
+    #[test]
     fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS3)?.len() > 0);
         assert!(type_check(SRC_ENUMS3)? == ());
         Ok(())
     }
 
-
-#[test]
+    #[test]
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS)?.len() > 0);
         assert!(type_check(SRC_ENUMS)? == ());
@@ -349,10 +361,25 @@ mod tests {
         Ok(())
     }
 
-#[test]
+    #[test]
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_RETURN)?.len() > 0);
         //assert!(type_check(SRC_RECORD_RETURN)? == ());
         Ok(())
     }
+
+    #[test]
+    fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_RECORD_TYPE_INFERENCE)?.len() > 0);
+        assert!(type_check(SRC_RECORD_TYPE_INFERENCE)? == ());
+        Ok(())
+    }
+
+    #[test]
+    fn test_record_type_explicit() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_RECORD_TYPE_EXPLICIT)?.len() > 0);
+        assert!(type_check(SRC_RECORD_TYPE_EXPLICIT)? == ());
+        Ok(())
+    }
+
 }
