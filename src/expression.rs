@@ -7,7 +7,6 @@ use crate::symbol_table::*;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
-use crate::types::FieldValue;
 use crate::types::LookupType;
 use crate::types::ObjectCode;
 
@@ -37,7 +36,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    // I don't love this matching. It would be nice to have varents as types (refinement types)
+    // I don't love this matching. It would be nice to have varients as types (refinement types)
     // Discussion: https://www.reddit.com/r/rust/comments/2rdoxx/enum_variants_as_types/
 
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -180,7 +179,7 @@ impl Compiler for BinaryNode {
         let data_type = self.determine_type(symbols)?;
         let left = self.left.compile(symbols)?;
         let right = self.right.compile(symbols)?;
-        let mut op = match self.operator.token_type {
+        let op = match self.operator.token_type {
             TokenType::Plus => "_ADD_",
             TokenType::Minus => "_SUB_",
             TokenType::Star => "_MUL_",
@@ -351,26 +350,85 @@ pub struct UserTypeLiteralNode {
 
 impl TypeCheck for UserTypeLiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        
         let  name = match *self.type_name {
             Expr::Variable(ref v)=> v.name.identifier_string().clone(),
             _ => panic!("Compiler error in type checking (determine_type) for User Type"),        
         };
 
-        match symbols.lookup(&name) {
-            Ok(ref type_definition_ste) =>Ok(type_definition_ste.data_type.clone()),
+        let user_type = match symbols.lookup(&name) {
+            Ok(ref type_definition_ste) => Ok(type_definition_ste.data_type.clone()),
             Err(msg) => Err(
                 Error::new(&self.location, ErrorType::Type, 
                 format!("No type '{}' declared.",&name))),
+        };
+
+        // Check field types
+        if let Ok(ref this_type) = user_type {
+            match this_type {
+                _ => panic!("Not implemented"),
+                DataType::Record(ref record) => {
+                    for (index, field_name) in self.field_names.iter().enumerate() {
+                        let f = record.fields.iter().find(|field| &field.name == field_name);
+                        // The field the user used in the constructor / literal isn't in the type
+                        if f.is_none() {
+                            return Err(Error::new(&self.location, ErrorType::Type, 
+                                format!("No field named  '{}' for type {}.",&field_name, &name)));
+                        }
+
+                        // Check that the types matcvh between what the value assigned to the field is and
+                        // what the field's defined type is.
+                        // It's also possible for determine_type() to fail and a match can't be performed.
+                        // In principle this shouldn't happen but for now we have to check.
+                        if let Some(field_info) = f{
+                            let field_value = self.field_values[index].clone();
+                            match field_value.determine_type(symbols) {
+                                Ok(ref value_type) =>{
+                                    if value_type != &field_info.field_type {
+                                        return Err(Error::new(&self.location, ErrorType::Type, 
+                                            format!("Type '{}' value assigned to field '{}' of '{}' didn't match.Expected '{}'",
+                                            &value_type, &field_info.name,&name,field_info.field_type)));    
+                                        }                                                                            
+                                },
+                                Err(msg) => {
+                                    return Err(Error::new(&self.location, ErrorType::Type, 
+                                        format!("Type of value assigned to field '{}' of '{}' could not be determined. Problem was '{}'",
+                                        &field_name, &name, &msg.message)));
+
+                                    
+                                }
+
+                            }
+
+                        }
+                        
+                    }
+                }
+                
+            }
+
         }
+        user_type
     }
 }
 
 impl Compiler for UserTypeLiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let mut code: String = "record_new([".to_string();
+        let data_type = self.determine_type(symbols)?;
+        for (index,name)  in self.field_names.iter().enumerate() {            
+            let field_value = self.field_values[index].clone();
+            code = code + &field_value.compile(symbols)?.code;
+            if index < self.field_names.len() -1 {
+                code = code + ", ";
+            }
+        }
+        code = code + &format!(", {})",&self.field_values.len());
+        
+
+
         Ok(ObjectCode {
-            data_type: DataType::Unresolved,
-            code: " // unimplemented ".to_string(),
+            data_type,
+            code,
         })
     }
 }

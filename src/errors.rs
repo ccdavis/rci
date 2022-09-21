@@ -6,8 +6,6 @@ use std::fmt;
 pub enum ErrorType {
     Type,
     Parse,
-    Execution,
-    Evaluation,
     Compiler,
     Internal,
 }
@@ -17,9 +15,7 @@ impl fmt::Display for ErrorType {
         use ErrorType::*;
         let name = match self {
             Type => "Type",
-            Parse => "Parse",
-            Evaluation => "Evaluation",
-            Execution => "Execution",
+            Parse => "Parse",            
             Internal => "Internal",
             Compiler => "Compilation",
         };
@@ -65,7 +61,7 @@ impl Error {
         )
     }
 
-    // Use the ln and col to add a line of source and a ^ to show the error location.
+    //TODO:  Use the ln and col to add a line of source and a ^ to show the error location.
     pub fn show_with_source(&self, source: String) -> String {
         self.format()
     }
