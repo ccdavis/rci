@@ -15,7 +15,7 @@ impl fmt::Display for ErrorType {
         use ErrorType::*;
         let name = match self {
             Type => "Type",
-            Parse => "Parse",            
+            Parse => "Parse",
             Internal => "Internal",
             Compiler => "Compilation",
         };

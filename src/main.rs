@@ -227,7 +227,7 @@ mod tests {
 		}
 	";
 
-    const SRC_RECORD_TYPE_INFERENCE: &str ="
+    const SRC_RECORD_TYPE_INFERENCE: &str = "
         type Customer = Rec{name: Str, balance: Num}
         val cust  = Customer(name: \"abc\", balance: 0)
     {
@@ -237,12 +237,11 @@ mod tests {
 
     const SRC_RECORD_TYPE_EXPLICIT: &str = "
         type Customer=Rec{name: Str, balance: Num}
-        val cust: Customer = Customer(name: n, balance: 0)
+        val cust: Customer = Customer(name: \"Joe Smith\", balance: 0)
     {
         var c: Customer =  Customer(name: \"John Smith\", balance: 25)
     }
     ";
-
 
     const SRC_RECORD_RETURN: &str = "type Customer = Rec{name: Str, balance: Num}
 		fun new_customer(n: Str): Customer {
@@ -381,5 +380,4 @@ mod tests {
         assert!(type_check(SRC_RECORD_TYPE_EXPLICIT)? == ());
         Ok(())
     }
-
 }

@@ -1,18 +1,13 @@
 
-type Days = Enum(Monday Tuesday Wednesday)
-type Weekends = Enum(Saturday Sunday)
+type Customer = Rec {name: Str,balance: Num}
 
-fun test_types(): Bool {
-	var d: Days = Wednesday
-	var e = Monday
-	if e = Monday {
-		print "A case of the Mondays"
-	}
-	e := Wednesday
-	
-	return d = Tuesday 
+fun new_customer(n: Str, b: Num): Customer {
+	val cust = Customer(name: "John Smith", balance: 25)				
+	return cust
 }
+
 
 {
-	test_types()
-}
+	val c = new_customer("John Smith", 25)
+	}
+	

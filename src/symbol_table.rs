@@ -2,8 +2,10 @@ use crate::lex::Token;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
+use crate::types::UserType;
 use std::collections::HashMap;
 
+const TRACE: bool = true;
 #[derive(Clone, Debug)]
 pub struct SymbolTableEntry {
     pub entry_number: usize, // The entry in the current table when this entry was added
@@ -306,4 +308,40 @@ impl SymbolTable {
             }
         }
     } // fn
+}
+
+pub fn data_type_for_symbol(
+    symbols: &SymbolTable,
+    name: &str,
+) -> Result<DataType, NotDeclaredError> {
+    let symbol_table_entry = symbols.lookup(name)?;
+    let symbol_type = symbol_table_entry.data_type.clone();
+
+    if TRACE {
+        println!("Found symbol {}", &name);
+    }
+    if TRACE {
+        println!("Type of variable is '{:?}'", symbol_table_entry.data_type);
+    }
+
+    if let DataType::User(user_type) = symbol_type {
+        resolve_user_type(symbols, user_type.as_ref())
+    } else {
+        Ok(symbol_type)
+    }
+}
+
+pub fn resolve_user_type(
+    symbols: &SymbolTable,
+    u: &UserType,
+) -> Result<DataType, NotDeclaredError> {
+    if let DataType::Unresolved = *u.definition {
+        let ste = symbols.lookup(&u.name)?;
+        match ste.data_type {
+            DataType::User(ref actual) => Ok(*actual.definition.clone()),
+			_ => Ok(ste.data_type.clone()),            
+        }
+    } else {
+        Ok(*u.definition.clone())
+    }
 }

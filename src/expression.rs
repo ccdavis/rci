@@ -10,7 +10,7 @@ use crate::types::DeclarationType;
 use crate::types::LookupType;
 use crate::types::ObjectCode;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
@@ -350,62 +350,63 @@ pub struct UserTypeLiteralNode {
 
 impl TypeCheck for UserTypeLiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        let  name = match *self.type_name {
-            Expr::Variable(ref v)=> v.name.identifier_string().clone(),
-            _ => panic!("Compiler error in type checking (determine_type) for User Type"),        
+        let name = match *self.type_name {
+            Expr::Variable(ref v) => v.name.identifier_string().clone(),
+            _ => panic!(
+                "Compiler error in type checking (determine_type) for User Type '{:?}'",
+                self.type_name
+            ),
         };
 
         let user_type = match symbols.lookup(&name) {
             Ok(ref type_definition_ste) => Ok(type_definition_ste.data_type.clone()),
-            Err(msg) => Err(
-                Error::new(&self.location, ErrorType::Type, 
-                format!("No type '{}' declared.",&name))),
+            Err(msg) => Err(Error::new(
+                &self.location,
+                ErrorType::Type,
+                format!("No type '{}' declared.", &name),
+            )),
         };
 
         // Check field types
         if let Ok(ref this_type) = user_type {
             match this_type {
-                _ => panic!("Not implemented"),
                 DataType::Record(ref record) => {
                     for (index, field_name) in self.field_names.iter().enumerate() {
                         let f = record.fields.iter().find(|field| &field.name == field_name);
                         // The field the user used in the constructor / literal isn't in the type
                         if f.is_none() {
-                            return Err(Error::new(&self.location, ErrorType::Type, 
-                                format!("No field named  '{}' for type {}.",&field_name, &name)));
+                            return Err(Error::new(
+                                &self.location,
+                                ErrorType::Type,
+                                format!("No field named  '{}' for type {}.", &field_name, &name),
+                            ));
                         }
 
                         // Check that the types matcvh between what the value assigned to the field is and
                         // what the field's defined type is.
                         // It's also possible for determine_type() to fail and a match can't be performed.
                         // In principle this shouldn't happen but for now we have to check.
-                        if let Some(field_info) = f{
+                        if let Some(field_info) = f {
                             let field_value = self.field_values[index].clone();
                             match field_value.determine_type(symbols) {
-                                Ok(ref value_type) =>{
+                                Ok(ref value_type) => {
                                     if value_type != &field_info.field_type {
                                         return Err(Error::new(&self.location, ErrorType::Type, 
                                             format!("Type '{}' value assigned to field '{}' of '{}' didn't match.Expected '{}'",
-                                            &value_type, &field_info.name,&name,field_info.field_type)));    
-                                        }                                                                            
-                                },
+                                            &value_type, &field_info.name,&name,field_info.field_type)));
+                                    }
+                                }
                                 Err(msg) => {
                                     return Err(Error::new(&self.location, ErrorType::Type, 
                                         format!("Type of value assigned to field '{}' of '{}' could not be determined. Problem was '{}'",
                                         &field_name, &name, &msg.message)));
-
-                                    
                                 }
-
                             }
-
                         }
-                        
                     }
                 }
-                
+                _ => panic!("Not implemented for '{:?}'", this_type),
             }
-
         }
         user_type
     }
@@ -415,21 +416,16 @@ impl Compiler for UserTypeLiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let mut code: String = "record_new([".to_string();
         let data_type = self.determine_type(symbols)?;
-        for (index,name)  in self.field_names.iter().enumerate() {            
+        for (index, name) in self.field_names.iter().enumerate() {
             let field_value = self.field_values[index].clone();
             code = code + &field_value.compile(symbols)?.code;
-            if index < self.field_names.len() -1 {
+            if index < self.field_names.len() - 1 {
                 code = code + ", ";
             }
         }
-        code = code + &format!(", {})",&self.field_values.len());
-        
+        code = code + &format!(", {})", &self.field_values.len());
 
-
-        Ok(ObjectCode {
-            data_type,
-            code,
-        })
+        Ok(ObjectCode { data_type, code })
     }
 }
 
@@ -642,6 +638,12 @@ pub struct VariableNode {
 pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType, String> {
     match symbols.lookup(name) {
         Ok(ref symbol_table_entry) => {
+            if TRACE {
+                println!("Found symbol {}", &name);
+            }
+            if TRACE {
+                println!("Type of variable is '{:?}'", symbol_table_entry.data_type);
+            }
             if let DataType::User(ref user_type) = symbol_table_entry.data_type {
                 if matches!(DataType::Unresolved, user_type) {
                     match symbols.outer {
@@ -665,7 +667,13 @@ impl TypeCheck for VariableNode {
     // lexical scoping rules.
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
+        if TRACE {
+            println!("Check variable node type...");
+        }
         if let TokenType::Identifier(variable_name) = &self.name.token_type {
+            if TRACE {
+                println!("Got name of variable {}", &variable_name);
+            }
             match data_type_for_symbol(symbols, &variable_name) {
                 Ok(data_type) => Ok(data_type),
                 Err(msg) => Err(Error::new(&self.name, ErrorType::Type, msg)),

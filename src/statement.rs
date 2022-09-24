@@ -6,12 +6,13 @@ use crate::lex::Token;
 use crate::lex::TokenType;
 use crate::symbol_table::SymbolTable;
 use crate::symbol_table::SymbolTableEntry;
-use crate::types::DataType;
+use crate::symbol_table::*;
 
+use crate::types::DataType;
 use crate::types::DeclarationType;
 use crate::types::GlobalStatementObjectCode;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
@@ -453,11 +454,28 @@ impl ReturnStmtNode {
 }
 impl TypeChecking for ReturnStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+		if TRACE { println!("Try to determine type of return-type expr: {:?}",self.expr);}
         let would_return_type = self.expr.determine_type(symbols)?;
-        if would_return_type != self.return_type {
+		if TRACE { println!("resolved return-type expr {:?}",&would_return_type);}
+        let should_return_type = match self.return_type {
+            DataType::User(ref u) => match resolve_user_type(symbols, u.as_ref()) {
+                Ok(data_type) => Ok(data_type),
+                Err(not_declared) => Err(Error::new(
+                    &self.location,
+                    ErrorType::Type,
+                    not_declared.message,
+                )),
+            },
+            _ => Ok(self.return_type.clone()),
+        }?;
+		if TRACE { println!("resolved return type self.return_type to {:?}",&should_return_type);}
+		
+		
+
+        if would_return_type != should_return_type {
             let message = format!(
-                "Type of return statement '{}' doesn't match function return type of '{}'.",
-                &would_return_type, &self.return_type
+                "Type of return statement '{:?}' doesn't match function return type of '{:?}'.",
+                &would_return_type, &should_return_type
             );
             Err(Error::new(&self.location, ErrorType::Type, message))
         } else {
@@ -645,7 +663,10 @@ impl Compiler for TypeNode {
                 );
                 format!("{}{}", &enum_decl, &str_conversions)
             }
-            _ => panic!("Not implemented yet: Type declaration"),
+            _ => format!(
+                " // Type '{}' requires no IR source for current language features",
+                &self.name
+            ),
         };
         Ok(code)
     }

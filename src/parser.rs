@@ -453,7 +453,7 @@ impl Parser {
     ) -> Result<Stmt, ParseError> {
         use TokenType::*;
         if TRACE {
-            println!("In Record {} type declaration",type_name);
+            println!("In Record {} type declaration", type_name);
         }
         let mut field_list = Vec::new();
         let location =
