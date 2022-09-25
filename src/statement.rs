@@ -12,7 +12,7 @@ use crate::types::DataType;
 use crate::types::DeclarationType;
 use crate::types::GlobalStatementObjectCode;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;

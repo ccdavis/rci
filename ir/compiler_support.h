@@ -4,6 +4,8 @@
 #include "memory.h"
 #include "value.h"
 
+#include <stdio.h>
+#include <stdarg.h>
 
 
 
@@ -19,12 +21,21 @@ void runtime_error(const char * msg) {
 
 
 
-rci_value record_new(rci_value data[], int field_count) {	
+rci_value record_new(int field_count, ...) {
 	RecordObject * new_record = ALLOCATE_OBJECT(RecordObject, object_record);	
 	rci_value * fields = ALLOCATE(rci_value, field_count);
-	memcpy(fields,data, sizeof(rci_value) * field_count);	
-	rci_record new_record_data = (rci_record) {.fields = fields,.field_count =field_count}; 
-	new_record->record_data = new_record_data;
+		
+	new_record->record_data = (rci_record) {.fields = fields,.field_count = field_count}; 
+	
+	va_list args;
+    va_start(args,field_count);
+	for(int field_num=0;field_num<field_count; field_num++) {
+		fields[field_num] =  va_arg(args, rci_value);
+	}
+	va_end(args);
+	
+	//memcpy(fields,data, sizeof(rci_value) * field_count);	
+	
 	return (rci_value) { .type = _object_, .as._object = (rci_object*) new_record};	
 }
 

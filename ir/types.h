@@ -13,7 +13,7 @@ typedef long rci_int;
 typedef double rci_number;
 typedef long rci_integer;
 typedef double rci_float;
-typedef long rci_enumeration;
+typedef int rci_enumeration;
 
 typedef enum { utf_8_encoded, byte_encoded} 
 	char_encoding;

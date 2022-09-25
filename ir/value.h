@@ -28,6 +28,7 @@ Definitions for complex types
 typedef struct rci_record {
 	rci_value * fields;
 	int field_count;
+	//const char * type_name;
 } rci_record;
 
 typedef struct RecordObject {
@@ -60,11 +61,13 @@ typedef struct ArrayObject {
 } ArrayObject;
 
 
+#define ENUM_VAL(value) ((rci_value) {.type = _enumeration_, .as = (rci_data){._enumeration = value}})
+
 #define BOOL_VAL(value) ((rci_value) {_boolean_, (rci_data){._boolean = value}})
 #define NUMBER_VAL(value) ((rci_value) {.type = _number_, .as = (rci_data){._number = value}})
 #define INTEGER_VAL(value) ((rci_value) {.type = _integer_, .as = (rci_data){._integer = value}})
 #define FLOAT_VAL(value) ((rci_value) {.type = _float_, .as = (rci_data){._float = value}})
-#define ENUM_VAL(value) ((rci_value) {.type = _enumeration_, .as = (rci_data){._enumeration = value}})
+
 
 #define AS_BOOL(value) ((value).as._boolean)
 #define AS_NUMBER(value) ((value).as._number)

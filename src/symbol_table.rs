@@ -5,7 +5,7 @@ use crate::types::DeclarationType;
 use crate::types::UserType;
 use std::collections::HashMap;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 #[derive(Clone, Debug)]
 pub struct SymbolTableEntry {
     pub entry_number: usize, // The entry in the current table when this entry was added

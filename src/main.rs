@@ -12,7 +12,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 struct Builder {
     had_compiler_error: bool,

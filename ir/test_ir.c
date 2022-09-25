@@ -1,6 +1,8 @@
 //#include "value.h"
 //#include "memory.h"
+#include <stdarg.h>
 #include "compiler_support.h"
+
 
 static int  failures = 0;
 static int total = 0;
@@ -17,9 +19,18 @@ void check(unsigned char result, const char * test_name) {
 	printf("\n");	
 }
 
-rci_value  x_type = ENUM_VAL(5);
 
-void test_number_macros() {	
+
+void test_enum_macros() {	
+	rci_value  x_type = ENUM_VAL(5);
+	rci_value  y_type = ENUM_VAL(5);
+	check(5 == y_type.as._number,"ENUM_VAL(5)");
+	check(false == IS_NUMBER(x_type),"IS_NUMBER false on enums");
+	check(true == IS_ENUM(y_type),"IS_ENUM true");
+	
+}
+
+void test_number_macros() {		
 	 rci_value  x = NUMBER_VAL(5);
 	rci_value  y = NUMBER_VAL(1.25);
 	
@@ -84,12 +95,39 @@ void test_string_equal() {
 	check(true == AS_BOOL(string_equal(t3,t4)), "strings equal");	
 }
 
+void test_record_new() {
+	rci_value t1 = string_new("123", byte_encoded);
+	rci_value b = BOOL_VAL(true);
+	rci_value  y = NUMBER_VAL(1.25);
+	rci_value data[3] = {t1, b, y}; 
+	
+	rci_value rec = record_new(3, t1, b, y);
+	RecordObject * r = (RecordObject*) rec.as._object;
+	rci_record record_data = r->record_data;
+	check(3 == record_data.field_count,"Three fields were set");
+	rci_value v1 = record_data.fields[1];
+	check(true == AS_BOOL(v1),"'b' set to true");
+	rci_value v2 = record_data.fields[2];
+	check(1.25 == AS_NUMBER(v2),"should be a number");
+	
+	rci_value t2 = string_new("123", byte_encoded);
+	rci_value v0 =record_data.fields[0];
+	check(true == AS_BOOL(string_equal(t2,v0)), "String value set");	
+	
+	for (int i=0;i<3;i++) {
+		rci_value v = record_data.fields[i];
+		//debug_value_to_stdout(v);
+	}	
+}
+
 int main() {
 	test_number_macros();
 	test_boolean_macros();
+	test_enum_macros();
 	test_allocate();
 	test_to_string();
 	test_string_equal();
+	test_record_new();
 	
 	printf("\n");
 	

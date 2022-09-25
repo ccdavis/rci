@@ -10,7 +10,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 pub struct Parser {
     tokens: Vec<Token>,
