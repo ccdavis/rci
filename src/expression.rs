@@ -382,7 +382,7 @@ impl TypeCheck for UserTypeLiteralNode {
                             ));
                         }
 
-                        // Check that the types matcvh between what the value assigned to the field is and
+                        // Check that the types match between what the value assigned to the field is and
                         // what the field's defined type is.
                         // It's also possible for determine_type() to fail and a match can't be performed.
                         // In principle this shouldn't happen but for now we have to check.
@@ -414,7 +414,7 @@ impl TypeCheck for UserTypeLiteralNode {
 
 impl Compiler for UserTypeLiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-        let mut code: String = "record_new([".to_string();
+        let mut code: String = format!("record_new({}, ", &self.field_values.len());
         let data_type = self.determine_type(symbols)?;
         for (index, name) in self.field_names.iter().enumerate() {
             let field_value = self.field_values[index].clone();
@@ -423,7 +423,7 @@ impl Compiler for UserTypeLiteralNode {
                 code = code + ", ";
             }
         }
-        code = code + &format!(", {})", &self.field_values.len());
+        code = code + &format!(")");
 
         Ok(ObjectCode { data_type, code })
     }
