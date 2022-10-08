@@ -24,10 +24,11 @@ void check(unsigned char result, const char * test_name) {
 void test_enum_macros() {	
 	rci_value  x_type = ENUM_VAL(5);
 	rci_value  y_type = ENUM_VAL(5);
-	check(5 == y_type.as._number,"ENUM_VAL(5)");
+	//check(5 == y_type.as._number,"ENUM_VAL(5)");
 	check(false == IS_NUMBER(x_type),"IS_NUMBER false on enums");
 	check(true == IS_ENUM(y_type),"IS_ENUM true");
-	
+	check(y_type.as._enumeration == x_type.as._enumeration, "X and Y enum types are equal");
+	check(5 == (rci_enumeration) y_type.as._enumeration,"The enum value should be 5");
 }
 
 void test_number_macros() {		
@@ -60,7 +61,7 @@ void test_allocate() {
 	string_object->string_data.len = 25;
 	string_object->string_data.chars = 25;
 	strncpy(string_object->string_data.data, test_value, 25);		
-	check( 0 == strcmp(string_object->string_data.data, "abcdefghijkl mnop"), "String content accessible");
+	check( 0 == strcmp(string_object->string_data.data, "abcdefghijkl mnop"), "String content should be accessible");
 	FREE(char, string_object->string_data.data);
 	FREE(StringObject, string_object);
 }
@@ -120,6 +121,50 @@ void test_record_new() {
 	}	
 }
 
+void test_record_access() {
+	rci_value t1 = string_new("123", byte_encoded);
+	rci_value b = BOOL_VAL(true);
+	rci_value  y = NUMBER_VAL(1.25);
+	rci_value data[3] = {t1, b, y}; 
+	
+	rci_value rec = record_new(3, t1, b, y);
+	
+	rci_value retrieved_v1 = record_access_member(rec, 1);
+	check(true == AS_BOOL(retrieved_v1),"'b' set to true");
+	rci_value retrieved_v2 = record_access_member(rec, 2);
+	check(1.25 == AS_NUMBER(retrieved_v2),"should be a number");
+	rci_value t2 = string_new("123", byte_encoded);
+	rci_value retrieved_v0 = record_access_member(rec, 0);
+	check(true == AS_BOOL(string_equal(t2,retrieved_v0)), "String value set");	
+}
+
+
+void test_record_set() {
+	rci_value t1 = string_new("123", byte_encoded);
+	rci_value b = BOOL_VAL(true);
+	rci_value  y = NUMBER_VAL(1.25);
+		
+	rci_value rec = record_new(3, t1, b, y);
+	
+	rci_value new_t1 = string_new("zyx", byte_encoded);
+	rci_value new_b = BOOL_VAL(false);
+	rci_value  new_y = NUMBER_VAL(99.55);
+	record_set_member(rec, new_t1, 0);
+	record_set_member(rec, new_b, 1);
+	record_set_member(rec, new_y, 2);
+	
+	rci_value retrieved_v1 = record_access_member(rec, 1);
+	check(false == AS_BOOL(retrieved_v1),"bool record member updated");
+	
+	rci_value retrieved_v2 = record_access_member(rec, 2);
+	check(99.55 == AS_NUMBER(retrieved_v2),"number record member updated");
+	
+	rci_value retrieved_v0 = record_access_member(rec, 0);
+	check(false == AS_BOOL(string_equal(t1,retrieved_v0)), "String value record member set");	
+}
+
+
+
 int main() {
 	test_number_macros();
 	test_boolean_macros();
@@ -128,6 +173,8 @@ int main() {
 	test_to_string();
 	test_string_equal();
 	test_record_new();
+	test_record_access();
+	test_record_set();
 	
 	printf("\n");
 	

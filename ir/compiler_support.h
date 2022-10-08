@@ -179,6 +179,9 @@ void debug_value_to_stdout(rci_value value) {
 			StringObject * this_string = (StringObject*) value.as._object;
 			debug_str_to_stdout(this_string->string_data);
 		}break;
+		case _enumeration_: {
+			printf("Enumeration: %i",value.as._enumeration);
+		}break;
 		default: {
 			printf("Type %d not handled \n", value.type);
 		}
