@@ -9,36 +9,29 @@
 
 
 
-void code_gen_error(const char * msg) {
-	printf("Code generation error: %s",msg);
-	exit(1);
-}
-
-void runtime_error(const char * msg) {
-	printf("Runtime error: %s",msg);
-	exit(1);
-}
-
-
-
 rci_value record_new(int field_count, ...) {
 	RecordObject * new_record = ALLOCATE_OBJECT(RecordObject, object_record);	
-	rci_value * fields = ALLOCATE(rci_value, field_count);
-		
+	rci_value * fields = ALLOCATE(rci_value, field_count);		
 	new_record->record_data = (rci_record) {.fields = fields,.field_count = field_count}; 
-	
 	va_list args;
     va_start(args,field_count);
 	for(int field_num=0;field_num<field_count; field_num++) {
 		fields[field_num] =  va_arg(args, rci_value);
 	}
 	va_end(args);
-	
 	//memcpy(fields,data, sizeof(rci_value) * field_count);	
-	
 	return (rci_value) { .type = _object_, .as._object = (rci_object*) new_record};	
 }
 
+rci_value record_access_member(rci_value rec, int offset) {
+	RecordObject * rec_obj = (RecordObject*) AS_OBJECT(rec);
+	return record_object_read_field(rec_obj, offset);	
+}
+
+void record_set_member(rci_value rec, rci_value to_value, int offset) {
+	RecordObject * rec_obj = (RecordObject*) AS_OBJECT(rec);
+	record_object_set_field(rec_obj, to_value, offset);
+}
 
 rci_str rci_str_ascii_literal(char  str[]) {
 	rci_str result = {		

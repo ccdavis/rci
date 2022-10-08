@@ -3,6 +3,20 @@
 
 #include "types.h"
 
+
+void code_gen_error(const char * msg) {
+	printf("Code generation error: %s",msg);
+	exit(1);
+}
+
+void runtime_error(const char * msg) {
+	printf("Runtime error: %s",msg);
+	exit(1);
+}
+
+
+
+
 typedef union {	
 	rci_bool _boolean;	
 	rci_number _number;
@@ -31,10 +45,26 @@ typedef struct rci_record {
 	//const char * type_name;
 } rci_record;
 
+
+
 typedef struct RecordObject {
 	rci_object obj;
 	rci_record record_data;
 }RecordObject;
+
+rci_value record_object_read_field(RecordObject * rec_obj, int field_num){
+	if (field_num > rec_obj->record_data.field_count - 1) {
+		code_gen_error("Field num exceeded this record's fields.");
+	}
+	return rec_obj->record_data.fields[field_num];
+}
+
+void record_object_set_field(RecordObject * rec_obj, rci_value to_value, int field_num) {
+	if (field_num > rec_obj->record_data.field_count - 1) {
+		code_gen_error("Field num exceeded this record's fields.");
+	}
+	rec_obj->record_data.fields[field_num] = to_value;
+}
 
 typedef struct rci_str {		
 	long len;	 // number of bytes
