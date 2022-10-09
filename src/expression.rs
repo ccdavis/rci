@@ -32,6 +32,8 @@ pub enum Expr {
     Literal(DataValue),
     UserTypeLiteral(UserTypeLiteralNode),
     Variable(VariableNode),
+	Setter(SetterNode), // record instance . field =
+	Getter(GetterNode), // record instance. field
     Assignment(AssignmentNode),
 }
 
@@ -259,6 +261,23 @@ impl Compiler for LogicalNode {
         })
     }
 }
+
+
+// a 'getter' is any of VAR.FIELD, VAR.FIELD[index], VAR.FUNCTION()
+#[derive(Clone, Debug)]
+pub struct GetterNode {
+	callee: Box<Expr>,
+	dot: Token,
+	getter: Box<Expr>,		
+}
+
+#[derive(Clone, Debug)]
+pub struct SetterNode {
+	name: Box<Expr>,
+	dot: Token,
+	value: Box<Expr>,		
+}
+
 
 #[derive(Clone, Debug)]
 pub struct CallNode {

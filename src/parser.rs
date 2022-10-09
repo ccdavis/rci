@@ -1048,8 +1048,14 @@ impl Parser {
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
                 expr = self.finish_lookup(expr, symbols)?;
-            } else if self.matches(&[Dot]) {
-                panic!("Dot functions not implemented yet!");
+            } else if self.matches(&[Dot]) {                
+				expr = if expr.is_type_name() {
+                    //  type specific functions (static)
+					panic!("Type accessors (static methods) not implemented!")
+                } else {
+					// method call or bare record field name
+                    expr = self.finish_getter(expr, symbols)?
+                }
             } else {
                 break;
             }
@@ -1073,6 +1079,41 @@ impl Parser {
             Err(parse_error)
         }
     }
+	
+	fn finish_getter(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+		use TokenType::*;
+		let dot = self.previous();
+		
+		// The remainder has to be a call node (variable, lookup, function call, getter)
+		let getter= self.call(symbols)?;
+		
+		// The callee's type is the record type, the expr value is the field name or function
+		match expr {
+			Expr::Variable(_) => {
+				let node = GetterNode { callee, dot, getter };
+				Ok(Expr::Getter(node))
+			},
+			Expr::Call(_) => {
+				panic!("Function call (multi-method) not yet supported!");
+			},
+			Expr::Lookup(_) => {
+				panic!("Lookup call not yet supported on records";)
+			},
+			_ => {
+			let parse_error = parse_err(
+                &self.previous(),
+               "Not a field name or function call."
+            );
+			self.error(parse_error.clone());
+            Err(parse_error)
+		}
+			
+	
+			
+		}
+		
+		
+	}
 
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
