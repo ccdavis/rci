@@ -1054,7 +1054,7 @@ impl Parser {
 					panic!("Type accessors (static methods) not implemented!")
                 } else {
 					// method call or bare record field name
-                    expr = self.finish_getter(expr, symbols)?
+                    self.finish_getter(expr, symbols)?
                 }
             } else {
                 break;
@@ -1085,19 +1085,19 @@ impl Parser {
 		let dot = self.previous();
 		
 		// The remainder has to be a call node (variable, lookup, function call, getter)
-		let getter= self.call(symbols)?;
+		let getter = self.call(symbols)?;
 		
 		// The callee's type is the record type, the expr value is the field name or function
-		match expr {
+		match getter {
 			Expr::Variable(_) => {
-				let node = GetterNode { callee, dot, getter };
+				let node = GetterNode { callee: Box::new(callee), dot, getter: Box::new(getter) };
 				Ok(Expr::Getter(node))
 			},
 			Expr::Call(_) => {
 				panic!("Function call (multi-method) not yet supported!");
 			},
 			Expr::Lookup(_) => {
-				panic!("Lookup call not yet supported on records";)
+				panic!("Lookup call not yet supported on records")
 			},
 			_ => {
 			let parse_error = parse_err(

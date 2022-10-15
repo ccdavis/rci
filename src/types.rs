@@ -1,4 +1,8 @@
 use crate::lex::TokenType;
+use crate::errors;
+use crate::errors::*;
+use crate::lex::Token;
+
 use std::fmt;
 
 // Types of declarations that can be stored in the symbol table which will
@@ -49,6 +53,20 @@ pub struct FieldType {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RecordType {
     pub fields: Vec<FieldType>,
+}
+
+impl RecordType {
+	pub fn type_of_field(&self, field_name: &str, location: &Token) -> Result<DataType, errors::Error> {	
+		let f = self.fields.iter().find(|field| &field.name == field_name);
+		match f {
+			None =>Err(Error::new(
+				location,
+				ErrorType::Type,
+				format!("No field named  '{}'", &field_name),
+			)),
+			Some(field) => Ok(field.field_type.clone()),
+		}
+	}
 }
 
 #[derive(Clone, Debug, PartialEq)]

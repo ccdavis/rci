@@ -51,9 +51,12 @@ impl Expr {
             Expr::Grouping(n) => n.determine_type(symbols),
             Expr::Array(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
+			Expr::Getter(n) => n.determine_type(symbols),
+			//Expr::Setter(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value)),
             Expr::UserTypeLiteral(n) => n.determine_type(symbols),
+			_ => panic!("determine_type not implemented!"),
         }
     }
 
@@ -67,6 +70,7 @@ impl Expr {
             Expr::Grouping(n) => n.compile(symbols),
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
+			Expr::Getter(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
             Expr::UserTypeLiteral(n) => n.compile(symbols),
             Expr::Literal(ref value) => {
@@ -82,7 +86,8 @@ impl Expr {
                     data_type: literal_type,
                     code: object_code,
                 })
-            }
+            },
+			_ => panic!("Compile not implemented!"),
         }
     }
 
@@ -266,9 +271,37 @@ impl Compiler for LogicalNode {
 // a 'getter' is any of VAR.FIELD, VAR.FIELD[index], VAR.FUNCTION()
 #[derive(Clone, Debug)]
 pub struct GetterNode {
-	callee: Box<Expr>,
-	dot: Token,
-	getter: Box<Expr>,		
+	pub callee: Box<Expr>,
+	pub dot: Token,
+	pub getter: Box<Expr>,		
+}
+
+
+impl TypeCheck for GetterNode {
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
+        let callee_type = self.callee.determine_type(symbols)?;
+		if let DataType::Record(rec_type) = callee_type {
+			match *self.getter {
+				Expr::Variable(ref g) => {
+					let field_name =  g.get_name();
+					rec_type.type_of_field(&field_name, &g.name)					
+				},
+				_ => self.getter.determine_type(symbols),				
+			}
+		} else {
+			panic!("Compiler error, only Rec type can have a '.' getter, this code shouldn't have been parsed.");
+		}					
+    }
+}
+
+
+impl Compiler for GetterNode{
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+		Ok(ObjectCode {
+            data_type: self.callee.determine_type(symbols)?,
+            code: format!("// Not implemented"),
+        })
+	}
 }
 
 #[derive(Clone, Debug)]
@@ -680,6 +713,17 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
     }
 }
 
+impl VariableNode {
+	fn get_name(&self) -> String {
+		if let TokenType::Identifier(ref variable_name) = self.name.token_type {
+			variable_name.clone()
+		} else {
+			panic!("Compiler error. A variable node must have an identifier token type.");
+			
+		}
+	}
+}
+
 impl TypeCheck for VariableNode {
     // Doing this right requires a symbol table built up from
     // visiting all the variable declarations and using the right
@@ -689,7 +733,7 @@ impl TypeCheck for VariableNode {
         if TRACE {
             println!("Check variable node type...");
         }
-        if let TokenType::Identifier(variable_name) = &self.name.token_type {
+        let variable_name = self.get_name();
             if TRACE {
                 println!("Got name of variable {}", &variable_name);
             }
@@ -697,9 +741,7 @@ impl TypeCheck for VariableNode {
                 Ok(data_type) => Ok(data_type),
                 Err(msg) => Err(Error::new(&self.name, ErrorType::Type, msg)),
             }
-        } else {
-            panic!("Fatal error during type-checking: A variable expression must have a TokenType::Identifier(name) token type!");
-        }
+        
     }
 }
 
@@ -709,7 +751,7 @@ impl Compiler for VariableNode {
         if TRACE {
             println!("var type for {} is {}", &self.name.print(), &var_type)
         }
-        if let TokenType::Identifier(ref var_name) = self.name.token_type {
+		let var_name = self.get_name();
             if TRACE {
                 println!("var name is {}", &var_name);
             }
@@ -743,9 +785,7 @@ impl Compiler for VariableNode {
                     }
                 },
             })
-        } else {
-            panic!("Compiler error. A variable node must have an identifier token type.");
-        }
+        
     }
 }
 
