@@ -339,7 +339,7 @@ pub fn resolve_user_type(
         let ste = symbols.lookup(&u.name)?;
         match ste.data_type {
             DataType::User(ref actual) => Ok(*actual.definition.clone()),
-			_ => Ok(ste.data_type.clone()),            
+            _ => Ok(ste.data_type.clone()),
         }
     } else {
         Ok(*u.definition.clone())

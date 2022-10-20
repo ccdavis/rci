@@ -454,9 +454,13 @@ impl ReturnStmtNode {
 }
 impl TypeChecking for ReturnStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
-		if TRACE { println!("Try to determine type of return-type expr: {:?}",self.expr);}
+        if TRACE {
+            println!("Try to determine type of return-type expr: {:?}", self.expr);
+        }
         let would_return_type = self.expr.determine_type(symbols)?;
-		if TRACE { println!("resolved return-type expr {:?}",&would_return_type);}
+        if TRACE {
+            println!("resolved return-type expr {:?}", &would_return_type);
+        }
         let should_return_type = match self.return_type {
             DataType::User(ref u) => match resolve_user_type(symbols, u.as_ref()) {
                 Ok(data_type) => Ok(data_type),
@@ -468,9 +472,12 @@ impl TypeChecking for ReturnStmtNode {
             },
             _ => Ok(self.return_type.clone()),
         }?;
-		if TRACE { println!("resolved return type self.return_type to {:?}",&should_return_type);}
-		
-		
+        if TRACE {
+            println!(
+                "resolved return type self.return_type to {:?}",
+                &should_return_type
+            );
+        }
 
         if would_return_type != should_return_type {
             let message = format!(

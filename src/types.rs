@@ -1,7 +1,7 @@
-use crate::lex::TokenType;
 use crate::errors;
 use crate::errors::*;
 use crate::lex::Token;
+use crate::lex::TokenType;
 
 use std::fmt;
 
@@ -56,21 +56,27 @@ pub struct RecordType {
 }
 
 impl RecordType {
-	pub fn type_of_field(&self, field_name: &str, location: &Token) -> Result<DataType, errors::Error> {	
-		let f = self.fields.iter().find(|field| &field.name == field_name);
-		match f {
-			None =>Err(Error::new(
-				location,
-				ErrorType::Type,
-				format!("No field named  '{}'", &field_name),
-			)),
-			Some(field) => Ok(field.field_type.clone()),
-		}
-	}
-	
-	pub fn index_of_field(&self, field_name: &str) -> Option<usize> {
-		self.fields.iter().position(|field| &field.name == field_name)		
-	}
+    pub fn type_of_field(
+        &self,
+        field_name: &str,
+        location: &Token,
+    ) -> Result<DataType, errors::Error> {
+        let f = self.fields.iter().find(|field| &field.name == field_name);
+        match f {
+            None => Err(Error::new(
+                location,
+                ErrorType::Type,
+                format!("No field named  '{}'", &field_name),
+            )),
+            Some(field) => Ok(field.field_type.clone()),
+        }
+    }
+
+    pub fn index_of_field(&self, field_name: &str) -> Option<usize> {
+        self.fields
+            .iter()
+            .position(|field| &field.name == field_name)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

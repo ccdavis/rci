@@ -32,8 +32,8 @@ pub enum Expr {
     Literal(DataValue),
     UserTypeLiteral(UserTypeLiteralNode),
     Variable(VariableNode),
-	Setter(SetterNode), // record instance . field =
-	Getter(GetterNode), // record instance. field
+    Setter(SetterNode), // record instance . field =
+    Getter(GetterNode), // record instance. field
     Assignment(AssignmentNode),
 }
 
@@ -51,12 +51,12 @@ impl Expr {
             Expr::Grouping(n) => n.determine_type(symbols),
             Expr::Array(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
-			Expr::Getter(n) => n.determine_type(symbols),
-			//Expr::Setter(n) => n.determine_type(symbols),
+            Expr::Getter(n) => n.determine_type(symbols),
+            //Expr::Setter(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value)),
             Expr::UserTypeLiteral(n) => n.determine_type(symbols),
-			_ => panic!("determine_type not implemented!"),
+            _ => panic!("determine_type not implemented!"),
         }
     }
 
@@ -70,7 +70,7 @@ impl Expr {
             Expr::Grouping(n) => n.compile(symbols),
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
-			Expr::Getter(n) => n.compile(symbols),
+            Expr::Getter(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
             Expr::UserTypeLiteral(n) => n.compile(symbols),
             Expr::Literal(ref value) => {
@@ -86,8 +86,8 @@ impl Expr {
                     data_type: literal_type,
                     code: object_code,
                 })
-            },
-			_ => panic!("Compile not implemented!"),
+            }
+            _ => panic!("Compile not implemented!"),
         }
     }
 
@@ -267,81 +267,78 @@ impl Compiler for LogicalNode {
     }
 }
 
-
 // a 'getter' is any of VAR.FIELD, VAR.FIELD[index], VAR.FUNCTION()
 #[derive(Clone, Debug)]
 pub struct GetterNode {
-	pub callee: Box<Expr>,
-	pub dot: Token,
-	pub getter: Box<Expr>,		
+    pub callee: Box<Expr>,
+    pub dot: Token,
+    pub getter: Box<Expr>,
 }
-
 
 impl TypeCheck for GetterNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         let callee_type = self.callee.determine_type(symbols)?;
-		if let DataType::Record(rec_type) = callee_type {
-			match *self.getter {
-				Expr::Variable(ref g) => {
-					let field_name =  g.get_name();
-					rec_type.type_of_field(&field_name, &g.name)					
-				},
-				_ => self.getter.determine_type(symbols),				
-			}
-		} else {
-			panic!("Compiler error, only Rec type can have a '.' getter, this code shouldn't have been parsed.");
-		}					
+        if let DataType::Record(rec_type) = callee_type {
+            match *self.getter {
+                Expr::Variable(ref g) => {
+                    let field_name = g.get_name();
+                    rec_type.type_of_field(&field_name, &g.name)
+                }
+                _ => self.getter.determine_type(symbols),
+            }
+        } else {
+            panic!("Compiler error, only Rec type can have a '.' getter, this code shouldn't have been parsed.");
+        }
     }
 }
 
+impl Compiler for GetterNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let record_var_name = match *self.callee {
+            Expr::Variable(ref v) => v.get_name(),
+            _ => panic!("Compiler error. Only Variable nodes can have a getter"),
+        };
 
-impl Compiler for GetterNode{
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {		
-		let record_var_name = match *self.callee {
-			Expr::Variable(ref v) => v.get_name(),
-			_ => panic!("Compiler error. Only Variable nodes can have a getter"),
-		};
-		
-		match *self.getter {
-			Expr::Variable(ref v) => {
-				let field_name = v.get_name();
-				let callee_type = self.callee.determine_type(symbols)?;
-				
-				let field_index = match callee_type {
+        match *self.getter {
+            Expr::Variable(ref v) => {
+                let field_name = v.get_name();
+                let callee_type = self.callee.determine_type(symbols)?;
+
+                let field_index = match callee_type {
 					DataType::RecordType(rec) =>rec.index_of_field(field_name).unwrap(),
 					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
 				};
-				let code = format!("record_access_member({}, {})",&record_var_name, field_index);
-				Ok(ObjectCode {
-					data_type: callee_type,
-					code,
-				})
-				
-			},
-			Expr::Getter(ref g) => {
-			/*
-				let inner_code = self.getter.compile()?;
-				
-				Ok( ObjectCode {
-					data_type: callee_type,
-					code: 
-				})
-				*/
-				panic!("Compiler error. Chained getters not yet implemented.");
-			},
-			_ => panic!("A getter must be a variable node or another getter."),
-		}
-				
-	}
+                let code = format!(
+                    "record_access_member({}, {})",
+                    &record_var_name, field_index
+                );
+                Ok(ObjectCode {
+                    data_type: callee_type,
+                    code,
+                })
+            }
+            Expr::Getter(ref g) => {
+                /*
+                let inner_code = self.getter.compile()?;
+
+                Ok( ObjectCode {
+                    data_type: callee_type,
+                    code:
+                })
+                */
+                panic!("Compiler error. Chained getters not yet implemented.");
+            }
+            _ => panic!("A getter must be a variable node or another getter."),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct SetterNode {
-	name: Box<Expr>,
-	dot: Token,
-	value: Box<Expr>,		
+    name: Box<Expr>,
+    dot: Token,
+    value: Box<Expr>,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct CallNode {
@@ -745,14 +742,13 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
 }
 
 impl VariableNode {
-	fn get_name(&self) -> String {
-		if let TokenType::Identifier(ref variable_name) = self.name.token_type {
-			variable_name.clone()
-		} else {
-			panic!("Compiler error. A variable node must have an identifier token type.");
-			
-		}
-	}
+    fn get_name(&self) -> String {
+        if let TokenType::Identifier(ref variable_name) = self.name.token_type {
+            variable_name.clone()
+        } else {
+            panic!("Compiler error. A variable node must have an identifier token type.");
+        }
+    }
 }
 
 impl TypeCheck for VariableNode {
@@ -765,14 +761,13 @@ impl TypeCheck for VariableNode {
             println!("Check variable node type...");
         }
         let variable_name = self.get_name();
-            if TRACE {
-                println!("Got name of variable {}", &variable_name);
-            }
-            match data_type_for_symbol(symbols, &variable_name) {
-                Ok(data_type) => Ok(data_type),
-                Err(msg) => Err(Error::new(&self.name, ErrorType::Type, msg)),
-            }
-        
+        if TRACE {
+            println!("Got name of variable {}", &variable_name);
+        }
+        match data_type_for_symbol(symbols, &variable_name) {
+            Ok(data_type) => Ok(data_type),
+            Err(msg) => Err(Error::new(&self.name, ErrorType::Type, msg)),
+        }
     }
 }
 
@@ -782,41 +777,40 @@ impl Compiler for VariableNode {
         if TRACE {
             println!("var type for {} is {}", &self.name.print(), &var_type)
         }
-		let var_name = self.get_name();
-            if TRACE {
-                println!("var name is {}", &var_name);
+        let var_name = self.get_name();
+        if TRACE {
+            println!("var name is {}", &var_name);
+        }
+        let ste = match symbols.lookup(&var_name) {
+            Ok(ref entry) => entry.clone(),
+            Err(error_msg) => {
+                return Err(errors::Error::new(
+                    &self.name,
+                    ErrorType::Compiler,
+                    error_msg.message.clone(),
+                ));
             }
-            let ste = match symbols.lookup(&var_name) {
-                Ok(ref entry) => entry.clone(),
-                Err(error_msg) => {
-                    return Err(errors::Error::new(
-                        &self.name,
-                        ErrorType::Compiler,
-                        error_msg.message.clone(),
-                    ));
-                }
-            };
-            if TRACE {
-                println!("ste: {:?}", &ste);
-            }
+        };
+        if TRACE {
+            println!("ste: {:?}", &ste);
+        }
 
-            Ok(ObjectCode {
-                data_type: var_type,
-                code: {
-                    if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
-                        format!("(*{})", &var_name)
-                    // If the STE has a data_value of EnumerationValue it's an enum literal
-                    } else if let DataValue::Enumeration(ref enum_value) = ste.data_value {
-                        format!(
-                            "ENUM_VAL({}_{})",
-                            &enum_value.member_of_enum, &enum_value.value
-                        )
-                    } else {
-                        format!("{}", &var_name)
-                    }
-                },
-            })
-        
+        Ok(ObjectCode {
+            data_type: var_type,
+            code: {
+                if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+                    format!("(*{})", &var_name)
+                // If the STE has a data_value of EnumerationValue it's an enum literal
+                } else if let DataValue::Enumeration(ref enum_value) = ste.data_value {
+                    format!(
+                        "ENUM_VAL({}_{})",
+                        &enum_value.member_of_enum, &enum_value.value
+                    )
+                } else {
+                    format!("{}", &var_name)
+                }
+            },
+        })
     }
 }
 
