@@ -296,11 +296,42 @@ impl TypeCheck for GetterNode {
 
 
 impl Compiler for GetterNode{
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-		Ok(ObjectCode {
-            data_type: self.callee.determine_type(symbols)?,
-            code: format!("// Not implemented"),
-        })
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {		
+		let record_var_name = match *self.callee {
+			Expr::Variable(ref v) => v.get_name(),
+			_ => panic!("Compiler error. Only Variable nodes can have a getter"),
+		};
+		
+		match *self.getter {
+			Expr::Variable(ref v) => {
+				let field_name = v.get_name();
+				let callee_type = self.callee.determine_type(symbols)?;
+				
+				let field_index = match callee_type {
+					DataType::RecordType(rec) =>rec.index_of_field(field_name).unwrap(),
+					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
+				};
+				let code = format!("record_access_member({}, {})",&record_var_name, field_index);
+				Ok(ObjectCode {
+					data_type: callee_type,
+					code,
+				})
+				
+			},
+			Expr::Getter(ref g) => {
+			/*
+				let inner_code = self.getter.compile()?;
+				
+				Ok( ObjectCode {
+					data_type: callee_type,
+					code: 
+				})
+				*/
+				panic!("Compiler error. Chained getters not yet implemented.");
+			},
+			_ => panic!("A getter must be a variable node or another getter."),
+		}
+				
 	}
 }
 

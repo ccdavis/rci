@@ -67,6 +67,10 @@ impl RecordType {
 			Some(field) => Ok(field.field_type.clone()),
 		}
 	}
+	
+	pub fn index_of_field(&self, field_name: &str) -> Option<usize> {
+		self.fields.iter().position(|field| &field.name == field_name)		
+	}
 }
 
 #[derive(Clone, Debug, PartialEq)]

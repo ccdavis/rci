@@ -1016,7 +1016,7 @@ impl Parser {
     }
 
     fn unary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-        if self.matches(&[TokenType::Not, TokenType::Minus]) {
+        if self.matches(&[TokenType::Not, TokenType::Minus, TokenType::Cpy]) {
             let operator = self.previous();
             self.skip_all_newlines();
             let right = self.unary(symbols)?;
