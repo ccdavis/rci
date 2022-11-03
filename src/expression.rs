@@ -305,7 +305,7 @@ impl Compiler for GetterNode {
                 let callee_type = self.callee.determine_type(symbols)?;
 
                 let field_index = match callee_type {
-					DataType::RecordType(rec) =>rec.index_of_field(field_name).unwrap(),
+					DataType::Record(ref rec) =>rec.index_of_field(&field_name).unwrap(),
 					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
 				};
                 let code = format!(
@@ -313,7 +313,7 @@ impl Compiler for GetterNode {
                     &record_var_name, field_index
                 );
                 Ok(ObjectCode {
-                    data_type: callee_type,
+                    data_type: callee_type.clone(),
                     code,
                 })
             }
