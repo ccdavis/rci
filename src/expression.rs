@@ -471,13 +471,13 @@ impl TypeCheck for UserTypeLiteralNode {
                             match field_value.determine_type(symbols) {
                                 Ok(ref value_type) => {
                                     if value_type != &field_info.field_type {
-                                        return Err(Error::new(&self.location, ErrorType::Type, 
+                                        return Err(Error::new(&self.location, ErrorType::Type,
                                             format!("Type '{}' value assigned to field '{}' of '{}' didn't match.Expected '{}'",
                                             &value_type, &field_info.name,&name,field_info.field_type)));
                                     }
                                 }
                                 Err(msg) => {
-                                    return Err(Error::new(&self.location, ErrorType::Type, 
+                                    return Err(Error::new(&self.location, ErrorType::Type,
                                         format!("Type of value assigned to field '{}' of '{}' could not be determined. Problem was '{}'",
                                         &field_name, &name, &msg.message)));
                                 }
