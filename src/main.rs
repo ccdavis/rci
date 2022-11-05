@@ -254,6 +254,13 @@ mod tests {
 	";
     const SRC_RECORD_GETTER: &str = "
         type Address = Rec {street: Str,zip: Num,state: Str}            
+
+        type PizzaOrder = Rec {
+            thin_crust: Bool
+            size: Num,
+            vegetarian: Bool,
+            price: Num
+        }
         
         {
             var addr: Address = Address(street: \"2121 22 Street\",zip: 11111, state: \"AL\") 
@@ -263,6 +270,12 @@ mod tests {
 
             val addr2 = Address(street: \"1234 Oak\", zip: 543210, state: \"AK\")
             print addr2.street, addr2.state, addr2.zip
+
+            val pizza = PizzaOrder(vegetarian: true, thin_crust: false, price: 15.75, size: 14)
+            val pi = 3.14159
+            val radius = pizza.size / 2.0            
+            val price_per_inch = pizza.price / (radius * pi) * (radius * pi) 
+            print \"Price per inch: \", price_per_inch
         }        
     ";
 

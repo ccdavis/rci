@@ -473,17 +473,17 @@ impl Parser {
                     return Err(parse_err(&self.peek(), &message));
                 }
             };
-
-            if matches!(self.peek().token_type, Comma) {
-                self.consume(Comma, "Expect comma after field type.")?;
-            }
-
+            
             let field_name = field_name_token.identifier_string();
             let field_type = DataType::from_token_type(&field_type_token.token_type).unwrap();
             field_list.push(FieldType {
                 name: field_name,
                 field_type,
             });
+            if !matches!(self.peek().token_type, RightBrace){
+                self.matches(&[TokenType::Eol, TokenType::Comma]);
+                self.skip_all_newlines();
+            }
         }
         self.consume(RightBrace, "Expect '}' to complete record definition.")?;
         let record_definition = types::RecordType { fields: field_list };
