@@ -252,6 +252,19 @@ mod tests {
 			var c =  new_customer(\"Joe\")
 		}
 	";
+    const SRC_RECORD_GETTER: &str = "
+        type Address = Rec {street: Str,zip: Num,state: Str}            
+        
+        {
+            var addr: Address = Address(street: \"2121 22 Street\",zip: 11111, state: \"AL\") 
+            var street : Str = addr.street
+            var zip: Num = addr.zip
+            print street, zip
+
+            val addr2 = Address(street: \"1234 Oak\", zip: 543210, state: \"AK\")
+            print addr2.street, addr2.state, addr2.zip
+        }        
+    ";
 
     const SRC_ENUMS: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
 							fun check_enum(d: Days): Bool {
@@ -366,6 +379,14 @@ mod tests {
         assert!(type_check(SRC_RECORD_RETURN)? == ());
         Ok(())
     }
+
+    #[test]
+    fn test_record_getter() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_RECORD_GETTER)?.len() > 0);
+        assert!(type_check(SRC_RECORD_GETTER)? == ());
+        Ok(())
+    }
+
 
     #[test]
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
