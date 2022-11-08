@@ -16,8 +16,22 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 1600
-val y_resolution = 1600
+type Complex = Rec { x: Num, iy: Num }
+
+fun complex_mul(c1: Complex, c2: Complex): Complex {
+	var new_x = c1.x * c2.x
+	var new_iy = c1.x * c2.iy
+	new_iy :=  new_iy + c1.iy * c2.x 
+	new_x := new_x + c1.iy * c2.iy * -1.0
+	return Complex(x: new_x, iy: new_iy)	
+}
+
+fun complex_add(c1: Complex, c2: Complex): Complex {
+	return Complex(x: c1.x + c2.x, iy: c1.iy + c2.iy)	
+}
+
+val x_resolution = 100
+val y_resolution = 132
 
 val max_iterations = 50;
 val escape_radius = 2.0;
@@ -28,7 +42,7 @@ fun not_escaped(x:Num,iy:Num):Bool {
 }
 
 // Check a point in the complex plane for membership
-fun in_mandelbrot(c_x:Num, c_iy:Num): Bool {
+fun in_mandelbrot(c: Complex): Bool {
 	var iterations = 0;
 	var zn_x = 0.0;
 	var zn_iy = 0.0;
@@ -36,9 +50,10 @@ fun in_mandelbrot(c_x:Num, c_iy:Num): Bool {
 	var tmp_zx = 0.0;
 	
 	while iterations < max_iterations and not_escaped(zn_x, zn_iy) {			
-		tmp_zx := c_x + (zn_x * zn_x - zn_iy * zn_iy);
-		zn_iy := c_iy + 2.0 * zn_x * zn_iy;    
+		tmp_zx := c.x + (zn_x * zn_x - zn_iy * zn_iy)
+		zn_iy := c.iy + 2.0 * zn_x * zn_iy
 		zn_x := tmp_zx;
+		
 		iterations := iterations + 1;
 	}
 	return iterations < max_iterations;
@@ -61,7 +76,7 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 	while left < right {						
 		val line = "";
 		while top < bottom {
-			if in_mandelbrot(left, top) {
+			if in_mandelbrot(Complex(x: left, iy: top)) {
 				line := line + "*";
 				inside := inside +1;
 			} 
@@ -81,8 +96,7 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 
 
 
-{
-	
+{	
 	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;
 	//val start = clock();
 	calc(-1.5, -1.0, 1.0, 1.0);
