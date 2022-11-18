@@ -335,9 +335,9 @@ impl Compiler for GetterNode {
 
 #[derive(Clone, Debug)]
 pub struct SetterNode {
-    name: Box<Expr>,
-    dot: Token,
-    value: Box<Expr>,
+    pub name: Box<Expr>,
+    pub dot: Token,
+    pub value: Box<Expr>,
 }
 
 #[derive(Clone, Debug)]

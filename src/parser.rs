@@ -938,12 +938,23 @@ impl Parser {
                         index,
                     ))
                 }
+				Expr::Getter(ref node) => {
+					Ok(Expr::Setter( 
+						SetterNode {
+							name: node.callee.clone(),
+							dot: node.dot.clone(),
+							value: node.getter.clone(),												
+						}
+					))
+				},
+				// TODO: support subscripting
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(parse_err(&change, &message))
                 }
-            };
-        } // assignment operator
+            };			
+		}// assignment operator        
+		
         Ok(assignee) // if we get here it's an r-value!
     }
 
