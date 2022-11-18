@@ -473,14 +473,14 @@ impl Parser {
                     return Err(parse_err(&self.peek(), &message));
                 }
             };
-            
+
             let field_name = field_name_token.identifier_string();
             let field_type = DataType::from_token_type(&field_type_token.token_type).unwrap();
             field_list.push(FieldType {
                 name: field_name,
                 field_type,
             });
-            if !matches!(self.peek().token_type, RightBrace){
+            if !matches!(self.peek().token_type, RightBrace) {
                 self.matches(&[TokenType::Eol, TokenType::Comma]);
                 self.skip_all_newlines();
             }
@@ -938,23 +938,19 @@ impl Parser {
                         index,
                     ))
                 }
-				Expr::Getter(ref node) => {
-					Ok(Expr::Setter( 
-						SetterNode {
-							name: node.callee.clone(),
-							dot: node.dot.clone(),
-							value: node.getter.clone(),												
-						}
-					))
-				},
-				// TODO: support subscripting
+                Expr::Getter(ref node) => Ok(Expr::Setter(SetterNode {
+                    name: node.callee.clone(),
+                    dot: node.dot.clone(),
+                    value: node.getter.clone(),
+                })),
+                // TODO: support subscripting
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());
                     Err(parse_err(&change, &message))
                 }
-            };			
-		}// assignment operator        
-		
+            };
+        } // assignment operator
+
         Ok(assignee) // if we get here it's an r-value!
     }
 

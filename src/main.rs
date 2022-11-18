@@ -400,7 +400,6 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_TYPE_INFERENCE)?.len() > 0);
