@@ -1,0 +1,32 @@
+
+type Customer = Rec{ name: Str, balance: Num, limit: Num, rewards: Bool}
+
+
+fun charge(var cust: Customer, price: Num): Bool {
+	val actual_price = price
+	if cust.rewards {
+		actual_price := price * 0.95
+	}
+	if cust.balance + actual_price > cust.limit { 
+		return false
+	}
+	
+	cust.balance := cust.balance + price
+	return true	
+}
+
+// main
+{
+	var c1 = Customer(name: "John Smith", balance: 0.0, limit: 10.0, rewards: false)
+	var c2 = Customer(name: "John Doe", balance: 0.0, limit: 500.0, rewards: true)
+	val c1_charged = charge(c1, 25.0)
+	val c2_charged = charge(c2, 250.0)
+
+
+//	print c1_charged," ",c1.name," ",c1.balance
+//	print c2_charged, " ", c2.name," ",c2.balance
+
+	print "Finished";
+}
+
+
