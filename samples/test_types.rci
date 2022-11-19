@@ -1,13 +1,25 @@
 
-type Customer = Rec {name: Str,balance: Num}
+type Customer = Rec {name: Str,balance: Num, rewards: Bool, limit: Num}
 
 fun new_customer(n: Str, b: Num): Customer {
-	val cust = Customer(name: "John Smith", balance: 25)				
+	val cust = Customer(name: "John Smith", balance: 25, rewards: false, limit: 25.00)				
 	return cust
 }
 
+fun can_charge(var cust: Customer, price: Num): Bool {
+	if cust.balance + price > cust.limit{
+		return false
+	} else {
+		return  true
+	}
+}
 
 {
-	val c = new_customer("John Smith", 25)
-	}
+	var c = new_customer("John Smith", 25)
+	val name = c.name
+	var charges = 25.0
+	charges := c.balance
+	
+	print name
+}
 	

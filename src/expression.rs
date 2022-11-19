@@ -10,7 +10,7 @@ use crate::types::DeclarationType;
 use crate::types::LookupType;
 use crate::types::ObjectCode;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
@@ -25,7 +25,7 @@ pub enum Expr {
     Binary(BinaryNode),
     Logical(LogicalNode),
     Call(CallNode),
-    Lookup(LookupNode),
+    Lookup(LookupNode), // a subscripted variable, an array or map instance
     Unary(UnaryNode),
     Grouping(GroupingNode),
     Array(ArrayNode),
@@ -52,7 +52,7 @@ impl Expr {
             Expr::Array(n) => n.determine_type(symbols),
             Expr::Variable(n) => n.determine_type(symbols),
             Expr::Getter(n) => n.determine_type(symbols),
-            //Expr::Setter(n) => n.determine_type(symbols),
+            Expr::Setter(n) => n.determine_type(symbols),
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value)),
             Expr::UserTypeLiteral(n) => n.determine_type(symbols),
@@ -71,6 +71,7 @@ impl Expr {
             Expr::Array(n) => n.compile(symbols),
             Expr::Variable(n) => n.compile(symbols),
             Expr::Getter(n) => n.compile(symbols),
+            Expr::Setter(n) => n.compile(symbols),
             Expr::Assignment(n) => n.compile(symbols),
             Expr::UserTypeLiteral(n) => n.compile(symbols),
             Expr::Literal(ref value) => {
@@ -91,7 +92,7 @@ impl Expr {
         }
     }
 
-    // Callees get apssed around as Expr type values but sometimes we need to know if they
+    // Callees get passed around as Expr type values but sometimes we need to know if they
     // are names of variables or names of user types.
     pub fn is_type_name(&self) -> bool {
         match self {
@@ -119,11 +120,11 @@ impl TypeCheck for BinaryNode {
         use TokenType::*;
         let left_type = self.left.determine_type(symbols)?;
         if TRACE {
-            println!("In binary type check left: {:?}", &left_type);
+            println!("TYPECHECK In binary type check left: {:?}", &left_type);
         }
         let right_type = self.right.determine_type(symbols)?;
         if TRACE {
-            println!("In binary type check right: {:?}", &right_type);
+            println!("TYPECHECK In binary type check right: {:?}", &right_type);
         }
 
         if self.operator.is_comparison_operator() {
@@ -298,7 +299,24 @@ impl Compiler for GetterNode {
             Expr::Variable(ref v) => v.get_name(),
             _ => panic!("Compiler error. Only Variable nodes can have a getter"),
         };
+		
+		// The local symbol table info is needed later to generate correct code if the
+		// local record variable instance is a 'var' vs a 'val' 
+		let ste = match symbols.lookup(&record_var_name) {
+            Ok(ref entry) => entry.clone(),
+            Err(error_msg) => {
+                return Err(errors::Error::new(
+                    &self.dot,
+					ErrorType::Compiler,
+                    error_msg.message.clone(),
+                ));
+            }
+        };
+        if TRACE {
+            println!("COMPILER arg of record type ste: {:?}", &ste);
+        }
 
+        
         match *self.getter {
             Expr::Variable(ref v) => {
                 let field_name = v.get_name();
@@ -308,10 +326,17 @@ impl Compiler for GetterNode {
 					DataType::Record(ref rec) =>rec.index_of_field(&field_name).unwrap(),
 					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
 				};
-                let code = format!(
-                    "record_access_member({}, {})",
-                    &record_var_name, field_index
-                );
+                let code = if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {				
+					format!(
+						"record_access_member(*{}, {})",
+						&record_var_name, field_index
+					)
+				} else {
+					format!(
+						"record_access_member({}, {})",
+						&record_var_name, field_index
+					)
+				};
                 Ok(ObjectCode {
                     data_type: callee_type.clone(),
                     code,
@@ -339,6 +364,37 @@ pub struct SetterNode {
     pub dot: Token,
     pub value: Box<Expr>,
 }
+
+impl TypeCheck for SetterNode {
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
+        let lhs_type = self.name.determine_type(symbols)?;
+        let rhs_type = self.value.determine_type(symbols)?;
+        if lhs_type != rhs_type {
+            Err(Error::new(
+                &self.dot,
+                ErrorType::Type,
+                format!("Can't assign '{}', which is of type '{}' to a value of type '{}'.", 
+                    &self.name.print(), &lhs_type, &rhs_type)
+            ))
+        } else {
+            Ok(lhs_type)
+        }
+    }
+}
+
+impl Compiler for SetterNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let lhs_type = self.name.determine_type(symbols)?;
+
+        if TRACE { println!("COMPILER  setter with {} lhs type, named {} set to {}",&lhs_type, &self.name.print(), &self.value.print());}
+        Ok(ObjectCode {
+            data_type: lhs_type,
+            code: format!("// not implemented!"),
+
+        })
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub struct CallNode {
@@ -519,7 +575,7 @@ pub struct LookupNode {
 impl TypeCheck for LookupNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if TRACE {
-            println!("In lookup type checker");
+            println!("TYPECHECK In lookup type checker");
         }
         let callee_return_type = self.callee.determine_type(symbols)?;
 
@@ -719,10 +775,10 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
     match symbols.lookup(name) {
         Ok(ref symbol_table_entry) => {
             if TRACE {
-                println!("Found symbol {}", &name);
+                println!("HELPER Found symbol {}", &name);
             }
             if TRACE {
-                println!("Type of variable is '{:?}'", symbol_table_entry.data_type);
+                println!("HELPER Type of variable is '{:?}'", symbol_table_entry.data_type);
             }
             if let DataType::User(ref user_type) = symbol_table_entry.data_type {
                 if matches!(DataType::Unresolved, user_type) {
@@ -758,11 +814,11 @@ impl TypeCheck for VariableNode {
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if TRACE {
-            println!("Check variable node type...");
+            println!("TYPECHECK Check variable node type...");
         }
         let variable_name = self.get_name();
         if TRACE {
-            println!("Got name of variable {}", &variable_name);
+            println!("TYPECHECK Got name of variable {}", &variable_name);
         }
         match data_type_for_symbol(symbols, &variable_name) {
             Ok(data_type) => Ok(data_type),
@@ -775,11 +831,11 @@ impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let var_type = self.determine_type(symbols)?;
         if TRACE {
-            println!("var type for {} is {}", &self.name.print(), &var_type)
+            println!("COMPILE var type for {} is {}", &self.name.print(), &var_type)
         }
         let var_name = self.get_name();
         if TRACE {
-            println!("var name is {}", &var_name);
+            println!("COMPILE var name is {}", &var_name);
         }
         let ste = match symbols.lookup(&var_name) {
             Ok(ref entry) => entry.clone(),
@@ -792,7 +848,7 @@ impl Compiler for VariableNode {
             }
         };
         if TRACE {
-            println!("ste: {:?}", &ste);
+            println!("COMPILE ste: {:?}", &ste);
         }
 
         Ok(ObjectCode {
