@@ -938,11 +938,15 @@ impl Parser {
                         index,
                     ))
                 }
-                Expr::Getter(ref node) => Ok(Expr::Setter(SetterNode {
-                    name: node.callee.clone(),
-                    dot: node.dot.clone(),
-                    value: node.getter.clone(),
-                })),
+                Expr::Getter(ref node) =>{
+
+                    Ok(Expr::Setter(SetterNode {
+                        name: node.callee.clone(),
+                        attr: node.getter.clone(),
+                        dot: node.dot.clone(),
+                        value: Box::new(new_value),
+                    }))
+                }
                 // TODO: support subscripting
                 _ => {
                     let message = format!("{} not a valid assignment target.", &assignee.print());

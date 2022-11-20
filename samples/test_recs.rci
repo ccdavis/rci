@@ -17,10 +17,28 @@ fun charge(var cust: Customer, price: Num): Bool {
 
 // main
 {
-	var c1 = Customer(name: "John Smith", balance: 0.0, limit: 10.0, rewards: false)
-	var c2 = Customer(name: "John Doe", balance: 0.0, limit: 500.0, rewards: true)
-	val c1_charged = charge(c1, 25.0)
-	val c2_charged = charge(c2, 250.0)
+	var c1 = Customer(name: "John Smith", balance: 0.0, limit: 10000.0, rewards: false)
+	var c2 = Customer(name: "John Doe", balance: 0.0, limit: 5000.0, rewards: true)
+	
+	
+	var c1_balance = c1.balance
+	print c1_balance
+	if charge(c1, 25.0){
+		c1_balance := c1.balance
+		print c1_balance		
+	}
+	
+	var c2_balance = c2.balance
+	print c2_balance
+	if charge(c2, 250.0) {
+		c2_balance := c2.balance
+		print c2_balance
+	}
+	
+	
+	val c3 = Customer(name: "Jane Doe",balance: 25.00,limit: 10000.0,rewards: true)
+	
+	//c3.balance := 18000.00
 
 
 //	print c1_charged," ",c1.name," ",c1.balance

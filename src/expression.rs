@@ -361,14 +361,63 @@ impl Compiler for GetterNode {
 #[derive(Clone, Debug)]
 pub struct SetterNode {
     pub name: Box<Expr>,
+    pub attr: Box<Expr>,
     pub dot: Token,
     pub value: Box<Expr>,
 }
 
 impl TypeCheck for SetterNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        let lhs_type = self.name.determine_type(symbols)?;
+        if TRACE { println!("TYPECHECK setter node: {:?}",&self);}
+
+        let record_var_name = match *self.name {
+            Expr::Variable(ref v) => v.get_name(),
+            _ => panic!("Type-Checker error. Only Variable nodes can have a setter"),
+        };
+
+        // This is almost the same as the type-checking for the GetterNode
+//        let callee_type = self.name.determine_type(symbols)?;
+match symbols.lookup(&record_var_name) {
+    Ok(ref ste) => {
+        if matches!(ste.entry_type, DeclarationType::Val) {
+            let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
+            return Err(Error::new(&self.dot, ErrorType::Type, message));
+        }
+        
+    }
+    Err(not_declared) => {
+        let message = format!("{}", &not_declared.message);
+        return Err(Error::new(&self.dot, ErrorType::Type, message));
+    }
+};
+        let callee_type = match data_type_for_symbol(symbols, &record_var_name) {            
+            Err(not_declared) => {
+                let message = format!("{}", &not_declared);
+                Err(Error::new(&self.dot, ErrorType::Type, message))
+            },
+            Ok(data_type) =>Ok(data_type),                        
+        };
+
+        if callee_type.is_err() {
+            return callee_type;
+        }
+        
+        // Get the type of the field being set
+        let lhs_type = if let DataType::Record(ref rec_type) = callee_type.unwrap() {
+            match *self.attr {
+                Expr::Variable(ref g) => {
+                    let field_name = g.get_name();
+                    rec_type.type_of_field(&field_name, &g.name)?
+                }
+                _ => self.attr.determine_type(symbols)?,
+            }
+        } else {
+            panic!("Only record type has fields.")
+        };
+        
+        
         let rhs_type = self.value.determine_type(symbols)?;
+        if TRACE { println!("TYPECHECK setter lhs type: {}, rhs type {}",&lhs_type,&rhs_type);}
         if lhs_type != rhs_type {
             Err(Error::new(
                 &self.dot,
@@ -384,12 +433,54 @@ impl TypeCheck for SetterNode {
 
 impl Compiler for SetterNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
-        let lhs_type = self.name.determine_type(symbols)?;
+        let value_to_store = self.value.compile(symbols)?;
+        let base_type = self.name.determine_type(symbols)?;
+        let record_var_name = match *self.name {
+            Expr::Variable(ref v) => v.get_name(),
+            _ => panic!("Compiler error. Only Variable nodes can have a setter"),
+        };
 
-        if TRACE { println!("COMPILER  setter with {} lhs type, named {} set to {}",&lhs_type, &self.name.print(), &self.value.print());}
+        // The local symbol table info is needed later to generate correct code if the
+		// local record variable instance is a 'var' vs a 'val' 
+		let ste = match symbols.lookup(&record_var_name) {
+            Ok(ref entry) => entry.clone(),
+            Err(error_msg) => {
+                return Err(errors::Error::new(
+                    &self.dot,
+					ErrorType::Compiler,
+                    error_msg.message.clone(),
+                ));
+            }
+        };
+		
+        if TRACE { println!("COMPILER  setter with {} base type, named {} set to {}",&base_type, &self.name.print(), &self.value.print());}
+
+        let code = match *self.attr {
+            Expr::Variable(ref v) => {
+                let field_name = v.get_name();
+                let field_index = match base_type {
+					DataType::Record(ref rec) =>rec.index_of_field(&field_name).unwrap(),
+					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
+				};
+                if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {				
+					format!(
+						"record_set_member(*{}, {}, {})",
+						&record_var_name, &value_to_store.code, field_index
+					)
+				} else {
+					format!(
+						"record_set_member({}, {}, {})",
+						&record_var_name, &value_to_store.code, field_index
+					)
+				}
+            }
+            _ => panic!("Compiler error on Setter Node"),
+        };
+
+
         Ok(ObjectCode {
-            data_type: lhs_type,
-            code: format!("// not implemented!"),
+            data_type: base_type,
+            code,
 
         })
     }
@@ -1087,6 +1178,8 @@ impl Expr {
             Logical(n) => {
                 format!("")
             }
+            Setter(n) =>format!("Setter Node"),
+            Getter(n) =>format!("Getter Node"),
 
             _ => panic!("Not implemented"),
         };
