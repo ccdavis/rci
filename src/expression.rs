@@ -299,15 +299,15 @@ impl Compiler for GetterNode {
             Expr::Variable(ref v) => v.get_name(),
             _ => panic!("Compiler error. Only Variable nodes can have a getter"),
         };
-		
-		// The local symbol table info is needed later to generate correct code if the
-		// local record variable instance is a 'var' vs a 'val' 
-		let ste = match symbols.lookup(&record_var_name) {
+
+        // The local symbol table info is needed later to generate correct code if the
+        // local record variable instance is a 'var' vs a 'val'
+        let ste = match symbols.lookup(&record_var_name) {
             Ok(ref entry) => entry.clone(),
             Err(error_msg) => {
                 return Err(errors::Error::new(
                     &self.dot,
-					ErrorType::Compiler,
+                    ErrorType::Compiler,
                     error_msg.message.clone(),
                 ));
             }
@@ -316,7 +316,6 @@ impl Compiler for GetterNode {
             println!("COMPILER arg of record type ste: {:?}", &ste);
         }
 
-        
         match *self.getter {
             Expr::Variable(ref v) => {
                 let field_name = v.get_name();
@@ -326,17 +325,17 @@ impl Compiler for GetterNode {
 					DataType::Record(ref rec) =>rec.index_of_field(&field_name).unwrap(),
 					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
 				};
-                let code = if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {				
-					format!(
-						"record_access_member(*{}, {})",
-						&record_var_name, field_index
-					)
-				} else {
-					format!(
-						"record_access_member({}, {})",
-						&record_var_name, field_index
-					)
-				};
+                let code = if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+                    format!(
+                        "record_access_member(*{}, {})",
+                        &record_var_name, field_index
+                    )
+                } else {
+                    format!(
+                        "record_access_member({}, {})",
+                        &record_var_name, field_index
+                    )
+                };
                 Ok(ObjectCode {
                     data_type: callee_type.clone(),
                     code,
@@ -368,7 +367,9 @@ pub struct SetterNode {
 
 impl TypeCheck for SetterNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        if TRACE { println!("TYPECHECK setter node: {:?}",&self);}
+        if TRACE {
+            println!("TYPECHECK setter node: {:?}", &self);
+        }
 
         let record_var_name = match *self.name {
             Expr::Variable(ref v) => v.get_name(),
@@ -376,32 +377,31 @@ impl TypeCheck for SetterNode {
         };
 
         // This is almost the same as the type-checking for the GetterNode
-//        let callee_type = self.name.determine_type(symbols)?;
-match symbols.lookup(&record_var_name) {
-    Ok(ref ste) => {
-        if matches!(ste.entry_type, DeclarationType::Val) {
-            let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
-            return Err(Error::new(&self.dot, ErrorType::Type, message));
-        }
-        
-    }
-    Err(not_declared) => {
-        let message = format!("{}", &not_declared.message);
-        return Err(Error::new(&self.dot, ErrorType::Type, message));
-    }
-};
-        let callee_type = match data_type_for_symbol(symbols, &record_var_name) {            
+        //        let callee_type = self.name.determine_type(symbols)?;
+        match symbols.lookup(&record_var_name) {
+            Ok(ref ste) => {
+                if matches!(ste.entry_type, DeclarationType::Val) {
+                    let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
+                    return Err(Error::new(&self.dot, ErrorType::Type, message));
+                }
+            }
+            Err(not_declared) => {
+                let message = format!("{}", &not_declared.message);
+                return Err(Error::new(&self.dot, ErrorType::Type, message));
+            }
+        };
+        let callee_type = match data_type_for_symbol(symbols, &record_var_name) {
             Err(not_declared) => {
                 let message = format!("{}", &not_declared);
                 Err(Error::new(&self.dot, ErrorType::Type, message))
-            },
-            Ok(data_type) =>Ok(data_type),                        
+            }
+            Ok(data_type) => Ok(data_type),
         };
 
         if callee_type.is_err() {
             return callee_type;
         }
-        
+
         // Get the type of the field being set
         let lhs_type = if let DataType::Record(ref rec_type) = callee_type.unwrap() {
             match *self.attr {
@@ -414,16 +414,24 @@ match symbols.lookup(&record_var_name) {
         } else {
             panic!("Only record type has fields.")
         };
-        
-        
+
         let rhs_type = self.value.determine_type(symbols)?;
-        if TRACE { println!("TYPECHECK setter lhs type: {}, rhs type {}",&lhs_type,&rhs_type);}
+        if TRACE {
+            println!(
+                "TYPECHECK setter lhs type: {}, rhs type {}",
+                &lhs_type, &rhs_type
+            );
+        }
         if lhs_type != rhs_type {
             Err(Error::new(
                 &self.dot,
                 ErrorType::Type,
-                format!("Can't assign '{}', which is of type '{}' to a value of type '{}'.", 
-                    &self.name.print(), &lhs_type, &rhs_type)
+                format!(
+                    "Can't assign '{}', which is of type '{}' to a value of type '{}'.",
+                    &self.name.print(),
+                    &lhs_type,
+                    &rhs_type
+                ),
             ))
         } else {
             Ok(lhs_type)
@@ -441,19 +449,26 @@ impl Compiler for SetterNode {
         };
 
         // The local symbol table info is needed later to generate correct code if the
-		// local record variable instance is a 'var' vs a 'val' 
-		let ste = match symbols.lookup(&record_var_name) {
+        // local record variable instance is a 'var' vs a 'val'
+        let ste = match symbols.lookup(&record_var_name) {
             Ok(ref entry) => entry.clone(),
             Err(error_msg) => {
                 return Err(errors::Error::new(
                     &self.dot,
-					ErrorType::Compiler,
+                    ErrorType::Compiler,
                     error_msg.message.clone(),
                 ));
             }
         };
-		
-        if TRACE { println!("COMPILER  setter with {} base type, named {} set to {}",&base_type, &self.name.print(), &self.value.print());}
+
+        if TRACE {
+            println!(
+                "COMPILER  setter with {} base type, named {} set to {}",
+                &base_type,
+                &self.name.print(),
+                &self.value.print()
+            );
+        }
 
         let code = match *self.attr {
             Expr::Variable(ref v) => {
@@ -462,30 +477,27 @@ impl Compiler for SetterNode {
 					DataType::Record(ref rec) =>rec.index_of_field(&field_name).unwrap(),
 					_ => panic!("Compiler error. Only record type instances currently supported by compiler."),
 				};
-                if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {				
-					format!(
-						"record_set_member(*{}, {}, {})",
-						&record_var_name, &value_to_store.code, field_index
-					)
-				} else {
-					format!(
-						"record_set_member({}, {}, {})",
-						&record_var_name, &value_to_store.code, field_index
-					)
-				}
+                if ste.is_arg && matches!(ste.entry_type, DeclarationType::Var) {
+                    format!(
+                        "record_set_member(*{}, {}, {})",
+                        &record_var_name, &value_to_store.code, field_index
+                    )
+                } else {
+                    format!(
+                        "record_set_member({}, {}, {})",
+                        &record_var_name, &value_to_store.code, field_index
+                    )
+                }
             }
             _ => panic!("Compiler error on Setter Node"),
         };
 
-
         Ok(ObjectCode {
             data_type: base_type,
             code,
-
         })
     }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct CallNode {
@@ -869,7 +881,10 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
                 println!("HELPER Found symbol {}", &name);
             }
             if TRACE {
-                println!("HELPER Type of variable is '{:?}'", symbol_table_entry.data_type);
+                println!(
+                    "HELPER Type of variable is '{:?}'",
+                    symbol_table_entry.data_type
+                );
             }
             if let DataType::User(ref user_type) = symbol_table_entry.data_type {
                 if matches!(DataType::Unresolved, user_type) {
@@ -922,7 +937,11 @@ impl Compiler for VariableNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let var_type = self.determine_type(symbols)?;
         if TRACE {
-            println!("COMPILE var type for {} is {}", &self.name.print(), &var_type)
+            println!(
+                "COMPILE var type for {} is {}",
+                &self.name.print(),
+                &var_type
+            )
         }
         let var_name = self.get_name();
         if TRACE {
@@ -1161,7 +1180,7 @@ impl Expr {
                 format!("{} {}", &n.operator.print(), &n.expr.print())
             }
             Literal(ref n) => {
-                format!("{}",&n.print())
+                format!("{}", &n.print())
             }
             Grouping(n) => {
                 format!("{}", &n.expr.print())
@@ -1175,7 +1194,7 @@ impl Expr {
             Call(n) => {
                 format!("Call Expression")
             }
-            Logical(n) => {                
+            Logical(n) => {
                 format!(
                     "{} {} {}",
                     &n.left.print(),
@@ -1183,8 +1202,8 @@ impl Expr {
                     &n.right.print()
                 )
             }
-            Setter(n) =>format!("Setter  Expression"),
-            Getter(n) =>format!("Getter Expression"),
+            Setter(n) => format!("Setter  Expression"),
+            Getter(n) => format!("Getter Expression"),
 
             _ => panic!("Not implemented"),
         };
