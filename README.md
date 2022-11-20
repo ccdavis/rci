@@ -85,9 +85,9 @@ Originally the language somewhat resembled "Lox" from the book, but with explici
 
 ### Features and Syntax Currently Implemented
 
-*A program consists of declarations and imperatives. Functions, variables and types can be declared in a program followed by a block of statements (the imparitives using those declarations.)
-*Type names must begin with upper-case. Variable names and function names must begin with lower-case.
-*Lists in declarations are surrounded by  `{`, `}` separated by commas or newlines for values, or `;` or newlines for statements (in function definitions.)
+* A program consists of declarations and imperatives. Functions, variables and types can be declared in a program followed by a block of statements (the imparitives using those declarations.)
+* Type names must begin with upper-case. Variable names and function names must begin with lower-case.
+* Lists in declarations are surrounded by  `{`, `}` separated by commas or newlines for values, or `;` or newlines for statements (in function definitions.)
 * Logical operators are 'and' and 'not' and 'or'
 * functions
 * Parameters are passed as immutable by default ('val') Add 'var' for mutability In either case variables are passed by reference; use 'cpy' to pass by value.
