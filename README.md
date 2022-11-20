@@ -2,42 +2,107 @@
 
 Building a statically typed language using Crafting Interpreters as a launching pad. 
 
-Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.
+The main idea behind RCI is to try out some familiar language features combined in new ways. The target lies somewhere between ___Go___, ___Python___ and ___Nim___ with some elements of ___Object Pascal___. The executables produced are intended to run fast, on par with ___Nim___ or ___Crystal___. As of now the compiler targets C89, but I'm planning to add a QBE target as well, and maybe an interpreted byte code target to make for a better REPL.
 
-This branch removes the interpreter.
+## State of the Project
 
-The main idea behind RCI is to try out some familiar language features combined in new ways. The target lies somewhere between ___Go___, ___Python___ and ___Nim___ with some elements of ___Object Pascal___.
+### Latest language updates
+
+Enumeration types, record types now build and fully function.  The parameter passing works as designed.
+
+Currently WIP: String versions of enum values, enums and recs as member types of ___Rec___, colorized compiler output and better configuration of the build system.
+
+### Building
+
+Programs build with ___tcc___ as the default linker. The intermediate target language is C89. You can build the compiler output with ___gcc___ as well for more optimized executables. The C compiler target includes a small runtime that's under development. Memory management is a work in progress.
+
+### Sample Code
+
+Sorry this isn't more inspiring. I need to add some metaprogramming (planned) and standard library functions to make it exciting.
+
+```scala
+type Colors = { Red, Blue, Green}
+type Days = {Mon, Tue, Wed, Thu, Fri, Sat, Sun}
+
+fun daily_discount(day: Days): Num {
+	if day = Wed { return 0.95 } else
+	if day = Fri { return 0.90 } else
+	if day = Mon { return 0.95} else
+		return 1.0
+}
+
+type Customer = Rec {
+	name: Str
+	balance: Num,
+	limit: Num,
+	rewards: Bool,
+}
+
+fun apply_discount(cust: Customer, price: Num, day: Days): Num {
+	if cust.rewards {
+		return price * daily_discount(day)
+	} else {
+		return price
+	}
+}
+
+fun charge(var cust: Customer, day: Days, price: Num):Bool{
+	val new_charge = apply_discount(cust, day, price)
+	if not new_charge + cust.balance > cust.balance {
+		cust.balance := cust.balance + new_charge
+		return true
+	} else {
+		return false
+	}
+}
+
+// main
+{
+	var cust1 = Customer(name: "John Smith", balance: 0.0, limit: 500.0, rewards: false)
+	var cust2 = Customer(name: "Jane Doe", balance: 5.0, limit: 800.0, rewards: true)
+	
+	print "charged: ",cust1.name," ",charge(cust1,Fri, 25.0)
+	print "Charged",cust2,cust2.name," ", charge(cust2, Sat, 800.0)
+}
+	
+```
+
+See below for full description of the language's syntax and future plans.
 
 
-### State of the Project
-
-A compiler with C as the target language now supports most of the interpreted language.  The parameter passing semantics are properly modeled with good compiler errors to explain this. Enum types and arrays are implemented; records ("structs") are a work in progress.
+### Performance 
 
 On my PC, the Mandelbrot sample program compiles and runs with TCC or GCC as the C-compiler. With TCC the benchmark that took 162 seconds to run on the interpreter took 9 seconds. With no optimizations it runs in 4.5 seconds with GCC, and 0.5 seconds with -O3 optimization level.
 
+### History 
+
+The interpreter has been removed; it was a tree-walk style that was hard to maintain in parallel with the compiler. I may add in a byte code target at some point as a learning exercise.
+
+Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.  I followed along with the book and implemented the first interpreter in ___Rust___. After getting the interpreter running I added static types and made substantial changes to the language. Building the second interpreter -- the byte code compiler and VM -- looked quite challenging with ___Rust___, at least if you want good performance. Instead of implementing it I chose to build a regular compiler.
+
+
 ## Current Language Proposal
 
-### Features and Syntax
+### Features and Syntax Currently Implemented
 
-A program consists of declarations and imperatives. Functions, variables and types can be declared in a program followed by a block of statements (the imparitives using those declarations.)
+*A program consists of declarations and imperatives. Functions, variables and types can be declared in a program followed by a block of statements (the imparitives using those declarations.)
+*Type names must begin with upper-case. Variable names and function names must begin with lower-case.
+*Lists in declarations are surrounded by  `{`, `}` separated by commas or newlines for values, or `;` or newlines for statements (in function definitions.)
+* Logical operators are 'and' and 'not' and 'or'
+* functions
+* Parameters are passed as immutable by default ('val') Add 'var' for mutability In either case variables are passed by reference; use 'cpy' to pass by value.
+* Control flow: "IF" and "WHILE", no for-loops yet.
+* Simple enumeration types
+* Rec types (like structs) implemented except cannot take Enum types or other Rec types as member types yet
+* Fixed-length arrays
 
-Type names must begin with upper-case. Variable names and function names must begin with lower-case.
+###  Features in development
 
-Lists in declarations are surrounded by  `{`, `}` separated by commas or newlines for values, or `;` or newlines for statements (in function definitions.)
+Add a few more fundamental types: Int, Flt (currently both in Num), Chr and Byte. Add a bit more string functionality to the standard lib. Also add a few basic I/O features like standard in and files.This stuff isn't hard, I've just been putting it off.
 
+WIP to add string versions of enums:
 
 ```scala
-// Values in declarations can be separated by commas or newlines
-type WeekendDays = Enum { Saturday, Sunday }
-
-// Newlines can replace commas
-type WeekDays = Enum {
-	Monday
-	Tuesday
-	Wednesday
-	Thursday
-	Friday
-}
 
 // You can specify a string conversion for an enum value
 type Days = Enum { 
@@ -49,20 +114,59 @@ type Days = Enum {
 	Saturday: 	"Sat"
 	Sunday: 	"Sun"
 }
+```
 
-type Color = Rec { red: Int, blue: Int, green: Int}
+Set types.
+```scala
+type  Weekdays = Set<Day> = {Mon, Tue, Wed, Thu, Fri}
+```
 
-type Customer = Rec {
-	name: Str
-	id: Int
-	phone: Str	
-	balance: Int
-	reminder: WeekDay
+And runtime sets:
+```scala
+{
+	var days_in_office = Set<Day>(Mon, Wed, Fri)
+	
+	// If it's a var, we can change it
+	days_in_office.add!(Tue)
+	val days_at_home = days_in_office - weekdays
 }
 
+```
+
+More user definable types -- allow all types .
+```scala
+type Meters = Int
+type Email = Str
+type Line = Array<Int,Chr>(65)
+```
+
+Maps ("lookups") A map will take an key / index type and a value type as usual. What's a bit different here is that the "Array" type also takes an index type. If you use an enum type as the index the Array is automatically sized and you can use it as a fast version of a map.  If you only partially initialize an array such as this you get errors when retrieving unset values / locations, but these errors can be caught before happening with ___contains()___.
+
+```scala
+type Color = Enum{ Red, Blue, White, Yellow, Green, Orange, Black, Gray}
+type ColorCodes = Array<Color, Str>
+type FavoriteColors = Map<Str, Color>
+
+
+{
+	var codes = ColorCodes(Red: "ff0000", Green: "00ff00", Blue: "0000ff")
+	var favs = FavoriteColors("John": Gray, "Susan": Yellow)
+	
+	favs["Mark"] := Black
+	val b_code = codes[Black]
+	val y_code = codes[favs["Susan"]]
+}
+```
+One-liner function declarations
+
+```scala
 // Simple functions can be one-liners:
 fun display(cust: Customer) = print name,": ",reminder.str()
+```
 
+Associate functions with ___Rec___ types, similar to ___Rust___ struct impls.
+
+```scala
 // Functions can be associated with Rec types
 // A 'Customer' instance is available as 'this'
 fun Customer.reward(this,day): Bool = {
@@ -97,7 +201,9 @@ fun Customer.apply_reward!(var this, today: WeekDay): Bool = {
 	cust.apply_rewards!(today)
 
 }
-
+```
+Associate functions to existing types.
+```scala
 
 // You can associate functions with built-in or existing types in the same way, but
 // can't replace existing associated functions.
@@ -117,10 +223,9 @@ function Str.words(this): Int = {
 }
 ```
 
+Matching
 
-#### Matching
-
-```
+```scala
 type Metal = Enum { copper, gold, silver,  platinum, lead, unknown}
 
 fun metal_test(mass: Grams, volume: Cm3): Metal= {	
@@ -152,12 +257,12 @@ fun Metal.color(this): Color= {
 ### Design
 
 * Variable declarations with 'var' and 'val' types as in Scala: 'val' types are immutable.
-* Static typing with reasonable type inference during variable declaration and initialization.
+* Static typing with reasonable type inference during variable declaration and initialization. An initializer is required, you can't have a bare declaration.
 * Function parameters default to 'val' type, but can be 'var' if specified in the definition, or 'cpy' if the argument value needs to be mutable but cause no side-effects. Only 'cpy' causes pass-by-value, only 'var' can alter the passed-in value. Expressions may be passed either as 'val' or 'cpy', only named variables can be passed as 'var'.
 * Function overloading both with arity and parameter types. This can occasionally make hard to debug code but allows for interesting types of polymorphism without  dynamic dispatch or inheritance.
 * Range types for ordinals (Int..Int) is the literal. It is a special case of Set types with all the set operations  supported.
 * For loops operate on ranges and sets.
-* Actual newtype types created by a 'type' declaration. This is different from 'type' in ___Rust___ or 'typedef' in ___C___ which simply aliases the type name. To do this well the language has to allow common operators to work on directly derived types but prevent automatic operation between say 'kilometers' and 'int64' -- but allow them when explicit casts (but only if the newtype derives from the exact same built-in type.)
+* Actual newtype types created by a 'type' declaration. This is different from 'type' in ___Rust___ or 'typedef' in ___C___ which simply aliases the type name. To do this well the language has to allow common operators to work on directly derived types but prevent automatic operation between say 'kilometers' and 'int64' -- but allow them when explicit casts (but only if the newtype derives from the exact same built-in type.) Getting this right may be difficult.
 * Enumeration types with ordering and name assignments
 * Set type, along with dynamic arrays and hashtables.
 * Arrays, like tables have an index type: data: array<Integer, String>. In most languages the type of the index is implied but is some scalar type. Allow enumerations or sets of enumeration types to be the index type of an array. This way, all "look-up" types have the same calling conventions and same declaration syntax.
@@ -166,26 +271,21 @@ fun Metal.color(this): Color= {
 * Record types that ensure field order and always support serialization
 * Table types that always support sorting, serialization and a few key functional-style methods like 'map', 'select', 'filter', 'reduce'. This is not a Pandas clone. The main difference between a 'Table' type and an array of Record instances is that a 'Table' is guaranteed to contain Record type data. It is such a common use-case that it deserves its own type: It can represent result sets from a database query, a CSV or Parquet file or JSON objects with a consistent schema. Ideally table data could be stored with an efficient memory layout like Arrow.
 * No inheritance for table and record types. This helps to keep the mismatch between relational data (in a database) and in the program smaller.
-* Heap allocations kept to a minimum. When needed, they should be handled with reference counting, or a garbage collector as an option to avoid the cycle problem of ref-counting.
+* Automatic deep copies with a 'cpy' unary operator; the default is immutable pass-by-reference
+* GC memory management
 
 
-
-
-
-### Language to-do list:
+### Some more ideas
 
 * A few more basic statements like 'for, 'map', 'filter'.
-* Support chaining functions associated with types
+* Support chaining functions associated with types. This should mostly come for free.
 * File I/O for lines of text (strings) and directly to and from other built-in types
-* containers: Maps, arrays with typed indices
 * Table types made of records supporting special table-like operations (think Pandas-light)
 
 
 ### Engineering to-do list
 
 * Garbage collector
-* (mostly done) Clean up the error message types by consolidating into one main error type. This would remove the need for re-enclosing messages into different types.
-* (mostly done) Clean up error reporting to always include the location in the source; the capability exists, I was just lazy about crafting the error messages in places.
 * Add a basic module system to load libraries.
 * Expand standard library
 * Look for back-end (tcc, gcc, linkers) and organize intermediate and binary output files (mostly done)
@@ -318,10 +418,10 @@ There are symbols left for special uses: "!","?", "->", "&", "@", "*". The plan 
 
 The caller doesn't need to annotate arguments.  Function declarations dictate how values get sent to the function.
 
-fun my_func(DECL-TYPE name: TYPE, ...): TYPE {
-	...
-	return EXPRESSION;
-}
+	fun my_func(DECL-TYPE name: TYPE, ...): TYPE {
+		...
+		return EXPRESSION;
+	}
 
 The DECL-TYPE may have three values: 'var', 'val' or 'cpy'. Parameters are 'val' by default and it doesn't need to be specified.
 
@@ -329,7 +429,5 @@ A 'val' parameter is immutable. A 'cpy' parameter is mutable within the function
 
 Most languages have 'cpy' as the default type of parameter. A 'const' parameter type -- or "const &" in C++ -- is most similar to 'val'. A 'var' parameter type is a pass-by-reference non-constant type.
 
-The idea to use 'val' as the default parameter type is to guide the program writer to a more efficient and functional style. A good compiler for the language should optimize 'val' parameters to behave like const reference parameters. The 'cpy' parameter passing style should be explicit in cases where the values are large.  Possibly it makes sense to make number and boolean types 'cpy' by default since there's no overhead in passing them by value; then again having a set of immutable variables  as arguments may lead to fewer mistakes.
-
-
+The point of using 'val' as the default parameter type is to guide the program writer to a more efficient and functional style. A good compiler for the language should optimize 'val' parameters to behave like const reference parameters. The 'cpy' parameter passing style should be explicit in cases where the values are large.  Possibly it makes sense to make number and boolean types 'cpy' by default since there's no overhead in passing them by value; then again having a set of immutable variables  as arguments may lead to fewer mistakes.
 
