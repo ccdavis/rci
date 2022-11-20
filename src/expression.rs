@@ -1161,25 +1161,30 @@ impl Expr {
                 format!("{} {}", &n.operator.print(), &n.expr.print())
             }
             Literal(ref n) => {
-                format!("")
+                format!("{}",&n.print())
             }
             Grouping(n) => {
                 format!("{}", &n.expr.print())
             }
             Variable(n) => {
-                format!("")
+                format!("Variable Expression")
             }
             Assignment(n) => {
-                format!("")
+                format!("Assignment Expression")
             }
             Call(n) => {
-                format!("")
+                format!("Call Expression")
             }
-            Logical(n) => {
-                format!("")
+            Logical(n) => {                
+                format!(
+                    "{} {} {}",
+                    &n.left.print(),
+                    &n.operator.print(),
+                    &n.right.print()
+                )
             }
-            Setter(n) =>format!("Setter Node"),
-            Getter(n) =>format!("Getter Node"),
+            Setter(n) =>format!("Setter  Expression"),
+            Getter(n) =>format!("Getter Expression"),
 
             _ => panic!("Not implemented"),
         };
