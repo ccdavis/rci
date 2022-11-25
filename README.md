@@ -133,6 +133,35 @@ And runtime sets:
 
 ```
 
+Unions:
+
+```scala
+type RuntimeError = Rec { col: Num, ln: Num, msg: Str }
+
+fun err(msg: Str): RuntimeError {
+	return RuntimeError(col: FILE.column, ln: FILE.line, msg: msg)
+}
+
+type LoginResult  = Union { ok: Bool, error: RuntimeError } 
+
+fun login(user: Str, pwd: Str): LoginResult {
+	if login_service.connected {
+		return login_service.accept(user,pwd) 
+	} else {
+		return err("Can't connect, login impossible.")
+	}
+}
+```
+
+Special Result type generator based on unions for error handling:
+```scala
+fun login(username: Str, pwd: Str): Result<ok: Bool, error: RuntimeError> {
+	....
+}
+
+
+```
+
 More user definable types -- allow all types .
 ```scala
 type Meters = Int
