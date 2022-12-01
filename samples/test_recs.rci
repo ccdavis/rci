@@ -17,6 +17,9 @@ fun charge(var cust: Customer, price: Num): Bool {
 
 // main
 {
+
+	
+	
 	var c1 = Customer(name: "John Smith", balance: 0.0, limit: 10000.0, rewards: false)
 	var c2 = Customer(name: "John Doe", balance: 0.0, limit: 5000.0, rewards: true)
 	

@@ -1,5 +1,6 @@
 use crate::lex::Token;
 use crate::types::ObjectCode;
+use colored::Colorize;
 
 use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
@@ -14,10 +15,10 @@ impl fmt::Display for ErrorType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ErrorType::*;
         let name = match self {
-            Type => "Type",
-            Parse => "Parse",
-            Internal => "Internal",
-            Compiler => "Compilation",
+            Type => "Type".yellow(),
+            Parse => "Parse".red(),
+            Internal => "Internal".magenta(),
+            Compiler => "Compilation".bright_red(),
         };
         write!(f, "{} Error", &name)
     }
@@ -57,7 +58,7 @@ impl Error {
     pub fn format(&self) -> String {
         format!(
             "{} at {}, {}: {}",
-            self.error_type, self.ln, self.col, self.message
+            self.error_type, self.ln, self.col, self.message.bright_white()
         )
     }
 

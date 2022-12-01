@@ -12,6 +12,8 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
+use colored::Colorize;
+
 const TRACE: bool = false;
 
 struct Builder {
@@ -61,13 +63,14 @@ impl Builder {
 
     pub fn read_source(&self, program_filename: &OsStr) -> String {
         let src_full_path = self.source_directory.join(program_filename);
+        
 
         let code = match fs::read_to_string(&src_full_path) {
             Ok(file_content) => file_content,
             Err(msg) => {
                 eprintln!(
                     "Error reading file {}: {}",
-                    &src_full_path.to_string_lossy(),
+                    &src_full_path.to_string_lossy().bright_white(),
                     &msg
                 );
                 std::process::exit(1);
@@ -87,7 +90,8 @@ impl Builder {
         let statements = match ast.parse(&mut global_symbols) {
             Ok(stmts) => stmts,
             Err(parse_errors) => {
-                eprintln!("Parse errors in source code. Compilation halted.");
+                let msg = "Parse errors in source code. Compilation halted.".red();
+                eprintln!("{}",&msg);
                 std::process::exit(3);
             }
         };
@@ -103,7 +107,7 @@ impl Builder {
             });
 
         if had_type_error {
-            eprintln!("Type errors in source code. Compilation terminated.");
+            eprintln!("{}",&"Type errors in source code. Compilation terminated.".red());
             std::process::exit(3);
         }
 
@@ -154,14 +158,20 @@ impl Builder {
             Ok(status) => {
                 if status.success() {
                     //					println!("{:?}",output);
-                    println!("[Compiled] {}", &target_bin.to_string_lossy())
+                    let compiled_msg = format!("[Compiled] {}", &target_bin.to_string_lossy().blue());
+                    println!("{}",&compiled_msg);
                 } else {
-                    eprintln!("BUILD ERROR: {}", status);
+                    let failed_msg = format!("BUILD ERROR: {}", status).red();
+                    eprintln!("{}",&failed_msg);
+
                     std::process::exit(1);
                 }
             }
             Err(error) => {
-                eprintln!("BUILD ERROR: {}", &error);
+                let failed_msg = format!("BUILD ERROR: {}", &error).red()
+                ;
+                eprintln!("{}",&failed_msg);
+
                 std::process::exit(1);
             }
         }
@@ -195,8 +205,10 @@ fn main() {
         eprintln!("Error during compilation. Will not link or run.");
         std::process::exit(4);
     }
+    
     if builder.build(&ir_src, program_name) {
-        println!("Success!");
+        let success_msg = "Success!".bright_yellow();
+        println!("{}",&success_msg);
 
         // TODO automatically run the binary with supplied args, like 'cargo run'
     }

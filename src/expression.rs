@@ -10,7 +10,7 @@ use crate::types::DeclarationType;
 use crate::types::LookupType;
 use crate::types::ObjectCode;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 pub trait TypeCheck {
     // This is for after the program has been fully parsed and all symbols are known.
