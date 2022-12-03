@@ -455,7 +455,7 @@ impl Parser {
         if TRACE {
             println!("In Record {} type declaration", type_name);
         }
-        
+
         let mut field_list = Vec::new();
         let location =
             self.consume(LeftBrace, "expect '{'. '{', '}' enclose a record's fields.")?;
@@ -464,8 +464,8 @@ impl Parser {
             let field_name_token = self.consume_identifier("Expect field name.")?;
             self.consume(Colon, "Expect ':' before field type.")?;
             let field_type_token = match self.peek().token_type {
-                EnumType | IntegerType | StringType | FloatType | NumberType | Identifier(_) | 
-                BooleanType | ArrayType => self.advance(),
+                EnumType | IntegerType | StringType | FloatType | NumberType | Identifier(_)
+                | BooleanType | ArrayType => self.advance(),
                 _ => {
                     let message = format!(
                         "Record type can't have a field of '{}' type.!",

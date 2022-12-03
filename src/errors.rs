@@ -58,7 +58,10 @@ impl Error {
     pub fn format(&self) -> String {
         format!(
             "{} at {}, {}: {}",
-            self.error_type, self.ln, self.col, self.message.bright_white()
+            self.error_type,
+            self.ln,
+            self.col,
+            self.message.bright_white()
         )
     }
 

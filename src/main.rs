@@ -52,18 +52,77 @@ impl Builder {
         }
     }
 
-    // TODO search out C compilers and prompt for installation if missing
+    fn is_windows() -> bool {
+        "windows".to_string() == env::consts::OS
+    }
+
+    fn locate_program(name: &str) -> Option<std::path::PathBuf> {
+        let output = std::process::Command::new("which").arg(name).output();
+        if let Ok(result) = output {
+            if result.status.success() {
+                //
+                let which_result = std::str::from_utf8(&result.stdout);
+                match which_result {
+                    Ok(res) => {
+                        if res.trim().len() == 0 {
+                            None
+                        } else {
+                            Some(std::path::Path::new(res.trim()).to_path_buf())
+                        }
+                    }
+                    Err(msg) => panic!("Problem with 'which' result: {}", &msg),
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn check_program_path(name: &str, default_location: &str) -> std::path::PathBuf {
+        if Builder::is_windows() {
+            panic!("Windows not supported yet.");
+        } else {
+        }
+        let program_on_path = Builder::locate_program(name);
+        let default = std::path::Path::new(default_location).to_path_buf();
+
+        if let Some(on_path) = program_on_path {
+            on_path
+        } else {
+            default
+        }
+    }
+
+    // TODO Allow for a C compiler to be configured
     fn checked_cc_path() -> std::path::PathBuf {
-        std::path::Path::new("/usr/bin/cc").to_path_buf()
+        let cc_path = Builder::check_program_path("cc", "/usr/bin/cc");
+        if cc_path.exists() {
+            cc_path
+        } else {
+            eprintln!("");
+            eprintln!("Build configuration error: No C compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
+            eprintln!("On Ubuntu or Debian Linux do 'sudo apt install build-essential' or consult your operating system documentation.");
+            std::process::exit(1);
+        }
     }
 
     fn checked_tcc_path() -> std::path::PathBuf {
-        std::path::Path::new("/usr/bin/tcc").to_path_buf()
+        let tcc_path = Builder::check_program_path("tcc", "/usr/bin/tcc");
+        if tcc_path.exists() {
+            tcc_path
+        } else {
+            eprintln!("");
+            eprintln!("Build configuration error: No TCC compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
+            eprintln!("On Ubuntu or Debian Linux do 'sudo apt install tcc' or consult your operating system documentation.");
+            eprintln!("Or you can download TCC directly from http://download.savannah.gnu.org/releases/tinycc/");
+            std::process::exit(1);
+        }
     }
 
     pub fn read_source(&self, program_filename: &OsStr) -> String {
         let src_full_path = self.source_directory.join(program_filename);
-        
 
         let code = match fs::read_to_string(&src_full_path) {
             Ok(file_content) => file_content,
@@ -76,7 +135,6 @@ impl Builder {
                 std::process::exit(1);
             }
         };
-
         code
     }
 
@@ -91,7 +149,7 @@ impl Builder {
             Ok(stmts) => stmts,
             Err(parse_errors) => {
                 let msg = "Parse errors in source code. Compilation halted.".red();
-                eprintln!("{}",&msg);
+                eprintln!("\n{}\n", &msg);
                 std::process::exit(3);
             }
         };
@@ -101,13 +159,16 @@ impl Builder {
             .for_each(|stmt| match stmt.check_types(&global_symbols) {
                 Err(type_error) => {
                     had_type_error = true;
-                    eprintln!("{}", &type_error.format());
+                    eprintln!("{}\n", &type_error.format());
                 }
                 _ => {}
             });
 
         if had_type_error {
-            eprintln!("{}",&"Type errors in source code. Compilation terminated.".red());
+            eprintln!(
+                "\n{}\n",
+                &"Type errors in source code. Compilation terminated.".red()
+            );
             std::process::exit(3);
         }
 
@@ -118,7 +179,7 @@ impl Builder {
             match stmt.compile(&global_symbols) {
                 Ok(code) => compiled_statements.push(code),
                 Err(msg) => {
-                    eprintln!("{}", &msg.format());
+                    eprintln!("{}\n", &msg.format());
                     self.had_compiler_error = true;
                 }
             };
@@ -131,7 +192,7 @@ impl Builder {
             _ => (),
             Err(msg) => {
                 eprintln!(
-                    "Could not create directory '{}' needed to build: {}",
+                    "\nBuild error: Could not create directory '{}' needed to build: {}",
                     self.tmp_compiler_output_directory.to_str().unwrap(),
                     msg
                 );
@@ -142,7 +203,7 @@ impl Builder {
         let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
 
         fs::write(&tmp_ir_path, object_code).expect(&format!(
-            "Problem writing intermediate representation code to {}",
+            "\nBuild error: Problem writing intermediate representation code to {}",
             &tmp_ir_path.to_str().unwrap()
         ));
         tmp_ir_path
@@ -158,20 +219,22 @@ impl Builder {
             Ok(status) => {
                 if status.success() {
                     //					println!("{:?}",output);
-                    let compiled_msg = format!("[Compiled] {}", &target_bin.to_string_lossy().blue());
-                    println!("{}",&compiled_msg);
+                    let compiled_msg = format!(
+                        "\n{} {}",
+                        "[Compiled]".blue(),
+                        &target_bin.to_string_lossy().bright_blue()
+                    );
+                    println!("{}", &compiled_msg);
                 } else {
-                    let failed_msg = format!("BUILD ERROR: {}", status).red();
-                    eprintln!("{}",&failed_msg);
+                    let failed_msg = format!("\nBUILD ERROR: {}", status).red();
+                    eprintln!("{}", &failed_msg);
 
                     std::process::exit(1);
                 }
             }
             Err(error) => {
-                let failed_msg = format!("BUILD ERROR: {}", &error).red()
-                ;
-                eprintln!("{}",&failed_msg);
-
+                let failed_msg = format!("\nBUILD ERROR: {}", &error).red();
+                eprintln!("{}", &failed_msg);
                 std::process::exit(1);
             }
         }
@@ -192,7 +255,10 @@ fn main() {
     let program_name = match program_filename {
         Some(filename) => filename.to_str().unwrap().trim_end_matches(".rci"),
         None => {
-            eprintln!("Incomplete path to program file: {}", program_file);
+            eprintln!(
+                "\nBuild error: Incomplete path to program file: {}",
+                program_file
+            );
             std::process::exit(1);
         }
     };
@@ -202,13 +268,13 @@ fn main() {
     let object_code = builder.compile(&code);
     let ir_src = builder.prepare_build(&object_code, program_name);
     if builder.had_compiler_error {
-        eprintln!("Error during compilation. Will not link or run.");
+        eprintln!("\nError during compilation. Will not link or run.");
         std::process::exit(4);
     }
-    
+
     if builder.build(&ir_src, program_name) {
         let success_msg = "Success!".bright_yellow();
-        println!("{}",&success_msg);
+        println!("{}", &success_msg);
 
         // TODO automatically run the binary with supplied args, like 'cargo run'
     }
