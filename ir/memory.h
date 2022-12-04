@@ -1,4 +1,4 @@
-
+#include "tgc.h"
 // From "Crafting Interpreters"
 //
 // I want to add a simple garbage collector and CI has one.
@@ -7,15 +7,20 @@
 // memory.
 #include "value.h"
 #include <stdlib.h>
+#define DEBUG_STRESS_GC
+#define DEBUG_LOG_GC
 
+#include <stdio.h>
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+	
 	  if (newSize == 0) {
-		free(pointer);
+		tgc_free(&gc, pointer);
 		return NULL;
 	  }
 
-	void* result = realloc(pointer, newSize);
+	//void* result = realloc(pointer, newSize);
+	void* result = tgc_realloc(&gc,pointer, newSize);
 	if (result == NULL){  printf("Can't allocate memory.\n"); exit(1);}
 
   return result;
@@ -41,30 +46,20 @@ rci_object * allocateObject(size_t size,rci_object_type  type) ;
 
 #define FREE_ARRAY(type, pointer, oldCount) \
     reallocate(pointer, sizeof(type) * (oldCount), 0)
-//< free-array
 
 
 
-
-rci_object * allocateObject(size_t size,rci_object_type  type) {
+rci_object * allocateObject(size_t size,rci_object_type type) {
   rci_object* object = (rci_object*) reallocate(NULL, 0, size);
   object->type = type;
+  
 //> Garbage Collection init-is-marked
-  object->is_marked = false;
-//< Garbage Collection init-is-marked
-//> add-to-list
-  /*
-  object->next = vm.objects;
-  vm.objects = object;
-  */
-//< add-to-list
-//> Garbage Collection debug-log-allocate
-
+  object->on_heap =  true;
+  
 #ifdef DEBUG_LOG_GC
   printf("%p allocate %zu for %d\n", (void*)object, size, type);
 #endif
 
-//< Garbage Collection debug-log-allocate
   return object;
 }
 

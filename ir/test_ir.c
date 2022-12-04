@@ -1,3 +1,5 @@
+#include "tgc.h"
+static tgc_t gc;
 //#include "value.h"
 //#include "memory.h"
 #include <stdarg.h>
@@ -165,7 +167,10 @@ void test_record_set() {
 
 
 
-int main() {
+int main(int argc, char ** argv) {
+	// &argc is the address of the stack, any local variable will do
+	tgc_start(&gc, &argc);
+		
 	test_number_macros();
 	test_boolean_macros();
 	test_enum_macros();
@@ -183,6 +188,8 @@ int main() {
 	} else {
 		printf("%d failures out of %d total tests.",failures,total);
 	}
+	
+	tgc_stop(&gc);
 	
 	return 0;
 }

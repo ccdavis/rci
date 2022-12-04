@@ -15,8 +15,6 @@ void runtime_error(const char * msg) {
 }
 
 
-
-
 typedef union {	
 	rci_bool _boolean;	
 	rci_number _number;

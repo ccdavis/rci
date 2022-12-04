@@ -33,9 +33,8 @@ typedef enum {
 
 typedef struct rci_object  {
 	rci_object_type type;
-	unsigned char is_marked;
-	void * next;	
-	// memory management info goes here
+	unsigned char  on_heap;
+	void * next;		
 } rci_object; 
 
 
