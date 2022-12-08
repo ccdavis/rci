@@ -587,6 +587,8 @@ impl TypeChecking for ProgramNode {
 // and minimal standard library functions.
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+		let gc_support = "\n#include \"./ir/tgc.h\"\nstatic tgc_t gc;\n";
+		
         let compiler_support = "#include \"./ir/compiler_support.h\"";
         let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
 
@@ -622,13 +624,13 @@ impl Compiler for ProgramNode {
         );
 
         let main_fn = format!(
-            "int main(int argc, const char ** argv) {{\n{}\n{}\nreturn 0;\n}}",
+            "int main(int argc, const char ** argv) {{\n\ttgc_start(&gc, &argc);\n{}\n{}\n\ttgc_stop(&gc);\n\treturn 0;\n}}",
             "\tinit_globals();\n", &imperatives_code
         );
 
         Ok(format!(
-            "{}\n{}\n\n{}\n{}\n",
-            compiler_support, &declarations_code, &init_globals, &main_fn
+            "{}\n{}\n{}\n\n{}\n{}\n",
+            gc_support, compiler_support, &declarations_code, &init_globals, &main_fn
         ))
     }
 }

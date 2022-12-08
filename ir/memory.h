@@ -1,14 +1,14 @@
 #include "tgc.h"
 // From "Crafting Interpreters"
 //
-// I want to add a simple garbage collector and CI has one.
+
 // 
 // All "object" type values in RCI will use reallocate() to allocate and free
 // memory.
 #include "value.h"
 #include <stdlib.h>
-#define DEBUG_STRESS_GC
-#define DEBUG_LOG_GC
+//#define DEBUG_STRESS_GC
+//#define DEBUG_LOG_GC
 
 #include <stdio.h>
 
