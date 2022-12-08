@@ -20,6 +20,7 @@ struct Builder {
     had_compiler_error: bool,
     source_directory: std::path::PathBuf,
     tmp_compiler_output_directory: std::path::PathBuf,
+	standard_lib_source_directory: std::path::PathBuf,
     target_directory: std::path::PathBuf,
     tcc_path: std::path::PathBuf,
     cc_path: std::path::PathBuf,
@@ -30,11 +31,13 @@ impl Builder {
     // Otherwise it's the directory where the source files are.
     fn new(build_dir: &std::path::Path, in_project: bool) -> Self {
         let cache_path = std::path::Path::new(".rci_tmp_cache").to_path_buf();
+		let standard_lib_directory = std::path::Path::new("ir").to_path_buf();
         if in_project {
             let src_path = std::path::Path::new("src").to_path_buf();
             Builder {
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
+				standard_lib_source_directory: standard_lib_directory,
                 source_directory: build_dir.join(src_path),
                 target_directory: build_dir.join("target"),
                 tcc_path: Builder::checked_tcc_path(),
@@ -45,6 +48,7 @@ impl Builder {
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
                 source_directory: build_dir.to_path_buf(),
+				standard_lib_source_directory: standard_lib_directory,
                 target_directory: build_dir.to_path_buf(),
                 tcc_path: Builder::checked_tcc_path(),
                 cc_path: Builder::checked_cc_path(),
@@ -210,8 +214,11 @@ impl Builder {
     }
 
     fn build(&self, ir_src: &std::path::Path, program_name: &str) -> bool {
+		let standard_lib_dir = self.standard_lib_source_directory.join("tgc.c");        
+		
         let target_bin = self.target_directory.join(program_name);
         let mut cmd = std::process::Command::new(&self.tcc_path);
+		cmd.arg(standard_lib_dir);
         cmd.arg(ir_src);
         cmd.arg("-o");
         cmd.arg(&target_bin);
