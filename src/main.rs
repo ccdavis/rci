@@ -20,6 +20,7 @@ struct Builder {
     had_compiler_error: bool,
     source_directory: std::path::PathBuf,
     tmp_compiler_output_directory: std::path::PathBuf,
+    installation_location: std::path::PathBuf,
 	standard_lib_source_directory: std::path::PathBuf,
     target_directory: std::path::PathBuf,
     tcc_path: std::path::PathBuf,
@@ -38,6 +39,7 @@ impl Builder {
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
 				standard_lib_source_directory: standard_lib_directory,
+                installation_location: Builder::find_installation(),
                 source_directory: build_dir.join(src_path),
                 target_directory: build_dir.join("target"),
                 tcc_path: Builder::checked_tcc_path(),
@@ -49,6 +51,7 @@ impl Builder {
                 tmp_compiler_output_directory: build_dir.join(cache_path),
                 source_directory: build_dir.to_path_buf(),
 				standard_lib_source_directory: standard_lib_directory,
+                installation_location: Builder::find_installation(),
                 target_directory: build_dir.to_path_buf(),
                 tcc_path: Builder::checked_tcc_path(),
                 cc_path: Builder::checked_cc_path(),
@@ -58,6 +61,15 @@ impl Builder {
 
     fn is_windows() -> bool {
         "windows".to_string() == env::consts::OS
+    }
+
+    // Search out an env var or compiler on the path or else assume it's a git clone where we run from the root
+    // dir and use "cargo run". In that case we use the "." as the installation directory; the "ir" directory is
+    // relative to the installation dir. We always add the installation location as an include dir to the C
+    // compiler, like "tcc -I." or "gcc -I." or "gcc -I/home/ccd/.rci_installation"
+    pub fn find_installation() -> std::path::PathBuf {
+        // TODO add installer and search for installation; for now default to expecting the git clone install
+        std::path::Path::new(".").to_path_buf()
     }
 
     fn locate_program(name: &str) -> Option<std::path::PathBuf> {
@@ -205,8 +217,16 @@ impl Builder {
         }
         let tmp_output_filename = format!("{}.c", &program_name);
         let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
+		
+		let gc_support = self.standard_lib_source_directory.join("tgc.h");
+        let use_gc = format!("\n#include \"{}\" \n static tgc_t gc;\n", &gc_support.to_string_lossy());		
 
-        fs::write(&tmp_ir_path, object_code).expect(&format!(
+        let standard_lib_support = self.standard_lib_source_directory.join("compiler_support.h");
+        let use_standard_lib = format!("#include \"{}\"\n",&standard_lib_support.to_string_lossy());
+
+        let code_to_write = use_gc + &use_standard_lib  + &object_code;
+
+        fs::write(&tmp_ir_path, code_to_write).expect(&format!(
             "\nBuild error: Problem writing intermediate representation code to {}",
             &tmp_ir_path.to_str().unwrap()
         ));
@@ -214,14 +234,16 @@ impl Builder {
     }
 
     fn build(&self, ir_src: &std::path::Path, program_name: &str) -> bool {
-		let standard_lib_dir = self.standard_lib_source_directory.join("tgc.c");        
-		
+        let include_path = format!("-I{}",self.installation_location.to_string_lossy());
+		let standard_lib_src = self.standard_lib_source_directory.join("tgc.c");        		
         let target_bin = self.target_directory.join(program_name);
         let mut cmd = std::process::Command::new(&self.tcc_path);
-		cmd.arg(standard_lib_dir);
+        cmd.arg(include_path);
+		cmd.arg(standard_lib_src);
         cmd.arg(ir_src);
         cmd.arg("-o");
         cmd.arg(&target_bin);
+        if TRACE {println!("try to execute {:?}",&cmd);}
         match cmd.status() {
             Ok(status) => {
                 if status.success() {
