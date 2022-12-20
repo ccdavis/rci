@@ -587,7 +587,6 @@ impl TypeChecking for ProgramNode {
 // and minimal standard library functions.
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-		
         let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
 
         for decl in &self.declarations {
@@ -628,7 +627,7 @@ impl Compiler for ProgramNode {
 
         Ok(format!(
             "{}\n\n{}\n{}\n",
-			&declarations_code, &init_globals, &main_fn
+            &declarations_code, &init_globals, &main_fn
         ))
     }
 }

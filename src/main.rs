@@ -21,7 +21,7 @@ struct Builder {
     source_directory: std::path::PathBuf,
     tmp_compiler_output_directory: std::path::PathBuf,
     installation_location: std::path::PathBuf,
-	standard_lib_source_directory: std::path::PathBuf,
+    standard_lib_source_directory: std::path::PathBuf,
     target_directory: std::path::PathBuf,
     tcc_path: std::path::PathBuf,
     cc_path: std::path::PathBuf,
@@ -32,13 +32,13 @@ impl Builder {
     // Otherwise it's the directory where the source files are.
     fn new(build_dir: &std::path::Path, in_project: bool) -> Self {
         let cache_path = std::path::Path::new(".rci_tmp_cache").to_path_buf();
-		let standard_lib_directory = std::path::Path::new("ir").to_path_buf();
+        let standard_lib_directory = std::path::Path::new("ir").to_path_buf();
         if in_project {
             let src_path = std::path::Path::new("src").to_path_buf();
             Builder {
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
-				standard_lib_source_directory: standard_lib_directory,
+                standard_lib_source_directory: standard_lib_directory,
                 installation_location: Builder::find_installation(),
                 source_directory: build_dir.join(src_path),
                 target_directory: build_dir.join("target"),
@@ -50,7 +50,7 @@ impl Builder {
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
                 source_directory: build_dir.to_path_buf(),
-				standard_lib_source_directory: standard_lib_directory,
+                standard_lib_source_directory: standard_lib_directory,
                 installation_location: Builder::find_installation(),
                 target_directory: build_dir.to_path_buf(),
                 tcc_path: Builder::checked_tcc_path(),
@@ -217,14 +217,20 @@ impl Builder {
         }
         let tmp_output_filename = format!("{}.c", &program_name);
         let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
-		
-		let gc_support = self.standard_lib_source_directory.join("tgc.h");
-        let use_gc = format!("\n#include \"{}\" \n static tgc_t gc;\n", &gc_support.to_string_lossy());		
 
-        let standard_lib_support = self.standard_lib_source_directory.join("compiler_support.h");
-        let use_standard_lib = format!("#include \"{}\"\n",&standard_lib_support.to_string_lossy());
+        let gc_support = self.standard_lib_source_directory.join("tgc.h");
+        let use_gc = format!(
+            "\n#include \"{}\" \n static tgc_t gc;\n",
+            &gc_support.to_string_lossy()
+        );
 
-        let code_to_write = use_gc + &use_standard_lib  + &object_code;
+        let standard_lib_support = self
+            .standard_lib_source_directory
+            .join("compiler_support.h");
+        let use_standard_lib =
+            format!("#include \"{}\"\n", &standard_lib_support.to_string_lossy());
+
+        let code_to_write = use_gc + &use_standard_lib + &object_code;
 
         fs::write(&tmp_ir_path, code_to_write).expect(&format!(
             "\nBuild error: Problem writing intermediate representation code to {}",
@@ -234,16 +240,18 @@ impl Builder {
     }
 
     fn build(&self, ir_src: &std::path::Path, program_name: &str) -> bool {
-        let include_path = format!("-I{}",self.installation_location.to_string_lossy());
-		let standard_lib_src = self.standard_lib_source_directory.join("tgc.c");        		
+        let include_path = format!("-I{}", self.installation_location.to_string_lossy());
+        let standard_lib_src = self.standard_lib_source_directory.join("tgc.c");
         let target_bin = self.target_directory.join(program_name);
         let mut cmd = std::process::Command::new(&self.tcc_path);
         cmd.arg(include_path);
-		cmd.arg(standard_lib_src);
+        cmd.arg(standard_lib_src);
         cmd.arg(ir_src);
         cmd.arg("-o");
         cmd.arg(&target_bin);
-        if TRACE {println!("try to execute {:?}",&cmd);}
+        if TRACE {
+            println!("try to execute {:?}", &cmd);
+        }
         match cmd.status() {
             Ok(status) => {
                 if status.success() {
