@@ -1,9 +1,12 @@
 #include "tgc.h"
 static tgc_t gc;
+
+#include<unistd.h>
 //#include "value.h"
 //#include "memory.h"
 #include <stdarg.h>
 #include "compiler_support.h"
+#include "standard_lib.h"
 
 
 static int  failures = 0;
@@ -22,6 +25,13 @@ void check(unsigned char result, const char * test_name) {
 }
 
 
+
+void test_std_clock() {
+	rci_value  c = std_clock();
+	sleep(1);
+	rci_value c2 = std_clock();
+	check(AS_NUMBER(c) < AS_NUMBER(c2),"clock()");
+}
 
 void test_enum_macros() {	
 	rci_value  x_type = ENUM_VAL(5);
@@ -180,6 +190,7 @@ int main(int argc, char ** argv) {
 	test_record_new();
 	test_record_access();
 	test_record_set();
+	test_std_clock();
 	
 	printf("\n");
 	

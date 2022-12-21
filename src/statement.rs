@@ -161,7 +161,7 @@ impl Compiler for PrintStmtNode {
             values.push(printable);
         }
 
-        let mut code = format!("printf(\"{}\\n\",{});\n", &subst_codes, &values.join(","));
+        let mut code = format!("printf(\"{}\",{});\n", &subst_codes, &values.join(","));
         Ok(code)
     }
 }

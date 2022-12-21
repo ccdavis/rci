@@ -1,3 +1,5 @@
+#ifndef MEMORY
+#define MEMORY
 #include "tgc.h"
 // From "Crafting Interpreters"
 //
@@ -64,4 +66,4 @@ rci_object * allocateObject(size_t size,rci_object_type type) {
 }
 
 
-
+#endif

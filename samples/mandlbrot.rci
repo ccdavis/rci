@@ -59,19 +59,22 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 	var inside = 0;
 	
 	while left < right {						
-		val line = "";
+		//val line = "";
 		while top < bottom {
 			if in_mandelbrot(left, top) {
-				line := line + "*";
+				//line := line + "*";
+				print "*"
 				inside := inside +1;
 			} 
 			else {
-				line := line + " ";
+				//line := line + " ";
+				print " "
 			}
 			top := top + y_increment;
 			points := points + 1;			
 		}
-		print line;
+		print ""
+		//print line;
 		top := y1;
 		left := left + x_increment;
 	}
