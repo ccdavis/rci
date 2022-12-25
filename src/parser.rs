@@ -346,6 +346,14 @@ impl Parser {
         // Needed for the return_type symbol we'll put into the
         // local symbols for the function.
         let return_type_location = self.previous();
+		
+		// Check if this is an aliased function with CALLS
+		let alias_for = if self.matches(&[Calls]) {
+			let name = self.consume_identifier(&format!("expect a function name."))?;
+			self.match_terminator()?;
+		} else {
+			None
+		};
 
         let function_name = name.identifier_string();
         // 'name' is the token holding the location of the function name in the source,
@@ -355,15 +363,20 @@ impl Parser {
             symbols.entries.len(),
             Some(name.clone()),
             &function_name,
+			&alias_for,
             parameters.clone(),
             &return_type,
         );
 
         // Add to parent symbol table
-        symbols.add(entry); // For recursion
-
+        symbols.add(entry); 
+		
+		if alias_for.is_some() {
+			return Ok(Stmt::NoOp)
+		}
+		
         // We will add symbols for params, then pass this local symbol table
-        // to the function_body() for  more eadditions and extensions.
+        // to the function_body() for  more additions and extensions.
         let mut local_symbols = symbols.extend();
 
         let return_type_entry = SymbolTableEntry::new_var(

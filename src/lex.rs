@@ -80,6 +80,7 @@ pub enum TokenType {
     While,
     To,
     Type,
+	Calls,
     Eol,
 
     ScanError(String),
@@ -162,6 +163,7 @@ impl TokenType {
             While => "while",
             To => "to",
             Type => "type",
+			Calls = "CALLS",
             Eol => "newline",
 
             // Type names
@@ -259,6 +261,7 @@ impl TokenType {
             Val,
             Cpy,
             While,
+			Calls,
             To,
         ];
 

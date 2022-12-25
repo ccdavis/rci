@@ -1,0 +1,6 @@
+
+
+fun clock(): Num {
+	CALLS std_clock()
+}
+

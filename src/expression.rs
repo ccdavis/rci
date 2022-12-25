@@ -529,6 +529,8 @@ impl Compiler for CallNode {
             );
             return compiler_err(&self.paren, &msg);
         }
+		
+		
 
         let mut arguments: Vec<String> = Vec::new();
         for (arg_num, arg_expr) in self.args.iter().enumerate() {
@@ -571,6 +573,11 @@ impl Compiler for CallNode {
         }
 
         let args_list = arguments.join(", ");
+		let function_to_call = if ste.alias_for.is_some() {
+				ste.alias_for.unwrap()
+			} else{
+				&function_name.code
+			};
         Ok(ObjectCode {
             data_type: callee_return_type,
             code: format!("{}({})", &function_name.code, &args_list),

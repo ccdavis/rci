@@ -136,24 +136,31 @@ impl Builder {
             std::process::exit(1);
         }
     }
-
-    pub fn read_source(&self, program_filename: &OsStr) -> String {
-        let src_full_path = self.source_directory.join(program_filename);
-
-        let code = match fs::read_to_string(&src_full_path) {
+	
+	pub fn read_source(src_full_path: &OsStr) -> String {
+	    match fs::read_to_string(src_full_path) {
             Ok(file_content) => file_content,
             Err(msg) => {
                 eprintln!(
                     "Error reading file {}: {}",
-                    &src_full_path.to_string_lossy().bright_white(),
+                    src_full_path.to_string_lossy().bright_white(),
                     &msg
                 );
                 std::process::exit(1);
             }
-        };
-        code
-    }
+        }
+	}
+	
+	pub fn read_standard_lib_source(&self) -> String {
+		let stdlib_src_full_path = self.standard_lib_source_directory.join("standard_lib.rci");
+		read_source(&stdlib_src_full_path)
+	}
 
+    pub fn read_user_source(&self, program_filename: &OsStr) -> String {		
+        let src_full_path = self.source_directory.join(program_filename);
+		read_source(&src_full_path)
+	}
+		
     pub fn compile(&mut self, code: &str) -> String {
         let mut had_type_error = false;
         let mut global_symbols = symbol_table::SymbolTable::global();
@@ -224,13 +231,20 @@ impl Builder {
             &gc_support.to_string_lossy()
         );
 
-        let standard_lib_support = self
+        let runtime_support = self
             .standard_lib_source_directory
             .join("compiler_support.h");
+        let use_runtime =
+            format!("#include \"{}\"\n", &runtime_support.to_string_lossy());
+
+
+		let standard_lib_support = self
+            .standard_lib_source_directory
+            .join("standard_lib.h");
         let use_standard_lib =
             format!("#include \"{}\"\n", &standard_lib_support.to_string_lossy());
 
-        let code_to_write = use_gc + &use_standard_lib + &object_code;
+        let code_to_write = use_gc + &use_runtime + &use_standard_lib + &object_code;
 
         fs::write(&tmp_ir_path, code_to_write).expect(&format!(
             "\nBuild error: Problem writing intermediate representation code to {}",
@@ -301,8 +315,11 @@ fn main() {
     };
 
     let mut builder = Builder::new(src_dir.unwrap(), false);
-    let code = builder.read_source(program_filename.unwrap());
-    let object_code = builder.compile(&code);
+    let user_code = builder.read_user_source(program_filename.unwrap());
+	let standard_lib_code = builder.read_stdlib_source();
+	let program_code = standard_lib_code + &user_code;
+	
+    let object_code = builder.compile(&program_code);
     let ir_src = builder.prepare_build(&object_code, program_name);
     if builder.had_compiler_error {
         eprintln!("\nError during compilation. Will not link or run.");
