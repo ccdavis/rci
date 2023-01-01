@@ -10,10 +10,9 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 
-
 use colored::Colorize;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 struct Builder {
     had_compiler_error: bool,
@@ -137,6 +136,9 @@ impl Builder {
     }
 
     pub fn read_source(src_full_path: &OsStr) -> String {
+        if TRACE {
+            println!("Read RCI source code from: {:?}", src_full_path);
+        }
         match fs::read_to_string(src_full_path) {
             Ok(file_content) => file_content,
             Err(msg) => {
@@ -310,8 +312,8 @@ fn main() {
     };
 
     let mut builder = Builder::new(src_dir.unwrap(), false);
-    let user_code = builder.read_user_source(program_filename.unwrap());
     let standard_lib_code = builder.read_standard_lib_source();
+    let user_code = builder.read_user_source(program_filename.unwrap());
     let program_code = standard_lib_code + &user_code;
 
     let object_code = builder.compile(&program_code);

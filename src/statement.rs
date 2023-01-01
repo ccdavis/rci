@@ -96,6 +96,7 @@ impl Stmt {
             Break(n) => n.compile(symbols),
             Program(n) => n.compile(symbols),
             Type(n) => n.compile(symbols),
+            NoOp => Ok("".to_string()),
             _ => panic!("Statement type compilation not supported yet."),
         }
     }
@@ -109,7 +110,7 @@ impl Stmt {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
             Type(n) => n.compile_global(symbols),
-            // TODO add Type statement types
+            NoOp => Ok(GlobalStatementObjectCode::no_op()),
             _ => panic!("Statement type compilation not supported yet."),
         }
     }

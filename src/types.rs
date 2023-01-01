@@ -180,6 +180,18 @@ pub struct GlobalStatementObjectCode {
     pub init_name: String, // Name of initializer function
 }
 
+impl GlobalStatementObjectCode {
+    pub fn no_op() -> Self {
+        Self {
+            decl_type: DeclarationType::Val,
+            base_code: "".to_string(),
+            decl_name: "".to_string(),
+            init_code: "".to_string(),
+            init_name: "".to_string(),
+        }
+    }
+}
+
 impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {

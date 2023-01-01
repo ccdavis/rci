@@ -87,8 +87,7 @@ impl Expr {
                     data_type: literal_type,
                     code: object_code,
                 })
-            }
-            //_ => panic!("Compile not implemented!"),
+            } //_ => panic!("Compile not implemented!"),
         }
     }
 

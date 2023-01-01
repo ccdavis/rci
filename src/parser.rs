@@ -200,14 +200,14 @@ impl Parser {
             }
             let stmt = self.declaration(global_symbols)?;
             match stmt {
-                Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
+                Stmt::NoOp | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
                 Stmt::Block(_) => {
                     imperatives = stmt;
                     found_main = true;
                 }
                 _ => {
                     let message =
-						format!("Programs can only have declarations (fun, var, val) and a block '{{','}}' at the end.");
+						format!("Programs can only have declarations (type, fun, var, val) and a block '{{','}}' at the end.");
                     return Err(parse_err(&self.previous(), &message));
                 }
             }
@@ -352,13 +352,13 @@ impl Parser {
         let alias_for = if self.matches(&[Calls]) {
             let alias_token = self.consume_identifier(&format!("expect a function name."))?;
             self.match_terminator()?;
-            let function_alias =  alias_token.identifier_string();
+            self.skip_all_newlines();
+            let function_alias = alias_token.identifier_string();
             Some(function_alias)
         } else {
             None
         };
 
-        
         // 'name' is the token holding the location of the function name in the source,
         // 'function_name' has the actual str with the name.
         // The symbol table doesn't need the body of the function.

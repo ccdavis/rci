@@ -1,6 +1,12 @@
 
 
-fun clock(): Num {
-	CALLS std_clock()
+
+fun clock(): Num CALLS std_clock
+
+fun t1():Num {
+	return 25
 }
 
+
+
+	
