@@ -8,9 +8,8 @@ mod types;
 use parser::*;
 use std::env;
 use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
+
 
 use colored::Colorize;
 
@@ -153,12 +152,12 @@ impl Builder {
 
     pub fn read_standard_lib_source(&self) -> String {
         let stdlib_src_full_path = self.standard_lib_source_directory.join("standard_lib.rci");
-        read_source(&stdlib_src_full_path)
+        Builder::read_source(&stdlib_src_full_path.as_os_str())
     }
 
     pub fn read_user_source(&self, program_filename: &OsStr) -> String {
         let src_full_path = self.source_directory.join(program_filename);
-        read_source(&src_full_path)
+        Builder::read_source(&src_full_path.as_os_str())
     }
 
     pub fn compile(&mut self, code: &str) -> String {
@@ -265,7 +264,7 @@ impl Builder {
         match cmd.status() {
             Ok(status) => {
                 if status.success() {
-                    //					println!("{:?}",output);
+                    //	println!("{:?}",output);
                     let compiled_msg = format!(
                         "\n{} {}",
                         "[Compiled]".blue(),
@@ -312,7 +311,7 @@ fn main() {
 
     let mut builder = Builder::new(src_dir.unwrap(), false);
     let user_code = builder.read_user_source(program_filename.unwrap());
-    let standard_lib_code = builder.read_stdlib_source();
+    let standard_lib_code = builder.read_standard_lib_source();
     let program_code = standard_lib_code + &user_code;
 
     let object_code = builder.compile(&program_code);

@@ -242,6 +242,7 @@ impl Parser {
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let name = self.consume_identifier(&format!("expect {} name.", kind))?;
+        let function_name = name.identifier_string();
         self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
         let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
         self.skip_all_newlines();
@@ -349,13 +350,15 @@ impl Parser {
 
         // Check if this is an aliased function with CALLS
         let alias_for = if self.matches(&[Calls]) {
-            let name = self.consume_identifier(&format!("expect a function name."))?;
+            let alias_token = self.consume_identifier(&format!("expect a function name."))?;
             self.match_terminator()?;
+            let function_alias =  alias_token.identifier_string();
+            Some(function_alias)
         } else {
             None
         };
 
-        let function_name = name.identifier_string();
+        
         // 'name' is the token holding the location of the function name in the source,
         // 'function_name' has the actual str with the name.
         // The symbol table doesn't need the body of the function.
@@ -363,7 +366,7 @@ impl Parser {
             symbols.entries.len(),
             Some(name.clone()),
             &function_name,
-            &alias_for,
+            alias_for.clone(),
             parameters.clone(),
             &return_type,
         );

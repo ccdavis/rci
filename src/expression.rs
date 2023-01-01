@@ -56,7 +56,7 @@ impl Expr {
             Expr::Assignment(n) => n.determine_type(symbols),
             Expr::Literal(value) => Ok(DataType::from_data_value(value)),
             Expr::UserTypeLiteral(n) => n.determine_type(symbols),
-            _ => panic!("determine_type not implemented!"),
+            //_ => panic!("determine_type not implemented!"),
         }
     }
 
@@ -88,7 +88,7 @@ impl Expr {
                     code: object_code,
                 })
             }
-            _ => panic!("Compile not implemented!"),
+            //_ => panic!("Compile not implemented!"),
         }
     }
 
@@ -571,14 +571,14 @@ impl Compiler for CallNode {
         }
 
         let args_list = arguments.join(", ");
-        let function_to_call = if ste.alias_for.is_some() {
-            ste.alias_for.unwrap()
+        let function_to_call = if function_ste.alias_for.is_some() {
+            function_ste.alias_for.as_ref().unwrap()
         } else {
             &function_name.code
         };
         Ok(ObjectCode {
             data_type: callee_return_type,
-            code: format!("{}({})", &function_name.code, &args_list),
+            code: format!("{}({})", function_to_call, &args_list),
         })
     }
 }

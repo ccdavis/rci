@@ -230,7 +230,7 @@ impl SymbolTableEntry {
         entry_number: usize,
         location: Option<Token>,
         name: &str,
-        alias_for: &str,
+        alias_for: Option<String>,
         params: Vec<Box<SymbolTableEntry>>,
         data_type: &DataType,
     ) -> Self {
@@ -238,7 +238,7 @@ impl SymbolTableEntry {
             entry_number,
             location: location,
             name: name.to_owned(),
-            alias_for: Some(alias_for.to_owned()),
+            alias_for,
             is_arg: false,
             entry_type: DeclarationType::Fun,
             data_type: data_type.clone(),
