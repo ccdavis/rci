@@ -1,7 +1,9 @@
 
-
-
 fun clock(): Num CALLS std_clock
+fun clock_per_second(): Num CALLS std_clock_per_second
+fun sleep(seconds: Num): Num  CALLS std_sleep 
+fun random(): Num CALLS std_random
+fun random_seed(seed: Num): Num CALLS std_random_seed
 
 fun t1():Num {
 	return 25

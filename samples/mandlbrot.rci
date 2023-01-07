@@ -16,11 +16,11 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 1600
-val y_resolution = 1600
+val x_resolution = 100
+val y_resolution = 132
 
-val max_iterations = 50;
-val escape_radius = 2.0;
+val max_iterations = 50
+val escape_radius = 2.0
 
 
 fun not_escaped(x:Num,iy:Num):Bool {
@@ -73,7 +73,7 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 			top := top + y_increment;
 			points := points + 1;			
 		}
-		print ""
+		print "\n"
 		//print line;
 		top := y1;
 		left := left + x_increment;
@@ -85,10 +85,25 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 
 
 {
+	random_seed(clock())
+	val iters = random()
+	print "random number: ",iters
+	val start = clock()
+	print "Start clock: ",start,"\n"
+	val s = sleep(2)
+	val end = clock()
+	print "end clock: ",end,"\n"
+
 	
-	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution;
-	//val start = clock();
+	print "Clocks per second: ",clock_per_second(),"\n"
+	
+	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution,"\n";
+	val calc_start = clock();
 	calc(-1.5, -1.0, 1.0, 1.0);
-	//print "Timer: ", (clock() - start) / 1000;
-	print("Finished");
+	
+	val calc_end = clock()
+	print "calc_start: ", calc_start,"\n"
+	print "calc_end: ",  calc_end,"\n"
+	print "Timer: ", (calc_end - calc_start) / clock_per_second(),"\n";	
+	print "Finished\n";
 }
