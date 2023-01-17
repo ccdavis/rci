@@ -43,6 +43,7 @@ pub enum Stmt {
     Return(ReturnStmtNode),
     Break(BreakStmtNode),
     Program(ProgramNode),
+    Module(ModuleNode),
     Type(TypeNode),
     NoOp,
 }
@@ -58,6 +59,7 @@ impl Stmt {
             If(stmt) => stmt.print(),
             Fun(stmt) => stmt.print(),
             While(stmt) => stmt.print(),
+            Module(stmt) => stmt.print(),
             Return(stmt) => stmt.print(),
             _ => format!("{:?}", &self),
         }
@@ -77,7 +79,8 @@ impl Stmt {
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
             Type(n) => n.check_types(symbols),
-            NoOp => Ok(()),
+            Module(n) =>n.check_types(symbols),
+            NoOp   => Ok(()),
             _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
     }
@@ -96,6 +99,7 @@ impl Stmt {
             Break(n) => n.compile(symbols),
             Program(n) => n.compile(symbols),
             Type(n) => n.compile(symbols),
+            Module(n) => n.compile(symbols),
             NoOp => Ok("".to_string()),
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -110,6 +114,7 @@ impl Stmt {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
             Type(n) => n.compile_global(symbols),
+            Module(n) => n.compile_global(symbols),
             NoOp => Ok(GlobalStatementObjectCode::no_op()),
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -190,6 +195,52 @@ impl Compiler for ExpressionStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let expr_code = self.expression.compile(symbols)?;
         let code = format!("{};", &expr_code.code);
+        Ok(code)
+    }
+}
+
+
+#[derive(Clone,Debug)]
+pub struct ModuleNode {
+    name: String, // the name of the module
+    statements: Vec<Stmt>,
+    // While parsing all public symbols will be added to the parent of these symbols;
+    // but all public and private symbols will be in this symbol table as well, but 
+    // without the module name prefixing the symbols.
+    symbols: SymbolTable,
+}
+
+impl ModuleNode{
+    fn print(&self) -> String {
+        format!("module {}",&self.name)
+    }
+
+}
+
+impl TypeChecking for ModuleNode {
+    
+    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+        // TODO: For now just return error on the first
+        // bad statement, but improve this to check them all.
+        for stmt in &self.statements {
+            stmt.check_types(&self.symbols)?
+        }
+        Ok(())
+    }
+}
+
+
+
+impl Compiler for ModuleNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+        let mut stmts = Vec::new();
+        for stmt in &self.statements {
+            let stmt_code = stmt.compile(&self.symbols)?;
+            stmts.push(stmt_code);
+        }
+        let stmts_code = stmts.join("\n");
+
+        let code = format!("\t{}\n", &stmts_code);
         Ok(code)
     }
 }

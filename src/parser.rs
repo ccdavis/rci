@@ -200,7 +200,7 @@ impl Parser {
             }
             let stmt = self.declaration(global_symbols)?;
             match stmt {
-                Stmt::NoOp | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
+                Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
                 Stmt::Block(_) => {
                     imperatives = stmt;
                     found_main = true;

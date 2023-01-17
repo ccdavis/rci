@@ -81,6 +81,7 @@ pub enum TokenType {
     To,
     Type,
     Calls,
+    Module,
     Eol,
 
     ScanError(String),
@@ -162,6 +163,7 @@ impl TokenType {
             Cpy => "cpy",
             While => "while",
             To => "to",
+			Module => "module",
             Type => "type",
             Calls => "CALLS",
             Eol => "newline",
@@ -263,6 +265,7 @@ impl TokenType {
             While,
             Calls,
             To,
+			Module,
         ];
 
         let mut types_by_name: HashMap<String, TokenType> = HashMap::new();
