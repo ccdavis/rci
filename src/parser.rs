@@ -14,6 +14,7 @@ const TRACE: bool = false;
 
 pub struct Parser {
     tokens: Vec<Token>,
+    modules: Vec<String>, // Each entry is where the parser is in module namespace
     current: usize,
     errors: Vec<ParseError>,
 }
@@ -171,8 +172,7 @@ impl Parser {
     ) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-            // Here is where we'd put imports or module includes
-            // of some sort, then read the main program.
+            
             match self.program(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
@@ -220,6 +220,10 @@ impl Parser {
     fn declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         self.skip_all_newlines();
 
+        if self.matches(&[TokenType::Module]) {
+            return self.module(symbols);
+        }
+
         if self.matches(&[TokenType::Type]) {
             return self.type_declaration(symbols);
         }
@@ -237,6 +241,18 @@ impl Parser {
             self.synchronize();
         }
         result
+    }
+
+    fn module(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
+        use TokenType::*;
+        let name = self.consume_identifier(&format!("expect {} name.", kind))?;
+        let module_name = name.identifier_string();
+        self.consume(LeftBrace, &format!("expect '{' after module name {} name.", kind))?;
+        // parse statements as if in the main namespace but add the module name to every symbol
+        self.module.push(name);
+        
+
+
     }
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
