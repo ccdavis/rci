@@ -202,12 +202,12 @@ impl Compiler for ExpressionStmtNode {
 
 #[derive(Clone,Debug)]
 pub struct ModuleNode {
-    name: String, // the name of the module
-    statements: Vec<Stmt>,
+    pub name: String, // the name of the module
+    pub statements: Vec<Stmt>,
     // While parsing all public symbols will be added to the parent of these symbols;
     // but all public and private symbols will be in this symbol table as well, but 
     // without the module name prefixing the symbols.
-    symbols: SymbolTable,
+    pub symbols: SymbolTable,
 }
 
 impl ModuleNode{

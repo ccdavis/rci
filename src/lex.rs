@@ -389,7 +389,9 @@ impl Scanner {
             }
         }
 
-        tokens.push(self.make_token(TokenType::Eof).unwrap());
+        tokens.push(
+            self.make_token(TokenType::Eof).unwrap()
+        );
 
         tokens
             .into_iter()

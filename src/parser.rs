@@ -3,6 +3,7 @@ use crate::errors::parse_err;
 use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
+use crate::statement::ModuleNode;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types;
@@ -23,6 +24,7 @@ impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
+            modules: Vec::new(),
             current: 0,
             errors: Vec::new(),
         }
@@ -245,12 +247,23 @@ impl Parser {
 
     fn module(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
-        let name = self.consume_identifier(&format!("expect {} name.", kind))?;
+        let name = self.consume_identifier(&format!("expect module name."))?;
         let module_name = name.identifier_string();
-        self.consume(LeftBrace, &format!("expect '{' after module name {} name.", kind))?;
+        self.consume(LeftBrace, &format!("expect '{{' after module name {}.", &module_name))?;
+
+        // TODO add module to symbols
+
         // parse statements as if in the main namespace but add the module name to every symbol
-        self.module.push(name);
-        
+        self.modules.push(module_name.clone());
+        let module = ModuleNode{
+            name: module_name,
+            statements: Vec::new(),
+            symbols: symbols.clone()
+        };
+        Ok(
+
+            Stmt::Module(module)
+        )
 
 
     }
