@@ -119,6 +119,29 @@ impl Stmt {
             _ => panic!("Statement type compilation not supported yet."),
         }
     }
+
+    pub fn is_declaration(&self) -> bool {
+        use Stmt::*;
+        match self {
+            Var(_) |
+            Fun(_) |
+            Type(_) |
+            Module(_) |
+            _ => false,
+        }
+    }
+
+    pub fn declaration_name(&self) -> String {
+        use Stmt::*;
+        match self {
+            Var(ref n) => n.name.clone(),
+            Fun(ref n) => n.name.identifier_string().clone(),
+            Type(ref n) => n.name.clone(),
+            Module(ref n) => n.name.clone(),
+            _ => panic!("Not a declaration statement. This was called in error during parsing or compilation because of a compiler bug."),
+        }
+
+    }
 }
 
 #[derive(Clone, Debug)]

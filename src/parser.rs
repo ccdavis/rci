@@ -14,10 +14,10 @@ type ParseError = crate::errors::Error;
 const TRACE: bool = false;
 
 pub struct Parser {
-    tokens: Vec<Token>,
+    tokens: Vec<Token>, // ordered tokens in current file
     modules: Vec<String>, // Each entry is where the parser is in module namespace
-    current: usize,
-    errors: Vec<ParseError>,
+    current: usize, // index into the tokens vec; tracks the parser's progress
+    errors: Vec<ParseError>, // After each parse err a "sync" is attempted and the error stored
 }
 
 impl Parser {
@@ -35,6 +35,8 @@ impl Parser {
         self.errors.push(error);
     }
 
+    // If next token matches any  in types list consume and advance
+    // else do nothing but return false (no match.)
     fn matches(&mut self, types: &[TokenType]) -> bool {
         for token_type in types {
             if self.check(token_type) {
@@ -247,25 +249,65 @@ impl Parser {
 
     fn module(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
+        let mut decls = Vec::new();
         let name = self.consume_identifier(&format!("expect module name."))?;
         let module_name = name.identifier_string();
-        self.consume(LeftBrace, &format!("expect '{{' after module name {}.", &module_name))?;
-
-        // TODO add module to symbols
+        self.skip_all_newlines();
+        let matching_brace = self.consume(LeftBrace, &format!("expect '{{' after module name {}.", &module_name))?;
+        self.skip_all_newlines();
+        
+        self.modules.push(module_name.clone());
+        let mut local_symbols = symbols.extend();
 
         // parse statements as if in the main namespace but add the module name to every symbol
-        self.modules.push(module_name.clone());
+        while !self.check(&TokenType::RightBrace) && !self.is_finished() {
+            self.skip_all_newlines();            
+            let stmt = self.declaration(&mut local_symbols)?;
+            match stmt {
+                Stmt::NoOp | 
+                Stmt::Module(_) | 
+                Stmt::Var(_) | 
+                Stmt::Type(_) | 
+                Stmt::Fun(_) => decls.push(stmt),                
+                _ => {
+                    let message =
+						format!("Modules can only have declarations (type, fun, var, val, module)");
+                    return Err(parse_err(&self.previous(), &message));
+                }
+            }
+            self.skip_all_newlines();
+        }
+        // Unbalanced {, } error
+        if self.is_finished(){
+            let message = format!("Unmatched '{{' for module {}, end-of-file found instead.",&module_name);
+            return Err(parse_err(&matching_brace, &message));
+        } else {
+            self.advance();
+        }
+
+        // Export symbols to parent symbol table
+        // Right now all declarations are exported; TODO add public and private sections
+        decls.iter().for_each(|d| 
+            if d.is_declaration(){
+                let local_name: String = d.declaration_name();
+                let full_name = self.modules.join(".") + "." + &local_name;
+                // TODO Add symbol table entry but with qualified name to parent
+                // symbol table namespace
+                // TODO locate the entry with the local name and decl type, then
+                // duplicate it in the parent symbols. but using the full name.
+
+            }
+        );
+
+        self.modules.pop();                
         let module = ModuleNode{
             name: module_name,
-            statements: Vec::new(),
-            symbols: symbols.clone()
+            statements: decls,
+            symbols: local_symbols
         };
         Ok(
-
             Stmt::Module(module)
         )
-
-
     }
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
