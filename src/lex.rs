@@ -165,7 +165,7 @@ impl TokenType {
             Cpy => "cpy",
             While => "while",
             To => "to",
-			Module => "module",
+            Module => "module",
             Type => "type",
             Calls => "CALLS",
             Eol => "newline",
@@ -267,7 +267,7 @@ impl TokenType {
             While,
             Calls,
             To,
-			Module,
+            Module,
         ];
 
         let mut types_by_name: HashMap<String, TokenType> = HashMap::new();
@@ -391,9 +391,7 @@ impl Scanner {
             }
         }
 
-        tokens.push(
-            self.make_token(TokenType::Eof).unwrap()
-        );
+        tokens.push(self.make_token(TokenType::Eof).unwrap());
 
         tokens
             .into_iter()

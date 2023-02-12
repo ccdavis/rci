@@ -79,8 +79,8 @@ impl Stmt {
             Break(n) => n.check_types(symbols),
             Program(n) => n.check_types(symbols),
             Type(n) => n.check_types(symbols),
-            Module(n) =>n.check_types(symbols),
-            NoOp   => Ok(()),
+            Module(n) => n.check_types(symbols),
+            NoOp => Ok(()),
             _ => panic!("Statement type '{}' not type-checked yet.", &self.print()),
         }
     }
@@ -123,11 +123,7 @@ impl Stmt {
     pub fn is_declaration(&self) -> bool {
         use Stmt::*;
         match self {
-            Var(_) |
-            Fun(_) |
-            Type(_) |
-            Module(_) |
-            _ => false,
+            Var(_) | Fun(_) | Type(_) | Module(_) | _ => false,
         }
     }
 
@@ -140,7 +136,6 @@ impl Stmt {
             Module(ref n) => n.name.clone(),
             _ => panic!("Not a declaration statement. This was called in error during parsing or compilation because of a compiler bug."),
         }
-
     }
 }
 
@@ -222,26 +217,23 @@ impl Compiler for ExpressionStmtNode {
     }
 }
 
-
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ModuleNode {
     pub name: String, // the name of the module
     pub statements: Vec<Stmt>,
     // While parsing all public symbols will be added to the parent of these symbols;
-    // but all public and private symbols will be in this symbol table as well, but 
+    // but all public and private symbols will be in this symbol table as well, but
     // without the module name prefixing the symbols.
     pub symbols: SymbolTable,
 }
 
-impl ModuleNode{
+impl ModuleNode {
     fn print(&self) -> String {
-        format!("module {}",&self.name)
+        format!("module {}", &self.name)
     }
-
 }
 
 impl TypeChecking for ModuleNode {
-    
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // TODO: For now just return error on the first
         // bad statement, but improve this to check them all.
@@ -251,8 +243,6 @@ impl TypeChecking for ModuleNode {
         Ok(())
     }
 }
-
-
 
 impl Compiler for ModuleNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {

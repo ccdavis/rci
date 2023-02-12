@@ -108,14 +108,9 @@ impl Expr {
 
     pub fn is_from_module(&self) -> bool {
         match self {
-            Expr::Variable(v) => v
-                .name
-                .identifier_string()
-                .chars()
-                .any(|c| c == '@'),                
+            Expr::Variable(v) => v.name.identifier_string().chars().any(|c| c == '@'),
             _ => false,
         }
-
     }
 } // impl expr
 
@@ -1152,7 +1147,12 @@ impl Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
 
-    pub fn variable(fully_qualified_name: String, name: Token, distance: Option<usize>, index: Option<usize>) -> Expr {
+    pub fn variable(
+        fully_qualified_name: String,
+        name: Token,
+        distance: Option<usize>,
+        index: Option<usize>,
+    ) -> Expr {
         Expr::Variable(VariableNode {
             fully_qualified_name,
             name,

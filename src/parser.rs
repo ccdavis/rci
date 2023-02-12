@@ -14,9 +14,9 @@ type ParseError = crate::errors::Error;
 const TRACE: bool = false;
 
 pub struct Parser {
-    tokens: Vec<Token>, // ordered tokens in current file
-    modules: Vec<String>, // Each entry is where the parser is in module namespace
-    current: usize, // index into the tokens vec; tracks the parser's progress
+    tokens: Vec<Token>,      // ordered tokens in current file
+    modules: Vec<String>,    // Each entry is where the parser is in module namespace
+    current: usize,          // index into the tokens vec; tracks the parser's progress
     errors: Vec<ParseError>, // After each parse err a "sync" is attempted and the error stored
 }
 
@@ -176,7 +176,6 @@ impl Parser {
     ) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
         while !self.is_finished() {
-            
             match self.program(global_symbols) {
                 Ok(stmt) => statements.push(stmt),
                 Err(parse_error) => self.error(parse_error),
@@ -204,7 +203,9 @@ impl Parser {
             }
             let stmt = self.declaration(global_symbols)?;
             match stmt {
-                Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => decls.push(stmt),
+                Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => {
+                    decls.push(stmt)
+                }
                 Stmt::Block(_) => {
                     imperatives = stmt;
                     found_main = true;
@@ -253,33 +254,37 @@ impl Parser {
         let name = self.consume_identifier(&format!("expect module name."))?;
         let module_name = name.identifier_string();
         self.skip_all_newlines();
-        let matching_brace = self.consume(LeftBrace, &format!("expect '{{' after module name {}.", &module_name))?;
+        let matching_brace = self.consume(
+            LeftBrace,
+            &format!("expect '{{' after module name {}.", &module_name),
+        )?;
         self.skip_all_newlines();
-        
+
         self.modules.push(module_name.clone());
         let mut local_symbols = symbols.extend();
 
         // parse statements as if in the main namespace but add the module name to every symbol
         while !self.check(&TokenType::RightBrace) && !self.is_finished() {
-            self.skip_all_newlines();            
+            self.skip_all_newlines();
             let stmt = self.declaration(&mut local_symbols)?;
             match stmt {
-                Stmt::NoOp | 
-                Stmt::Module(_) | 
-                Stmt::Var(_) | 
-                Stmt::Type(_) | 
-                Stmt::Fun(_) => decls.push(stmt),                
+                Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => {
+                    decls.push(stmt)
+                }
                 _ => {
                     let message =
-						format!("Modules can only have declarations (type, fun, var, val, module)");
+                        format!("Modules can only have declarations (type, fun, var, val, module)");
                     return Err(parse_err(&self.previous(), &message));
                 }
             }
             self.skip_all_newlines();
         }
         // Unbalanced {, } error
-        if self.is_finished(){
-            let message = format!("Unmatched '{{' for module {}, end-of-file found instead.",&module_name);
+        if self.is_finished() {
+            let message = format!(
+                "Unmatched '{{' for module {}, end-of-file found instead.",
+                &module_name
+            );
             return Err(parse_err(&matching_brace, &message));
         } else {
             self.advance();
@@ -287,8 +292,8 @@ impl Parser {
 
         // Export symbols to parent symbol table
         // Right now all declarations are exported; TODO add public and private sections
-        decls.iter().for_each(|d| 
-            if d.is_declaration(){                
+        decls.iter().for_each(|d| {
+            if d.is_declaration() {
                 let local_name: String = d.declaration_name();
                 let full_name = self.modules.join(".") + "@" + &local_name;
                 // TODO Add symbol table entry but with qualified name to parent
@@ -299,20 +304,18 @@ impl Parser {
                 if let Ok(entry) = ste {
                     let mut parent_entry = entry.clone();
                     parent_entry.name = full_name;
-                    symbols.add(parent_entry);                    
+                    symbols.add(parent_entry);
                 }
             }
-        );
+        });
 
-        self.modules.pop();                
-        let module = ModuleNode{
+        self.modules.pop();
+        let module = ModuleNode {
             name: module_name,
             statements: decls,
-            symbols: local_symbols
+            symbols: local_symbols,
         };
-        Ok(
-            Stmt::Module(module)
-        )
+        Ok(Stmt::Module(module))
     }
 
     fn function(&mut self, kind: &str, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
@@ -1148,11 +1151,11 @@ impl Parser {
                 }
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
-                expr = self.finish_lookup(expr, symbols)?;                            
+                expr = self.finish_lookup(expr, symbols)?;
             } else if self.matches(&[Dot]) {
                 expr = if expr.is_type_name() {
                     //  type specific functions (static)
-                    panic!("Type accessors (static methods) not implemented!")                
+                    panic!("Type accessors (static methods) not implemented!")
                 } else {
                     // method call or bare record field name
                     self.finish_getter(expr, symbols)?
@@ -1181,7 +1184,6 @@ impl Parser {
         }
     }
 
-    
     fn finish_getter(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         let dot = self.previous();
@@ -1290,15 +1292,19 @@ impl Parser {
             Identifier(name) => {
                 self.advance();
                 let mut fully_qualified_name = name.clone();
-                while self.matches(&[At]){
+                while self.matches(&[At]) {
                     fully_qualified_name.push('@');
                     let part = self.consume_identifier("Expected identifier after '@'.")?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
 
-
                 let (distance, index) = symbols.distance_and_index(&name, 0);
-                Ok(Expr::variable(fully_qualified_name, self.previous(), distance, index))
+                Ok(Expr::variable(
+                    fully_qualified_name,
+                    self.previous(),
+                    distance,
+                    index,
+                ))
             }
             LeftParen => {
                 self.advance();
