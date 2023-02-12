@@ -105,6 +105,18 @@ impl Expr {
             _ => false,
         }
     }
+
+    pub fn is_from_module(&self) -> bool {
+        match self {
+            Expr::Variable(v) => v
+                .name
+                .identifier_string()
+                .chars()
+                .any(|c| c == '@'),                
+            _ => false,
+        }
+
+    }
 } // impl expr
 
 #[derive(Clone, Debug)]
@@ -874,6 +886,7 @@ impl Compiler for UnaryNode {
 #[derive(Clone, Debug)]
 pub struct VariableNode {
     pub name: Token,
+    pub fully_qualified_name: String,
     pub distance: Option<usize>,
     pub index: Option<usize>,
 }
@@ -924,9 +937,9 @@ impl TypeCheck for VariableNode {
 
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         if TRACE {
-            println!("TYPECHECK Check variable node type...");
+            println!("TYPECHECK variable node type...");
         }
-        let variable_name = self.get_name();
+        let variable_name = self.fully_qualified_name.clone();
         if TRACE {
             println!("TYPECHECK Got name of variable {}", &variable_name);
         }
@@ -947,7 +960,7 @@ impl Compiler for VariableNode {
                 &var_type
             )
         }
-        let var_name = self.get_name();
+        let var_name = self.fully_qualified_name.clone();
         if TRACE {
             println!("COMPILE var name is {}", &var_name);
         }
@@ -1139,8 +1152,9 @@ impl Expr {
         Expr::Grouping(GroupingNode { expr: Box::new(e) })
     }
 
-    pub fn variable(name: Token, distance: Option<usize>, index: Option<usize>) -> Expr {
+    pub fn variable(fully_qualified_name: String, name: Token, distance: Option<usize>, index: Option<usize>) -> Expr {
         Expr::Variable(VariableNode {
+            fully_qualified_name,
             name,
             distance,
             index,

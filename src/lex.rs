@@ -9,6 +9,7 @@ pub enum TokenType {
     RightBracket,
     Comma,
     Dot,
+    At,
     Minus,
     Plus,
     SemiColon,
@@ -123,6 +124,7 @@ impl TokenType {
             Minus => "-",
             Star => "*",
             Dot => ".",
+            At => "@",
             SemiColon => ";",
             Slash => "/",
             Colon => ":",
@@ -434,6 +436,7 @@ impl Scanner {
             '[' => TokenType::LeftBracket,
             ']' => TokenType::RightBracket,
             ',' => TokenType::Comma,
+            '@' => TokenType::At,
             '.' => {
                 if self.match_char('.') {
                     TokenType::DotDot

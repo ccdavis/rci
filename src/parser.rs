@@ -288,14 +288,19 @@ impl Parser {
         // Export symbols to parent symbol table
         // Right now all declarations are exported; TODO add public and private sections
         decls.iter().for_each(|d| 
-            if d.is_declaration(){
+            if d.is_declaration(){                
                 let local_name: String = d.declaration_name();
-                let full_name = self.modules.join(".") + "." + &local_name;
+                let full_name = self.modules.join(".") + "@" + &local_name;
                 // TODO Add symbol table entry but with qualified name to parent
                 // symbol table namespace
                 // TODO locate the entry with the local name and decl type, then
                 // duplicate it in the parent symbols. but using the full name.
-
+                let ste = local_symbols.lookup(&local_name);
+                if let Ok(entry) = ste {
+                    let mut parent_entry = entry.clone();
+                    parent_entry.name = full_name;
+                    symbols.add(parent_entry);                    
+                }
             }
         );
 
@@ -1143,11 +1148,11 @@ impl Parser {
                 }
             } else if self.matches(&[LeftBracket]) {
                 // An array or hash lookup
-                expr = self.finish_lookup(expr, symbols)?;
+                expr = self.finish_lookup(expr, symbols)?;                            
             } else if self.matches(&[Dot]) {
                 expr = if expr.is_type_name() {
                     //  type specific functions (static)
-                    panic!("Type accessors (static methods) not implemented!")
+                    panic!("Type accessors (static methods) not implemented!")                
                 } else {
                     // method call or bare record field name
                     self.finish_getter(expr, symbols)?
@@ -1176,6 +1181,7 @@ impl Parser {
         }
     }
 
+    
     fn finish_getter(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         let dot = self.previous();
@@ -1283,8 +1289,16 @@ impl Parser {
             }
             Identifier(name) => {
                 self.advance();
+                let mut fully_qualified_name = name.clone();
+                while self.matches(&[At]){
+                    fully_qualified_name.push('@');
+                    let part = self.consume_identifier("Expected identifier after '@'.")?;
+                    fully_qualified_name.push_str(&part.identifier_string());
+                }
+
+
                 let (distance, index) = symbols.distance_and_index(&name, 0);
-                Ok(Expr::variable(self.previous(), distance, index))
+                Ok(Expr::variable(fully_qualified_name, self.previous(), distance, index))
             }
             LeftParen => {
                 self.advance();
