@@ -453,7 +453,22 @@ mod tests {
 				{
 					test_types()
 				}";
+    const SRC_MODULE: &str = "
+            module test {            
+                val module_val = 1
 
+                fun module_fun(x: Bool): Bool {
+                    return not x
+                }
+            }
+
+            {
+                val x:Bool = test@module_val                
+
+                
+            }        
+    ";
+    
     pub fn parse(code: &str) -> Result<Vec<Stmt>, Vec<errors::Error>> {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
@@ -542,4 +557,16 @@ mod tests {
         assert!(type_check(SRC_RECORD_TYPE_EXPLICIT)? == ());
         Ok(())
     }
+
+    #[test]
+    fn test_modules() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_MODULE)?.len() > 0);
+        //assert!(type_check(SRC_MODULE)? == ());
+
+        Ok(())
+
+    }
+
+
+
 }

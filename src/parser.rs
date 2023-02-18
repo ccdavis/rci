@@ -11,7 +11,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub struct Parser {
     tokens: Vec<Token>,      // ordered tokens in current file
@@ -295,7 +295,7 @@ impl Parser {
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
-                let full_name = self.modules.join(".") + "@" + &local_name;
+                let full_name = self.modules.join("@") + "@" + &local_name;
                 // TODO Add symbol table entry but with qualified name to parent
                 // symbol table namespace
                 // TODO locate the entry with the local name and decl type, then
@@ -1001,10 +1001,10 @@ impl Parser {
         );
 
         local_symbols.add(block_entry);
-        while !self.check(&RightBrace) && !self.is_finished() {
-            self.skip_all_newlines();
+        while !self.check(&RightBrace) && !self.is_finished() {            
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
+            self.skip_all_newlines();
         }
         self.skip_all_newlines();
         self.consume(RightBrace, "expect '}' after block.")?;
@@ -1164,6 +1164,7 @@ impl Parser {
                 break;
             }
         }
+        if TRACE { println!("Leaving call(), parsed {:?}", &expr);}
         Ok(expr)
     }
 
@@ -1185,6 +1186,7 @@ impl Parser {
     }
 
     fn finish_getter(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        if TRACE { println!("In finish_getter:");}
         use TokenType::*;
         let dot = self.previous();
 
@@ -1216,6 +1218,7 @@ impl Parser {
     }
 
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
+        if TRACE { println!("In finish_call:");}
         use TokenType::*;
         let mut args: Vec<Expr> = Vec::new();
         self.skip_if_newline();
@@ -1290,6 +1293,7 @@ impl Parser {
                 Ok(Expr::literal(self.previous()))
             }
             Identifier(name) => {
+                if TRACE { println!("identifier primary expression:");}
                 self.advance();
                 let mut fully_qualified_name = name.clone();
                 while self.matches(&[At]) {
@@ -1297,6 +1301,8 @@ impl Parser {
                     let part = self.consume_identifier("Expected identifier after '@'.")?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
+                if TRACE { println!("Fully qualified name {}",&fully_qualified_name);}
+                
 
                 let (distance, index) = symbols.distance_and_index(&name, 0);
                 Ok(Expr::variable(
