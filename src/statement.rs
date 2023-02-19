@@ -123,7 +123,8 @@ impl Stmt {
     pub fn is_declaration(&self) -> bool {
         use Stmt::*;
         match self {
-            Var(_) | Fun(_) | Type(_) | Module(_) | _ => false,
+            Var(_) | Fun(_) | Type(_) | Module(_) => true,
+            _ => false,
         }
     }
 

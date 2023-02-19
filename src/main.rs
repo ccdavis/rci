@@ -454,18 +454,23 @@ mod tests {
 					test_types()
 				}";
     const SRC_MODULE: &str = "
+            val global_val = 551
             module test {            
                 val module_val = 1
-
+                var module_var = \"hello\"
+                
                 fun module_fun(x: Bool): Bool {
                     return not x
                 }
             }
 
             {
-                val x:Bool = test@module_val                
+                val x:Num = test@module_val                
+                val y:Num =  2 * test@module_val - 3
+                print y,\"\\n\"
+                val z:Bool = test@module_fun(true)
 
-                
+                val try_this = test@module_var
             }        
     ";
     

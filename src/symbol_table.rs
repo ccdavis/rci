@@ -249,6 +249,10 @@ impl SymbolTableEntry {
             fields: params,
         }
     }
+
+    pub fn format_debug(&self)-> String {
+        format!("{:?}",self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -318,6 +322,18 @@ impl SymbolTable {
             }
         }
     } // fn
+
+    pub fn print_debug(&self) {
+        for (k,v) in &self.entries{
+            println!("{}  ->  {}",&k, &v.format_debug());
+            if let Some(outer_scope) = &self.outer {
+                println!("Outer scope: -------->");
+                outer_scope.print_debug();
+
+            }
+        }
+    }
+
 }
 
 pub fn data_type_for_symbol(

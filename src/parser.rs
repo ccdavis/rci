@@ -262,6 +262,7 @@ impl Parser {
 
         self.modules.push(module_name.clone());
         let mut local_symbols = symbols.extend();
+        if TRACE { println!("Begin parsing module {}",&module_name);}
 
         // parse statements as if in the main namespace but add the module name to every symbol
         while !self.check(&TokenType::RightBrace) && !self.is_finished() {
@@ -269,6 +270,7 @@ impl Parser {
             let stmt = self.declaration(&mut local_symbols)?;
             match stmt {
                 Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => {
+                    if TRACE { println!("parsed decl in module {:?}",&stmt.print() )}
                     decls.push(stmt)
                 }
                 _ => {
@@ -287,11 +289,12 @@ impl Parser {
             );
             return Err(parse_err(&matching_brace, &message));
         } else {
-            self.advance();
+            self.consume(TokenType::RightBrace, "Expected '}'")?;
         }
 
         // Export symbols to parent symbol table
         // Right now all declarations are exported; TODO add public and private sections
+        if TRACE { println!("Parsed {} decls in module.",&decls.len());}
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
@@ -304,7 +307,9 @@ impl Parser {
                 if let Ok(entry) = ste {
                     let mut parent_entry = entry.clone();
                     parent_entry.name = full_name;
+                    if TRACE { println!("Add decl in module to outer scope: {}",&parent_entry.format_debug());}
                     symbols.add(parent_entry);
+
                 }
             }
         });
@@ -818,6 +823,7 @@ impl Parser {
                 if TRACE {
                     println!("Initializer: {:?}", &initializer);
                 }
+                if TRACE { println!("Try to infer type with symbols: "); symbols.print_debug();}
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
                         self.error(parse_err(&self.previous(), &type_error.message));
@@ -1011,6 +1017,7 @@ impl Parser {
         self.skip_all_newlines();
         Ok(Stmt::block_stmt(stmt_list, local_symbols))
     }
+
 
     fn expression(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         self.assignment(symbols)
