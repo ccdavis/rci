@@ -1,0 +1,26 @@
+
+
+fun outer(f:number):number {
+	var a = 9;
+
+	fun inner(x:number):number {
+		var b = 10;
+		print "inner";
+		print b;
+		print "param";
+		print x;
+		print  "outer";
+		print a;
+		return b;
+	}
+	
+	print "In outer";
+	print "try inner";
+	print inner(11);
+	
+	return 0;
+	
+	
+}
+
+print outer(0);

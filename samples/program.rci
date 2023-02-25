@@ -1,0 +1,28 @@
+fun print_clock():Num {
+	var time = clock()
+	print "Clock: ", time
+	return time
+}
+
+var one = 1;
+val two = 2;
+var three:Num = 8;
+
+fun compute(var a: Num, val b: Num): Num {
+	if one = a {
+		one := 9;
+	} else {
+		print "'one' has changed!\n";
+	}
+	return a + one + b * two;
+}
+
+
+{
+	print_clock()
+	print "Compute with local and global variables:\n";	
+	print compute(one,2),"\n"
+	print "compute after changing global var 'one':","\n";
+	print compute(one,2), "\n"
+}
+
