@@ -566,7 +566,7 @@ mod tests {
     #[test]
     fn test_modules() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_MODULE)?.len() > 0);
-        //assert!(type_check(SRC_MODULE)? == ());
+        assert!(type_check(SRC_MODULE)? == ());
 
         Ok(())
 

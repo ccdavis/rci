@@ -12,7 +12,7 @@ use crate::types::DataType;
 use crate::types::DeclarationType;
 use crate::types::GlobalStatementObjectCode;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 pub trait TypeChecking {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error>;
@@ -110,6 +110,7 @@ impl Stmt {
         symbols: &SymbolTable,
     ) -> Result<GlobalStatementObjectCode, errors::Error> {
         use Stmt::*;
+        if TRACE { println!("Compiling global");}
         match self {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
@@ -222,8 +223,8 @@ impl Compiler for ExpressionStmtNode {
 pub struct ModuleNode {
     pub name: String, // the name of the module
     pub statements: Vec<Stmt>,
-    // While parsing all public symbols will be added to the parent of these symbols;
-    // but all public and private symbols will be in this symbol table as well, but
+    // all public symbols will be added to the parent symbols table during parsing.
+    // All public and private symbols will be in this symbol table as well, but
     // without the module name prefixing the symbols.
     pub symbols: SymbolTable,
 }
@@ -254,7 +255,24 @@ impl Compiler for ModuleNode {
         }
         let stmts_code = stmts.join("\n");
 
-        let code = format!("\t{}\n", &stmts_code);
+        let code = format!("// BEGIN MODULE {}\n\t{}\n//END MODULE {}", 
+            &self.name, &stmts_code, &self.name);
+        Ok(code)
+    }
+
+    
+    fn compile_global(
+        &self,
+        symbols: &SymbolTable,
+    ) -> Result<GlobalStatementObjectCode, errors::Error> {
+        
+        let code = GlobalStatementObjectCode {
+            decl_type: DeclarationType::Val,
+            base_code: self.compile(&symbols)?,
+            decl_name: self.name.clone(),
+            init_code: "".to_string(),
+            init_name: "".to_string(),
+        };
         Ok(code)
     }
 }
@@ -654,9 +672,11 @@ impl TypeChecking for ProgramNode {
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
+        if TRACE { println!("Compile Program with {} declarations.", &self.declarations.len());}
 
         for decl in &self.declarations {
             let decl_code = decl.compile_global(symbols)?;
+            if TRACE { println!("Generating code: {}", &decl_code.base_code);}
             decls.push(decl_code);
         }
 

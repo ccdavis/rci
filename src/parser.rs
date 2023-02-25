@@ -298,7 +298,7 @@ impl Parser {
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
-                let full_name = self.modules.join("@") + "@" + &local_name;
+                let full_name = self.modules.join("_at_") + "_at_" + &local_name;
                 // TODO Add symbol table entry but with qualified name to parent
                 // symbol table namespace
                 // TODO locate the entry with the local name and decl type, then
@@ -307,7 +307,7 @@ impl Parser {
                 if let Ok(entry) = ste {
                     let mut parent_entry = entry.clone();
                     parent_entry.name = full_name;
-                    if TRACE { println!("Add decl in module to outer scope: {}",&parent_entry.format_debug());}
+                    if TRACE { println!("Add decl in module to outer scope: {}",&parent_entry.name);}
                     symbols.add(parent_entry);
 
                 }
@@ -457,11 +457,11 @@ impl Parser {
 
         // Add to parent symbol table
         symbols.add(entry);
+        if alias_for.is_some(){
+            return Ok(Stmt::NoOp)
 
-        if alias_for.is_some() {
-            return Ok(Stmt::NoOp);
         }
-
+        
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more additions and extensions.
         let mut local_symbols = symbols.extend();
@@ -1303,8 +1303,8 @@ impl Parser {
                 if TRACE { println!("identifier primary expression:");}
                 self.advance();
                 let mut fully_qualified_name = name.clone();
-                while self.matches(&[At]) {
-                    fully_qualified_name.push('@');
+                while self.matches(&[At]) {                    
+                    fully_qualified_name.push_str("_at_");
                     let part = self.consume_identifier("Expected identifier after '@'.")?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
