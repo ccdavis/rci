@@ -8,13 +8,43 @@ The main idea behind RCI is to try out some familiar language features combined 
 
 ### Latest language updates
 
-Enumeration types, record types now build and fully function.  The parameter passing works as designed.
+* Modules and the beginning of a standard library in the 'std' module
 
-Currently WIP: String versions of enum values, enums and recs as member types of ___Rec___, colorized compiler output and better configuration of the build system.
+Use `module module-name { ... }` to define them, use `module_name@name` to access things declared in a module. You can access functions, types and variables. Right now modules are primarily a name-spacing mechanism and there's no import system but that's coming.
+
+* Colorized and cleaned up compiler output
+* A minimal program builder: Within the repo you can do a "cargo run ./samples/program-name" and you'll get a binary in the directory where the source was. It has to be in the repo's directory tree for now. 
+
+Currently working on full build system for (1) installing the compiler in the user's directory and (2) single-file local builds or project builds with config files (like Cargo.toml) and multi-file, multi-module builds.
+
+Also currently WIP: String versions of enum values, enums and recs as member types of ___Rec___
+
+
+### Modules example:
+
+```scala
+module math {
+	fun square(x: Num): Num {
+		return x * x
+	}
+	
+	val pi = 3.14159
+	
+	fun circle_area(r: Num): Num {
+		return pi * square(r)
+	}
+}
+
+val x = 5
+val x_squared = math@square(x)
+val area = math@circle_area(x)
+
+```
+
 
 ### Building
 
-Programs build with ___tcc___ as the default linker. The intermediate target language is C89. You can build the compiler output with ___gcc___ as well for more optimized executables. The C compiler target includes a small runtime that's under development. Memory management is a work in progress.
+Programs build with ___tcc___ as the default linker. The intermediate target language is C89. You can build the compiler output with ___gcc___ as well for more optimized executables. The C compiler target includes a small runtime that's under development.
 
 ### Sample Code
 
