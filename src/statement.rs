@@ -426,16 +426,20 @@ impl TypeChecking for VarStmtNode {
             let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
 
-            Err(errors::Error::new(&self.location, ErrorType::Type, message))
-        } else {
-            Ok(())
-        }
+            return Err(errors::Error::new(&self.location, ErrorType::Type, message))
+        }        
+        Ok(())        
     }
 }
 
 impl Compiler for VarStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        let lhs = format!("rci_value {}", self.name);
+        let entry = symbols
+            .lookup(&self.name)
+            .expect("Major compiler bug: Symbol should be in symbol table.");
+
+        let generated_symbol = Stmt::codegen_symbol(&entry);
+        let lhs = format!("rci_value {}", &generated_symbol);
         let rhs = self.initializer.compile(symbols)?;
         let code = format!("{} = {};", &lhs, &rhs.code);
         Ok(code)
@@ -448,13 +452,15 @@ impl Compiler for VarStmtNode {
         let ste = symbols
             .lookup(&self.name)
             .expect("Major compiler bug: Symbol should be in symbol table.");
-        let lhs = format!("rci_value {};\n", self.name);
+        let generated_symbol = Stmt::codegen_symbol(&ste);
+        let lhs = format!("rci_value {};\n", &generated_symbol);
+
         // make an initializer function to be called from an init_globals() function called first in main()
         let initializer_name = format!("__INITIALIZER_FOR_{}()", &self.name);
         let rhs = self.initializer.compile(symbols)?;
         let init_func = format!(
             "void {} {{\n {} = {}; \n }}\n",
-            &initializer_name, self.name, &rhs.code
+            &initializer_name, &generated_symbol, &rhs.code
         );
 
         let code = GlobalStatementObjectCode {
