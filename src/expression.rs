@@ -3,6 +3,7 @@ use crate::errors::compiler_err;
 use crate::errors::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
+use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types::DataType;
 use crate::types::DataValue;
@@ -523,15 +524,29 @@ impl Compiler for CallNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let callee_return_type = self.callee.determine_type(symbols)?;
 
-        // The 'callee' is an expression but it really just resolves to the
-        // name of the function to be called; it could be expanded to be a
-        // class-instance.method() call or other things as well.
-        let function_name = self.callee.compile(symbols)?;
-        let function_ste = symbols.lookup(&function_name.code).unwrap();
+        // The mangled name we expect to have emitted  from the compiler including module names
+        let generated_function_name = self.callee.compile(symbols)?;
+
+        // The name of the function the user typed in
+        let local_function_call = match *self.callee {
+            Expr::Variable(ref v) => v.fully_qualified_name.clone(),
+            _ => panic!(
+                "Internal error: function call expected to be stored as a VariableNode expr.!"
+            ),
+        };
+
+        let function_ste = match symbols.lookup(&local_function_call) {
+            Ok(ref ste) => ste.clone(),
+            Err(_) => panic!(
+                "Internal error: Expected to findfunction named {} which compiles to {}",
+                &local_function_call, &generated_function_name.code
+            ),
+        };
+
         if self.args.len() != function_ste.fields.len() {
             let msg = format!(
                 "Symbol table definition of function {} and call site don't match arrity!",
-                &function_name.code
+                &generated_function_name.code
             );
             return compiler_err(&self.paren, &msg);
         }
@@ -580,7 +595,7 @@ impl Compiler for CallNode {
         let function_to_call = if function_ste.alias_for.is_some() {
             function_ste.alias_for.as_ref().unwrap()
         } else {
-            &function_name.code
+            &generated_function_name.code
         };
         Ok(ObjectCode {
             data_type: callee_return_type,
@@ -917,6 +932,8 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
 
 impl VariableNode {
     fn get_name(&self) -> String {
+        //self.fully_qualified_name.clone()
+
         if let TokenType::Identifier(ref variable_name) = self.name.token_type {
             variable_name.clone()
         } else {
@@ -985,7 +1002,7 @@ impl Compiler for VariableNode {
                         &enum_value.member_of_enum, &enum_value.value
                     )
                 } else {
-                    format!("{}", &var_name)
+                    format!("{}", Stmt::codegen_symbol(ste))
                 }
             },
         })

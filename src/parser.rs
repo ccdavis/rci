@@ -14,10 +14,10 @@ type ParseError = crate::errors::Error;
 const TRACE: bool = true;
 
 pub struct Parser {
-    tokens: Vec<Token>,      // ordered tokens in current file
-    modules: Vec<String>,    // Each entry is where the parser is in module namespace
-    current: usize,          // index into the tokens vec; tracks the parser's progress
-    errors: Vec<ParseError>, // After each parse err a "sync" is attempted and the error stored
+    tokens: Vec<Token>,       // ordered tokens in current file
+    pub modules: Vec<String>, // Each entry is where the parser is in module namespace
+    current: usize,           // index into the tokens vec; tracks the parser's progress
+    errors: Vec<ParseError>,  // After each parse err a "sync" is attempted and the error stored
 }
 
 impl Parser {
@@ -262,7 +262,9 @@ impl Parser {
 
         self.modules.push(module_name.clone());
         let mut local_symbols = symbols.extend();
-        if TRACE { println!("Begin parsing module {}",&module_name);}
+        if TRACE {
+            println!("Begin parsing module {}", &module_name);
+        }
 
         // parse statements as if in the main namespace but add the module name to every symbol
         while !self.check(&TokenType::RightBrace) && !self.is_finished() {
@@ -270,7 +272,9 @@ impl Parser {
             let stmt = self.declaration(&mut local_symbols)?;
             match stmt {
                 Stmt::NoOp | Stmt::Module(_) | Stmt::Var(_) | Stmt::Type(_) | Stmt::Fun(_) => {
-                    if TRACE { println!("parsed decl in module {:?}",&stmt.print() )}
+                    if TRACE {
+                        println!("parsed decl in module {:?}", &stmt.print())
+                    }
                     decls.push(stmt)
                 }
                 _ => {
@@ -294,11 +298,13 @@ impl Parser {
 
         // Export symbols to parent symbol table
         // Right now all declarations are exported; TODO add public and private sections
-        if TRACE { println!("Parsed {} decls in module.",&decls.len());}
+        if TRACE {
+            println!("Parsed {} decls in module.", &decls.len());
+        }
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
-                let full_name = self.modules.join("_at_") + "_at_" + &local_name;
+                let full_name = self.modules.join("@") + "@" + &local_name;
                 // TODO Add symbol table entry but with qualified name to parent
                 // symbol table namespace
                 // TODO locate the entry with the local name and decl type, then
@@ -307,9 +313,10 @@ impl Parser {
                 if let Ok(entry) = ste {
                     let mut parent_entry = entry.clone();
                     parent_entry.name = full_name;
-                    if TRACE { println!("Add decl in module to outer scope: {}",&parent_entry.name);}
+                    if TRACE {
+                        println!("Add decl in module to outer scope: {}", &parent_entry.name);
+                    }
                     symbols.add(parent_entry);
-
                 }
             }
         });
@@ -403,6 +410,7 @@ impl Parser {
                     declaration_type,
                     param_name,
                     param_type,
+                    self.modules.clone(),
                 );
                 parameters.push(Box::new(entry));
                 if !self.matches(&[Comma]) {
@@ -453,15 +461,15 @@ impl Parser {
             alias_for.clone(),
             parameters.clone(),
             &return_type,
+            self.modules.clone(),
         );
 
         // Add to parent symbol table
         symbols.add(entry);
-        if alias_for.is_some(){
-            return Ok(Stmt::NoOp)
-
+        if alias_for.is_some() {
+            return Ok(Stmt::NoOp);
         }
-        
+
         // We will add symbols for params, then pass this local symbol table
         // to the function_body() for  more additions and extensions.
         let mut local_symbols = symbols.extend();
@@ -472,6 +480,7 @@ impl Parser {
             "RETURN_TYPE",
             &return_type,
             &DataValue::Unresolved,
+            self.modules.clone(),
         );
 
         local_symbols.add(return_type_entry);
@@ -597,6 +606,7 @@ impl Parser {
             type_name,
             &type_definition,
             &DataValue::Unresolved,
+            self.modules.clone(),
         );
         if symbols.add(ste) {
             Ok(type_definition_node)
@@ -653,6 +663,7 @@ impl Parser {
                 &enum_value.value,
                 &type_definition,
                 &DataValue::Enumeration(enum_value.clone()),
+                self.modules.clone(),
             );
             if !symbols.add(ste) {
                 let message = format!(
@@ -671,6 +682,7 @@ impl Parser {
             type_name,
             &type_definition,
             &DataValue::Unresolved,
+            self.modules.clone(),
         );
         if symbols.add(ste) {
             Ok(type_definition_node)
@@ -791,6 +803,7 @@ impl Parser {
                         &variable_name,
                         &lhs_type,
                         &DataValue::Unresolved,
+                        self.modules.clone(),
                     )
                 } else {
                     SymbolTableEntry::new_val(
@@ -799,6 +812,7 @@ impl Parser {
                         &variable_name,
                         &lhs_type,
                         &DataValue::Unresolved,
+                        self.modules.clone(),
                     )
                 };
 
@@ -823,7 +837,10 @@ impl Parser {
                 if TRACE {
                     println!("Initializer: {:?}", &initializer);
                 }
-                if TRACE { println!("Try to infer type with symbols: "); symbols.print_debug();}
+                if TRACE {
+                    println!("Try to infer type with symbols: ");
+                    symbols.print_debug();
+                }
                 let inferred_type = match initializer.determine_type(symbols) {
                     Err(type_error) => {
                         self.error(parse_err(&self.previous(), &type_error.message));
@@ -844,6 +861,7 @@ impl Parser {
                         &variable_name,
                         &inferred_type,
                         &DataValue::Unresolved,
+                        self.modules.clone(),
                     )
                 } else {
                     SymbolTableEntry::new_val(
@@ -852,6 +870,7 @@ impl Parser {
                         &variable_name,
                         &inferred_type,
                         &DataValue::Unresolved,
+                        self.modules.clone(),
                     )
                 };
 
@@ -927,7 +946,7 @@ impl Parser {
         //self.consume(TokenType::SemiColon, "expect ';' after 'break' statement.")?;
         self.match_terminator()?;
 
-        if let Ok(ste) = symbols.lookup("IN_BLOCK") {
+        if let Ok(_) = symbols.lookup("IN_BLOCK") {
             Ok(Stmt::break_stmt(location))
         } else {
             let message = format!("Break statement not in a block ( between '{{' and '}}')!");
@@ -1004,10 +1023,11 @@ impl Parser {
             "IN_BLOCK",
             &DataType::Empty,
             &DataValue::Unresolved,
+            self.modules.clone(),
         );
 
         local_symbols.add(block_entry);
-        while !self.check(&RightBrace) && !self.is_finished() {            
+        while !self.check(&RightBrace) && !self.is_finished() {
             let stmt = self.declaration(&mut local_symbols)?;
             stmt_list.push(stmt);
             self.skip_all_newlines();
@@ -1017,7 +1037,6 @@ impl Parser {
         self.skip_all_newlines();
         Ok(Stmt::block_stmt(stmt_list, local_symbols))
     }
-
 
     fn expression(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         self.assignment(symbols)
@@ -1171,7 +1190,9 @@ impl Parser {
                 break;
             }
         }
-        if TRACE { println!("Leaving call(), parsed {:?}", &expr);}
+        if TRACE {
+            println!("Leaving call(), parsed {:?}", &expr);
+        }
         Ok(expr)
     }
 
@@ -1193,7 +1214,9 @@ impl Parser {
     }
 
     fn finish_getter(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-        if TRACE { println!("In finish_getter:");}
+        if TRACE {
+            println!("In finish_getter:");
+        }
         use TokenType::*;
         let dot = self.previous();
 
@@ -1225,7 +1248,9 @@ impl Parser {
     }
 
     fn finish_call(&mut self, callee: Expr, symbols: &SymbolTable) -> Result<Expr, ParseError> {
-        if TRACE { println!("In finish_call:");}
+        if TRACE {
+            println!("In finish_call:");
+        }
         use TokenType::*;
         let mut args: Vec<Expr> = Vec::new();
         self.skip_if_newline();
@@ -1300,18 +1325,21 @@ impl Parser {
                 Ok(Expr::literal(self.previous()))
             }
             Identifier(name) => {
-                if TRACE { println!("identifier primary expression:");}
+                if TRACE {
+                    println!("identifier primary expression:");
+                }
                 self.advance();
                 let mut fully_qualified_name = name.clone();
-                while self.matches(&[At]) {                    
-                    fully_qualified_name.push_str("_at_");
+                while self.matches(&[At]) {
+                    fully_qualified_name.push_str("@");
                     let part = self.consume_identifier("Expected identifier after '@'.")?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
-                if TRACE { println!("Fully qualified name {}",&fully_qualified_name);}
-                
+                if TRACE {
+                    println!("Fully qualified name {}", &fully_qualified_name);
+                }
 
-                let (distance, index) = symbols.distance_and_index(&name, 0);
+                let (distance, index) = symbols.distance_and_index(&fully_qualified_name, 0);
                 Ok(Expr::variable(
                     fully_qualified_name,
                     self.previous(),

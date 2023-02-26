@@ -1,4 +1,5 @@
 use crate::lex::Token;
+use crate::lex::TokenType;
 use crate::types::DataType;
 use crate::types::DataValue;
 use crate::types::DeclarationType;
@@ -10,6 +11,7 @@ const TRACE: bool = false;
 pub struct SymbolTableEntry {
     pub entry_number: usize, // The entry in the current table when this entry was added
     pub name: String,
+    pub module: Vec<String>,
     pub alias_for: Option<String>,
     pub is_arg: bool,
 
@@ -30,17 +32,24 @@ pub struct SymbolTableEntry {
 impl SymbolTableEntry {
     // TODO: Change these init methods to take the Declaration / Statement Node struct types
 
+    pub fn fully_qualified_name(&self) -> String {
+        let sep = TokenType::At.print();
+        self.module.join(&sep) + &sep + &self.name
+    }
+
     pub fn new_type(
         entry_number: usize,
         location: &Token,
         name: &str,
         data_type: &DataType,
         data_value: &DataValue, // default value if any
+        module: Vec<String>,
     ) -> Self {
         Self {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            module,
             alias_for: None,
             is_arg: false,
             entry_type: DeclarationType::Type,
@@ -59,11 +68,13 @@ impl SymbolTableEntry {
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
+        module: Vec<String>,
     ) -> Self {
         Self {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            module,
             alias_for: None,
             is_arg: false,
             entry_type: DeclarationType::Var,
@@ -82,11 +93,13 @@ impl SymbolTableEntry {
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
+        module: Vec<String>,
     ) -> Self {
         Self {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            module,
             alias_for: None,
             is_arg: false,
             entry_type: DeclarationType::Val,
@@ -105,11 +118,13 @@ impl SymbolTableEntry {
         name: &str,
         data_type: &DataType,
         data_value: &DataValue,
+        module: Vec<String>,
     ) -> Self {
         Self {
             entry_number,
             location: Some(location.clone()),
             name: name.to_owned(),
+            module,
             alias_for: None,
             is_arg: false,
             entry_type: DeclarationType::Cpy,
@@ -122,74 +137,12 @@ impl SymbolTableEntry {
         }
     }
 
-    pub fn new_stdlib_var(
-        entry_number: usize,
-        param_name: &str,
-        data_type: &DataType,
-    ) -> SymbolTableEntry {
-        Self {
-            entry_number,
-            location: None,
-            name: param_name.to_owned(),
-            alias_for: None,
-            is_arg: false,
-            entry_type: DeclarationType::Var,
-            data_type: data_type.clone(),
-            data_value: DataValue::Unresolved,
-            size: 1,
-            contains_type: DataType::Empty,
-            indexed_by_type: DataType::Empty,
-            fields: Vec::new(),
-        }
-    }
-
-    pub fn new_stdlib_val(
-        entry_number: usize,
-        param_name: &str,
-        data_type: &DataType,
-    ) -> SymbolTableEntry {
-        Self {
-            entry_number,
-            location: None,
-            name: param_name.to_owned(),
-            alias_for: None,
-            is_arg: false,
-            entry_type: DeclarationType::Val,
-            data_type: data_type.clone(),
-            data_value: DataValue::Unresolved,
-            size: 1,
-            contains_type: DataType::Empty,
-            indexed_by_type: DataType::Empty,
-            fields: Vec::new(),
-        }
-    }
-
-    pub fn new_stdlib_cpy(
-        entry_number: usize,
-        param_name: &str,
-        data_type: &DataType,
-    ) -> SymbolTableEntry {
-        Self {
-            entry_number,
-            location: None,
-            name: param_name.to_owned(),
-            alias_for: None,
-            is_arg: false,
-            entry_type: DeclarationType::Cpy,
-            data_type: data_type.clone(),
-            data_value: DataValue::Unresolved,
-            size: 1,
-            contains_type: DataType::Empty,
-            indexed_by_type: DataType::Empty,
-            fields: Vec::new(),
-        }
-    }
-
     pub fn new_param(
         entry_number: usize,
         decl_type: DeclarationType,
         name: Token,
         data_type: DataType,
+        module: Vec<String>,
     ) -> SymbolTableEntry {
         let location = name.clone();
         let param_name = name.identifier_string();
@@ -201,6 +154,7 @@ impl SymbolTableEntry {
                 &param_name,
                 &data_type,
                 &DataValue::Unresolved,
+                module,
             ),
             DeclarationType::Val => SymbolTableEntry::new_val(
                 entry_number,
@@ -208,6 +162,7 @@ impl SymbolTableEntry {
                 &param_name,
                 &data_type,
                 &DataValue::Unresolved,
+                module,
             ),
             DeclarationType::Cpy => SymbolTableEntry::new_copy(
                 entry_number,
@@ -215,6 +170,7 @@ impl SymbolTableEntry {
                 &param_name,
                 &data_type,
                 &DataValue::Unresolved,
+                module,
             ),
             _ => panic!(
                 "Can't use decl type '{:?}' in a parameter definition at {}!",
@@ -233,11 +189,13 @@ impl SymbolTableEntry {
         alias_for: Option<String>,
         params: Vec<Box<SymbolTableEntry>>,
         data_type: &DataType,
+        module: Vec<String>,
     ) -> Self {
         Self {
             entry_number,
             location: location,
             name: name.to_owned(),
+            module,
             alias_for,
             is_arg: false,
             entry_type: DeclarationType::Fun,
@@ -250,8 +208,8 @@ impl SymbolTableEntry {
         }
     }
 
-    pub fn format_debug(&self)-> String {
-        format!("{:?}",self)
+    pub fn format_debug(&self) -> String {
+        format!("{:?}", self)
     }
 }
 
@@ -324,16 +282,14 @@ impl SymbolTable {
     } // fn
 
     pub fn print_debug(&self) {
-        for (k,v) in &self.entries{
-            println!("{}  ->  {}",&k, &v.format_debug());
+        for (k, v) in &self.entries {
+            println!("{}  ->  {}", &k, &v.format_debug());
             if let Some(outer_scope) = &self.outer {
                 println!("Outer scope: -------->");
                 outer_scope.print_debug();
-
             }
         }
     }
-
 }
 
 pub fn data_type_for_symbol(

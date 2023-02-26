@@ -473,7 +473,7 @@ mod tests {
                 val try_this = test@module_var
             }        
     ";
-    
+
     pub fn parse(code: &str) -> Result<Vec<Stmt>, Vec<errors::Error>> {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
@@ -569,9 +569,5 @@ mod tests {
         assert!(type_check(SRC_MODULE)? == ());
 
         Ok(())
-
     }
-
-
-
 }

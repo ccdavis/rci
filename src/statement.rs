@@ -110,7 +110,9 @@ impl Stmt {
         symbols: &SymbolTable,
     ) -> Result<GlobalStatementObjectCode, errors::Error> {
         use Stmt::*;
-        if TRACE { println!("Compiling global");}
+        if TRACE {
+            println!("Compiling global");
+        }
         match self {
             Var(n) => n.compile_global(symbols),
             Fun(n) => n.compile_global(symbols),
@@ -138,6 +140,26 @@ impl Stmt {
             Module(ref n) => n.name.clone(),
             _ => panic!("Not a declaration statement. This was called in error during parsing or compilation because of a compiler bug."),
         }
+    }
+
+    //  qualify the name we're emitting with the  owning module
+    // and make it something that can't clash with  other variable names.
+    pub fn codegen_symbol(entry: &SymbolTableEntry) -> String {
+        let mod_space = entry
+            .module
+            .iter()
+            .map(|m| m.to_uppercase().clone())
+            .collect::<Vec<String>>()
+            .join("_MOD_");
+
+        // Names in source may have '@' to show module locations
+        // The symbol table entry will have the name used in source at the call site.
+        //  Also it will have the '@' in the name for exported symbols from a module.
+        let base_name = match entry.name.rsplit_once("@") {
+            Some(n) => n.1.to_string(),
+            None => entry.name.clone(),
+        };
+        mod_space + "_MOD_" + &base_name
     }
 }
 
@@ -255,17 +277,17 @@ impl Compiler for ModuleNode {
         }
         let stmts_code = stmts.join("\n");
 
-        let code = format!("// BEGIN MODULE {}\n\t{}\n//END MODULE {}", 
-            &self.name, &stmts_code, &self.name);
+        let code = format!(
+            "// BEGIN MODULE {}\n\t{}\n//END MODULE {}",
+            &self.name, &stmts_code, &self.name
+        );
         Ok(code)
     }
 
-    
     fn compile_global(
         &self,
         symbols: &SymbolTable,
     ) -> Result<GlobalStatementObjectCode, errors::Error> {
-        
         let code = GlobalStatementObjectCode {
             decl_type: DeclarationType::Val,
             base_code: self.compile(&symbols)?,
@@ -472,7 +494,20 @@ impl TypeChecking for FunStmtNode {
 
 impl Compiler for FunStmtNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
-        let fun_name = self.name.token_type.print_value();
+        let local_function_name = self.name.token_type.print_value();
+        let full_function_name = match symbols.entries.get(&local_function_name) {
+            None => {
+                for (k, v) in &symbols.entries {
+                    eprintln!("{}  ->  {}", &k, &v.format_debug());
+                }
+                panic!(
+                    "Internal error: can't find function with name {}",
+                    &local_function_name
+                );
+            }
+            Some(ref entry) => Stmt::codegen_symbol(entry),
+        };
+
         let mut params_code: Vec<String> = Vec::new();
         for p in &self.params {
             let param_code = match p.entry_type {
@@ -502,7 +537,11 @@ impl Compiler for FunStmtNode {
             stmts_code.push(stmt_code);
         }
 
-        let decl = format!("rci_value {}({})", &fun_name, &params_code.join(","));
+        let decl = format!(
+            "rci_value {}({})",
+            &full_function_name,
+            &params_code.join(",")
+        );
 
         let body = format!("{{\n{}\n}}", &stmts_code.join("\n"));
         Ok(format!("{}\n{}\n", &decl, &body))
@@ -672,11 +711,18 @@ impl TypeChecking for ProgramNode {
 impl Compiler for ProgramNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
         let mut decls: Vec<GlobalStatementObjectCode> = Vec::new();
-        if TRACE { println!("Compile Program with {} declarations.", &self.declarations.len());}
+        if TRACE {
+            println!(
+                "Compile Program with {} declarations.",
+                &self.declarations.len()
+            );
+        }
 
         for decl in &self.declarations {
             let decl_code = decl.compile_global(symbols)?;
-            if TRACE { println!("Generating code: {}", &decl_code.base_code);}
+            if TRACE {
+                println!("Generating code: {}", &decl_code.base_code);
+            }
             decls.push(decl_code);
         }
 
