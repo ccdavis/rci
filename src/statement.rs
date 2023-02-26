@@ -426,9 +426,9 @@ impl TypeChecking for VarStmtNode {
             let message = format!("Type '{}' specified for variable '{}' declaration doesn't match initializer expression type of '{}'",
 				self.data_type, &self.name, init_type);
 
-            return Err(errors::Error::new(&self.location, ErrorType::Type, message))
-        }        
-        Ok(())        
+            return Err(errors::Error::new(&self.location, ErrorType::Type, message));
+        }
+        Ok(())
     }
 }
 

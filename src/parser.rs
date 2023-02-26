@@ -302,16 +302,18 @@ impl Parser {
             println!("Parsed {} decls in module.", &decls.len());
         }
 
-        for (key, symbol) in &local_symbols.entries{
-            if TRACE { println!("Add {} to parent symbol table.",&key);}
+        for (key, symbol) in &local_symbols.entries {
+            if TRACE {
+                println!("Add {} to parent symbol table.", &key);
+            }
             let local_name = symbol.name.clone();
             let full_name = self.modules.join("@") + "@" + &local_name;
             let mut new_symbol: SymbolTableEntry = symbol.clone();
             new_symbol.name = full_name;
             symbols.add(new_symbol);
         }
-        
-        /* 
+
+        /*
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
@@ -478,8 +480,8 @@ impl Parser {
 
         // Add to symbol table
         symbols.add(entry);
-        if alias_for.is_some() {            
-            // Return a No-Op because we don't want a 
+        if alias_for.is_some() {
+            // Return a No-Op because we don't want a
             // node in the AST to exist. No type-check
             // or compile step is needed; the alias
             // means the code is included in a pre-compiled
