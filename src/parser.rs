@@ -11,7 +11,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 pub struct Parser {
     tokens: Vec<Token>,       // ordered tokens in current file
@@ -301,13 +301,24 @@ impl Parser {
         if TRACE {
             println!("Parsed {} decls in module.", &decls.len());
         }
+
+        for (key, symbol) in &local_symbols.entries{
+            if TRACE { println!("Add {} to parent symbol table.",&key);}
+            let local_name = symbol.name.clone();
+            let full_name = self.modules.join("@") + "@" + &local_name;
+            let mut new_symbol: SymbolTableEntry = symbol.clone();
+            new_symbol.name = full_name;
+            symbols.add(new_symbol);
+        }
+        
+        /* 
         decls.iter().for_each(|d| {
             if d.is_declaration() {
                 let local_name: String = d.declaration_name();
                 let full_name = self.modules.join("@") + "@" + &local_name;
-                // TODO Add symbol table entry but with qualified name to parent
+                // Add symbol table entry but with qualified name to parent
                 // symbol table namespace
-                // TODO locate the entry with the local name and decl type, then
+                // locate the entry with the local name and decl type, then
                 // duplicate it in the parent symbols. but using the full name.
                 let ste = local_symbols.lookup(&local_name);
                 if let Ok(entry) = ste {
@@ -320,6 +331,7 @@ impl Parser {
                 }
             }
         });
+        */
 
         self.modules.pop();
         let module = ModuleNode {
@@ -464,9 +476,16 @@ impl Parser {
             self.modules.clone(),
         );
 
-        // Add to parent symbol table
+        // Add to symbol table
         symbols.add(entry);
-        if alias_for.is_some() {
+        if alias_for.is_some() {            
+            // Return a No-Op because we don't want a 
+            // node in the AST to exist. No type-check
+            // or compile step is needed; the alias
+            // means the code is included in a pre-compiled
+            // form. We only need it to show up in the
+            // symbol tables for type-checking uses of the
+            // function elsewhere.
             return Ok(Stmt::NoOp);
         }
 
