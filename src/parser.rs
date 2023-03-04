@@ -1334,12 +1334,15 @@ impl Parser {
     // Anywhere we expect a identifier could use module separators, use this to read the full
     // string
     fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
-        let first_part = self.consume_identifier("Expected identifier")?;        
+        let first_part = self.consume_identifier("Expected identifier")?;
         let mut fully_qualified_name: String = first_part.identifier_string().clone();
         self.advance();
         while self.matches(&[MODULE_SEPARATOR]) {
             fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-            let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
+            let part = self.consume_identifier(&format!(
+                "Expected identifier after '{}'.",
+                &MODULE_SEPARATOR.print()
+            ))?;
             fully_qualified_name.push_str(&part.identifier_string());
         }
         Ok(fully_qualified_name)
@@ -1371,7 +1374,10 @@ impl Parser {
                 let mut fully_qualified_name = name.clone();
                 while self.matches(&[MODULE_SEPARATOR]) {
                     fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-                    let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
+                    let part = self.consume_identifier(&format!(
+                        "Expected identifier after '{}'.",
+                        &MODULE_SEPARATOR.print()
+                    ))?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
                 if TRACE {
