@@ -734,6 +734,80 @@ impl Parser {
         panic!("Not implemented!")
     }
 
+    // Get the type signature either after a var decl like "var x: Int = " or 
+    // in function parameters or for type aliasing.
+    fn type_signature(&mut self) -> Result<DataType, ParseError> {
+        let next_token = &self.peek();
+        let partial_type = match DataType::from_token_type(&next_token.token_type) {
+            None => {
+                let msg = format!("Can't use as a type name.");
+                return Err(parse_err(next_token, &msg));
+            }
+            Some(data_type) => data_type,    
+        };
+
+        // Check for module name rather than type name
+        if let DataType::User(ref u) = partial_type {
+            if u.name.chars().next().unwrap().is_lowercase()    {
+                // It's a module name that should be folloed  
+                // by a user defined type name                
+                let mut full_user_type = u.clone();
+                full_user_type.name = self.fully_qualified_symbol()?;
+                let full_type = DataType::User(full_user_type);                
+                return Ok(full_type);
+            } else { // It's a type name
+                self.advance();
+                // TODO: If we had generics here is where we would parse the
+                // generic parameter, like MyStruct<T> :
+                return Ok(partial_type);
+            }
+        }
+
+        // partial type was derived from the token at peek(), so advance past it:
+        self.advance();
+
+        let full_type =  match partial_type {
+            DataType::Lookup(_) => {
+                self.consume(
+                    TokenType::Less,
+                    "expect '<' after 'array' to complete type signature.",
+                )?;
+                let array_type_name = self.advance();
+                if matches!(array_type_name.token_type, TokenType::ArrayType) {
+                    return Err(parse_err(
+                        &array_type_name,
+                        "Can't nest arrays in variable type declarations.",
+                    ));
+                }
+
+                let array_type =
+                    match DataType::from_token_type(&array_type_name.token_type) {
+                        Some(simple_type) => simple_type,
+                        None => {
+                            return Err(parse_err(
+                            &array_type_name,
+                            "Can't make an array of this type. Types must be built-in or user defined."
+                        ));
+                        }
+                    };
+
+                self.consume(TokenType::Greater, "expect '>' after array member type.")?;
+                DataType::Lookup(Box::new(LookupType::Array {
+                    index_type: DataType::Number,
+                    contains_type: array_type,
+                    low_index: None,
+                    high_index: None,
+                    size: None,
+                }))
+            }
+
+            // TODO Map and Set go here
+            _ => partial_type,
+        };
+        
+        Ok(full_type)
+    }
+
     // TODO: simplify this var_declaration() !
     fn var_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         // 'val' is the default
@@ -746,7 +820,9 @@ impl Parser {
         let variable_name = v.identifier_string();
 
         if self.matches(&[TokenType::Colon]) {
+            
             // Type may be a built-in type or an identifier for a user-defined type
+            /* 
             let type_name = self.advance();
 
             let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
@@ -814,11 +890,12 @@ impl Parser {
                 }
                 _ => valid_type_name,
             };
+            */
+            let lhs_type = self.type_signature()?;
 
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
-                let initializer = self.expression(symbols)?;
-                //self.consume(TokenType::SemiColon, "expect ';'")?;
+                let initializer = self.expression(symbols)?;                
                 self.match_terminator()?;
                 let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
@@ -849,9 +926,11 @@ impl Parser {
                     Err(parse_err(&v, &message))
                 }
             } else {
+                let var_name = &v.identifier_string().clone();
                 Err(parse_err(
                     &v,
-                    "Variable declaration requires initial value assignment with '='.",
+                    &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
+                    
                 ))
             }
         } else {
@@ -907,9 +986,10 @@ impl Parser {
                     Err(parse_err(&v, &message))
                 }
             } else {
+                let var_name = &v.identifier_string().clone();
                 Err(parse_err(
                     &v,
-                    "Variable declaration requires initial value assignment with '='.",
+                    &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
                 ))
             }
         }
@@ -1334,15 +1414,12 @@ impl Parser {
     // Anywhere we expect a identifier could use module separators, use this to read the full
     // string
     fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
-        let first_part = self.consume_identifier("Expected identifier")?;
+        let first_part = self.consume_identifier("Expected identifier")?;        
         let mut fully_qualified_name: String = first_part.identifier_string().clone();
         self.advance();
         while self.matches(&[MODULE_SEPARATOR]) {
             fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-            let part = self.consume_identifier(&format!(
-                "Expected identifier after '{}'.",
-                &MODULE_SEPARATOR.print()
-            ))?;
+            let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
             fully_qualified_name.push_str(&part.identifier_string());
         }
         Ok(fully_qualified_name)
@@ -1374,10 +1451,7 @@ impl Parser {
                 let mut fully_qualified_name = name.clone();
                 while self.matches(&[MODULE_SEPARATOR]) {
                     fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-                    let part = self.consume_identifier(&format!(
-                        "Expected identifier after '{}'.",
-                        &MODULE_SEPARATOR.print()
-                    ))?;
+                    let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
                 if TRACE {

@@ -220,11 +220,12 @@ impl DataType {
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
             TokenType::ArrayType => Some(DataType::Lookup(Box::new(LookupType::Unresolved))),
-            TokenType::Identifier(n) => Some(DataType::User(Box::new(UserType {
-                name: n.to_owned(),
-                definition: Box::new(DataType::Unresolved),
-            }))),
-
+            TokenType::Identifier(n) => {
+                    Some(DataType::User(Box::new(UserType {
+                    name: n.to_owned(),
+                    definition: Box::new(DataType::Unresolved),                    
+               })))
+            },
             _ => None,
         }
     }

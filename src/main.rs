@@ -467,7 +467,7 @@ mod tests {
             }
 
             {
-                val x:Num = test@module_val                
+                val x: Num = test@module_val                
                 val y:Num =  2 * test@module_val - 3
                 print y,\"\\n\"
                 val z:Bool = test@module_fun(true)
