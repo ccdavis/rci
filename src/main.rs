@@ -408,25 +408,26 @@ mod tests {
         }        
     ";
 
-    const SRC_ENUMS: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
-							fun check_enum(d: Days): Bool {
-								if d = Tuesday {
-									return true
-								}
-								var another_day:Days = Wednesday
-								if another_day = d {
-									print another_day
-								}
-								if d = Monday {
-									print \"A case of the Mondays\"
-									return false
-								}
-								return false
-							}
-							
-							{
-								check_enum(Monday)
-							}";
+    const SRC_ENUMS: &str = "
+            type Days = Enum {Monday, Tuesday, Wednesday}
+            fun check_enum(d: Days): Bool {
+                if d = Tuesday {
+                    return true
+                }
+                var another_day:Days = Wednesday
+                if another_day = d {
+                    print another_day
+                }
+                if d = Monday {
+                    print \"A case of the Mondays\"
+                    return false
+                }
+                return false
+            }
+            
+            {
+                check_enum(Monday)
+            }";
 
     const SRC_ENUMS3: &str = " type Days = Enum {Monday, Tuesday, Wednesday}
         type Weekends = Enum {Saturday, Sunday}
@@ -436,7 +437,8 @@ mod tests {
             print \"Day: \", d
         }";
 
-    const SRC_ENUMS2: &str = "type Days = Enum {Monday, Tuesday, Wednesday}
+    const SRC_ENUMS2: &str = "
+                type Days = Enum {Monday, Tuesday, Wednesday}
 				//type Weekends = Enum {Saturday, Sunday}
 
 				fun test_types(): Bool {
@@ -509,6 +511,12 @@ mod tests {
 
             {
                 print \"hello\\n\"
+                val d = test@Mon
+                if d = test@Tue {
+                    print \"It's Tuesday!\\n\"
+                }
+                val m = test@Fri
+
             }        
     ";
 

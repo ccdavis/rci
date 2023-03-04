@@ -13,6 +13,10 @@ type ParseError = crate::errors::Error;
 
 const TRACE: bool = false;
 
+// This is the '@' or '::' that could separate module names  and their contents
+// or multiple module names.
+pub const MODULE_SEPARATOR: TokenType = TokenType::At;
+
 pub struct Parser {
     tokens: Vec<Token>,       // ordered tokens in current file
     pub modules: Vec<String>, // Each entry is where the parser is in module namespace
@@ -1327,6 +1331,20 @@ impl Parser {
         ))
     }
 
+    // Anywhere we expect a identifier could use module separators, use this to read the full
+    // string
+    fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
+        let first_part = self.consume_identifier("Expected identifier")?;        
+        let mut fully_qualified_name: String = first_part.identifier_string().clone();
+        self.advance();
+        while self.matches(&[MODULE_SEPARATOR]) {
+            fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
+            let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
+            fully_qualified_name.push_str(&part.identifier_string());
+        }
+        Ok(fully_qualified_name)
+    }
+
     fn primary(&mut self, symbols: &SymbolTable) -> Result<Expr, ParseError> {
         use TokenType::*;
         if TRACE {
@@ -1351,9 +1369,9 @@ impl Parser {
                 }
                 self.advance();
                 let mut fully_qualified_name = name.clone();
-                while self.matches(&[At]) {
-                    fully_qualified_name.push_str("@");
-                    let part = self.consume_identifier("Expected identifier after '@'.")?;
+                while self.matches(&[MODULE_SEPARATOR]) {
+                    fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
+                    let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
                 if TRACE {
