@@ -474,6 +474,44 @@ mod tests {
             }        
     ";
 
+    const SRC_MODULE_TYPES: &str = "            
+            module test {            
+                type Color = Rec{
+                    red: Num
+                    green: Num
+                    blue: Num
+                }
+
+                type Day = Enum {
+                    Sun
+                    Mon
+                    Tue
+                    Wed
+                    Thu
+                    Fri
+                    Sat
+                }
+                
+                val module_enum = Mon
+                val module_rec = Color(red: 25,blue: 88, green: 115)
+                
+                fun module_fun(x: Color, d: Day): Bool {
+                    val c = x
+                    val today = d
+                    print c.red,c.green,c.blue
+                    if today = Wed {
+                        return true
+                    } else {
+                        return false
+                    }                    
+                } // fun
+            } // module
+
+            {
+                print \"hello\\n\"
+            }        
+    ";
+
     pub fn parse(code: &str) -> Result<Vec<Stmt>, Vec<errors::Error>> {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
@@ -567,6 +605,14 @@ mod tests {
     fn test_modules() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_MODULE)?.len() > 0);
         assert!(type_check(SRC_MODULE)? == ());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_module_types() -> Result<(), Vec<errors::Error>> {
+        assert!(parse(SRC_MODULE_TYPES)?.len() > 0);
+        assert!(type_check(SRC_MODULE_TYPES)? == ());
 
         Ok(())
     }
