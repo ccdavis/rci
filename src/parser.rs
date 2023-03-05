@@ -11,7 +11,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = false;
+const TRACE: bool = true;
 
 // This is the '@' or '::' that could separate module names  and their contents
 // or multiple module names.
@@ -736,7 +736,7 @@ impl Parser {
 
     // Get the type signature either after a var decl like "var x: Int = " or 
     // in function parameters or for type aliasing.
-    fn type_signature(&mut self) -> Result<DataType, ParseError> {
+    fn type_signature(&mut self, symbols: &SymbolTable) -> Result<DataType, ParseError> {
         let next_token = &self.peek();
         let partial_type = match DataType::from_token_type(&next_token.token_type) {
             None => {
@@ -746,21 +746,36 @@ impl Parser {
             Some(data_type) => data_type,    
         };
 
+        if TRACE { println!("reading type signature {:?}",&partial_type);}
+
         // Check for module name rather than type name
         if let DataType::User(ref u) = partial_type {
-            if u.name.chars().next().unwrap().is_lowercase()    {
+            let user_type = if u.name.chars().next().unwrap().is_lowercase()    {
+                if TRACE { println!("get type in module {} ",&u.name);}
                 // It's a module name that should be folloed  
                 // by a user defined type name                
                 let mut full_user_type = u.clone();
-                full_user_type.name = self.fully_qualified_symbol()?;
-                let full_type = DataType::User(full_user_type);                
-                return Ok(full_type);
+                full_user_type.name = self.fully_qualified_symbol()?;                            
+                if TRACE { println!("Got full name for type in module: {}",&full_user_type.name)}
+                full_user_type
             } else { // It's a type name
                 self.advance();
                 // TODO: If we had generics here is where we would parse the
                 // generic parameter, like MyStruct<T> :
-                return Ok(partial_type);
+                let mut completed_user_type = u.clone();
+                completed_user_type
+            };
+            //let full_type = DataType::User(full_user_type);                
+            
+            let has_type = symbols.lookup(&user_type.name);
+            if has_type.is_err() {
+                let message = format!(
+                    "Type named {} not declared in this scope or an outer scope.",
+                    &user_type.name
+                );
+                return Err(parse_err(&self.previous(), &message));
             }
+            return Ok(has_type.unwrap().data_type.clone())
         }
 
         // partial type was derived from the token at peek(), so advance past it:
@@ -819,79 +834,8 @@ impl Parser {
         let v: Token = self.consume_identifier("Expect variable name")?;
         let variable_name = v.identifier_string();
 
-        if self.matches(&[TokenType::Colon]) {
-            
-            // Type may be a built-in type or an identifier for a user-defined type
-            /* 
-            let type_name = self.advance();
-
-            let valid_type_name = match DataType::from_token_type(&type_name.token_type) {
-                // For the most part complex types should be declared elsewhere, but
-                // we allow Map or Array.
-                Some(valid_type) => match valid_type {
-                    DataType::Lookup(_) => {
-                        self.consume(
-                            TokenType::Less,
-                            "expect '<' after 'array' to complete type signature.",
-                        )?;
-                        let array_type_name = self.advance();
-                        if matches!(array_type_name.token_type, TokenType::ArrayType) {
-                            return Err(parse_err(
-                                &array_type_name,
-                                "Can't nest arrays in variable type declarations.",
-                            ));
-                        }
-
-                        let array_type =
-                            match DataType::from_token_type(&array_type_name.token_type) {
-                                Some(simple_type) => simple_type,
-                                None => {
-                                    return Err(parse_err(
-									&array_type_name,
-									"Can't make an array of this type. Types must be built-in or user defined."
-								));
-                                }
-                            };
-
-                        self.consume(TokenType::Greater, "expect '>' after array member type.")?;
-                        DataType::Lookup(Box::new(LookupType::Array {
-                            index_type: DataType::Number,
-                            contains_type: array_type,
-                            low_index: None,
-                            high_index: None,
-                            size: None,
-                        }))
-                    }
-
-                    // TODO Map and Set go here
-                    _ => valid_type,
-                },
-                None => {
-                    return Err(parse_err(
-                        &type_name,
-                        "Types must be built-in or user defined.",
-                    ));
-                }
-            };
-
-            // If it's a user-defined type we need to look it up by name
-            // in the symbol table.
-            let lhs_type = match valid_type_name {
-                DataType::User(ref u) => {
-                    let has_type = symbols.lookup(&u.name);
-                    if has_type.is_err() {
-                        let message = format!(
-                            "Type named {} not declared in this scope or an outer scope.",
-                            &u.name
-                        );
-                        return Err(parse_err(&v, &message));
-                    }
-                    has_type.unwrap().data_type.clone()
-                }
-                _ => valid_type_name,
-            };
-            */
-            let lhs_type = self.type_signature()?;
+        if self.matches(&[TokenType::Colon]) {                        
+            let lhs_type = self.type_signature(symbols)?;
 
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
@@ -1274,6 +1218,8 @@ impl Parser {
         loop {
             if self.matches(&[LeftParen]) {
                 // replace the expression with the full function call
+                if TRACE { println!("In parser for calls, expr is {:?} and is_type_name is: {}",&expr, &expr.is_type_name());}
+
 
                 expr = if expr.is_type_name() {
                     self.finish_type_constructor(expr, symbols)?
@@ -1416,7 +1362,7 @@ impl Parser {
     fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
         let first_part = self.consume_identifier("Expected identifier")?;        
         let mut fully_qualified_name: String = first_part.identifier_string().clone();
-        self.advance();
+        //self.advance();
         while self.matches(&[MODULE_SEPARATOR]) {
             fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
             let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;

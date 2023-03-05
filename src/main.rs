@@ -414,8 +414,8 @@ mod tests {
                 if d = Tuesday {
                     return true
                 }
-                var another_day:Days = Wednesday
-                if another_day = d {
+                var another_day: Days = Wednesday
+                if d = another_day {
                     print another_day
                 }
                 if d = Monday {
@@ -511,7 +511,7 @@ mod tests {
 
             {
                 print \"hello\\n\"
-                val d = test@Mon
+                val d: test@Day = test@Mon
                 if d = test@Tue {
                     print \"It's Tuesday!\\n\"
                 }

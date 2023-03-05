@@ -3,6 +3,7 @@ use crate::errors::compiler_err;
 use crate::errors::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
+use crate::parser::MODULE_SEPARATOR;
 use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types::DataType;
@@ -96,14 +97,22 @@ impl Expr {
     // are names of variables or names of user types.
     pub fn is_type_name(&self) -> bool {
         match self {
-            Expr::Variable(v) => v
-                .name
-                .identifier_string()
-                .chars()
-                .next()
-                .unwrap()
-                .is_uppercase(),
-            _ => false,
+            Expr::Variable(v) => {
+                let id_string = v.name.identifier_string();                            
+                let parts = id_string.rsplit_once(&MODULE_SEPARATOR.print());
+                let base_symbol = match parts {
+                    None =>  &id_string,                        
+                    Some((left, right)) =>  right,
+                };
+                base_symbol
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .is_uppercase()
+                
+                
+            }
+            _ => panic!("Internal compiler error: Only Expr::Variable varients can be checked for being type names or not!"),
         }
     }
 
@@ -616,7 +625,7 @@ pub struct UserTypeLiteralNode {
 impl TypeCheck for UserTypeLiteralNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         let name = match *self.type_name {
-            Expr::Variable(ref v) => v.name.identifier_string().clone(),
+            Expr::Variable(ref v) => v.fully_qualified_name.clone(),
             _ => panic!(
                 "Compiler error in type checking (determine_type) for User Type '{:?}'",
                 self.type_name
