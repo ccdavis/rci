@@ -11,7 +11,7 @@ use crate::types::*;
 
 type ParseError = crate::errors::Error;
 
-const TRACE: bool = true;
+const TRACE: bool = false;
 
 // This is the '@' or '::' that could separate module names  and their contents
 // or multiple module names.
