@@ -6,6 +6,15 @@ The main idea behind RCI is to try out some familiar language features combined 
 
 ## State of the Project
 
+### Near term engineering to-do list
+
+* Improve error types (make them idiomatic Rust style) and capturing error messages
+* Improve error reporting by adding source code with a pointer in the error output
+* Improve build system to allow module imports and build more than one source file at a time
+* Redo the code generation with an actual code generation library --It should be mostly SSA form.
+* Enhance the standard library with some file support
+
+
 ### Latest language updates
 
 * Modules and the beginning of a standard library in the 'std' module
@@ -17,7 +26,7 @@ Use `module module-name { ... }` to define them, use `module_name@name` to acces
 
 Currently working on full build system for (1) installing the compiler in the user's directory and (2) single-file local builds or project builds with config files (like Cargo.toml) and multi-file, multi-module builds.
 
-Also currently WIP: String versions of enum values, enums and recs as member types of ___Rec___
+Also currently WIP: String versions of enum values, enums and recs as member types of ___Rec___ These will work sort of like Python's StrEnums or IntEnums (but not using inheritance.)
 
 
 ### Modules example:

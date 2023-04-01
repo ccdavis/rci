@@ -85,25 +85,25 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 
 
 {
-	random_seed(clock())
-	val iters = random()
+	std@random_seed(std@clock())
+	val iters = std@random()
 	print "random number: ",iters
-	val start = clock()
+	val start = std@clock()
 	print "Start clock: ",start,"\n"
-	val s = sleep(2)
-	val end = clock()
+	val s = std@sleep(2)
+	val end = std@clock()
 	print "end clock: ",end,"\n"
 
 	
-	print "Clocks per second: ",clock_per_second(),"\n"
+	print "Clocks per second: ", std@clock_per_second(),"\n"
 	
 	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution,"\n";
-	val calc_start = clock();
+	val calc_start = std@clock();
 	calc(-1.5, -1.0, 1.0, 1.0);
 	
-	val calc_end = clock()
+	val calc_end = std@clock()
 	print "calc_start: ", calc_start,"\n"
 	print "calc_end: ",  calc_end,"\n"
-	print "Timer: ", (calc_end - calc_start) / clock_per_second(),"\n";	
+	print "Timer: ", (calc_end - calc_start) / std@clock_per_second(),"\n";	
 	print "Finished\n";
 }

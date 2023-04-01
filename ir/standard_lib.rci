@@ -10,6 +10,13 @@ module std {
 	fun t1():Num {
 		return 25
 	}
+	fun cube(n: Num): Num {
+		return n * n * n
+	}
+	
+	val pi = 3.14159
+	
+	
 
 }
 

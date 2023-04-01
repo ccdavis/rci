@@ -518,15 +518,15 @@ impl Compiler for FunStmtNode {
         for p in &self.params {
             let param_code = match p.entry_type {
                 DeclarationType::Var => {
-                    format!("rci_value * {}", &p.name)
+                    format!("rci_value * {}", Stmt::codegen_symbol(p))
                 }
                 DeclarationType::Val => {
-                    format!("const rci_value {}", &p.name)
+                    format!("const rci_value {}", Stmt::codegen_symbol(p))
                 }
                 DeclarationType::Cpy => {
                     // NOTE: at the call site a deep copy should have been
                     // made by the compiler.
-                    format!("rci_value {}", &p.name)
+                    format!("rci_value {}", Stmt::codegen_symbol(p))
                 }
                 _ => {
                     panic!(

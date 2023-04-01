@@ -1020,7 +1020,7 @@ impl Compiler for VariableNode {
 
 #[derive(Clone, Debug)]
 pub struct AssignmentNode {
-    name: Token,
+    name: Token,    
     value: Box<Expr>,
     distance: Option<usize>,
     index: Option<usize>,
@@ -1082,6 +1082,12 @@ impl Compiler for AssignmentNode {
 			_ => panic!("Fatal error during type-checking. Assignment node must have a TokenType::Identifier(name) for the name field."),
 		};
 
+        let assignee_decl_ste = match symbols.lookup(&assignee_name) {
+            Ok(ste) => ste,
+            Err(_) => panic!("Internal compiler error, {} not in symbols.",&assignee_name),
+
+        };
+
         let code = match value_to_store.data_type {
             DataType::Str => {
                 format!(
@@ -1089,7 +1095,7 @@ impl Compiler for AssignmentNode {
                     &assignee_name, &assignee_name, &value_to_store.code
                 )
             }
-            _ => format!("{} = {}", &assignee_name, &value_to_store.code),
+            _ => format!("{} = {}", Stmt::codegen_symbol(assignee_decl_ste), &value_to_store.code),
         };
 
         Ok(ObjectCode {
