@@ -14,6 +14,12 @@ The main idea behind RCI is to try out some familiar language features combined 
 * Redo the code generation with an actual code generation library --It should be mostly SSA form.
 * Enhance the standard library with some file support
 
+### Near term language to-do list
+
+* Add more built in types: Int, Flt
+* Nail down type coercion -- remove most of it.
+* Add some basic string functions to stdlib
+* Associate functions with Rec or Enum types
 
 ### Latest language updates
 
