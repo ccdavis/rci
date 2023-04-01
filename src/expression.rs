@@ -210,8 +210,8 @@ impl Compiler for BinaryNode {
             TokenType::Slash => "_DIV_",
             TokenType::Less => "_LT_",
             TokenType::Greater => "_GT_",
-            TokenType::LessEqual => "<=",
-            TokenType::GreaterEqual => ">=",
+            TokenType::LessEqual => "_LTE_",
+            TokenType::GreaterEqual => "GTE",
             TokenType::Equal => "_EQ_",
             TokenType::LessGreater => "_NE_",
             _ => panic!(
