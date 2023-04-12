@@ -1377,18 +1377,17 @@ impl Parser {
             println!("In primary() ");
         }
         match self.peek().token_type {
-            True | False | Nil => {
+            True | False => {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
-            Number(value) => {
+            Str(_) | 
+            Number(_) | 
+            Integer(_) | 
+            Float(_) => {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
-            }
-            Str(value) => {
-                self.advance();
-                Ok(Expr::literal(self.previous()))
-            }
+            }                        
             Identifier(name) => {
                 if TRACE {
                     println!("identifier primary expression:");

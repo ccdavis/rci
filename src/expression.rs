@@ -81,6 +81,8 @@ impl Expr {
                 let object_code = match value {
                     DataValue::Str(ref v) => format!("(rci_value) string_literal(\"{}\")", &v),
                     DataValue::Number(n) => format!("(rci_value) NUMBER_VAL({})", n),
+                    DataValue::Integer(n) => format!("(rci_value) NUMBER_VAL({})", n),
+                    DataValue::Float(n) => format!("(rci_value) NUMBER_VAL({})", n),
                     DataValue::Bool(b) => format!("(rci_value)BOOL_VAL({})", b),
                     _ => panic!("Literal compilation not implemented for {:?}", value),
                 };
@@ -144,7 +146,7 @@ impl TypeCheck for BinaryNode {
         }
 
         if self.operator.is_comparison_operator() {
-            if matches!(left_type, DataType::Number) && matches!(right_type, DataType::Number) {
+            if left_type.is_numeric() && right_type.is_numeric() {            
                 return Ok(DataType::Bool);
 
                 // Allow boolean comparison with = or <>
@@ -178,16 +180,18 @@ impl TypeCheck for BinaryNode {
                     return Ok(DataType::Str);
                 }
             } // allow + for strings
-
-            if matches!(left_type, DataType::Number) && matches!(right_type, DataType::Number) {
-                return Ok(DataType::Number);
-            } else {
-                let message = format!(
-                    "Invalid operand types for operator {}, expected Numbers.",
-                    &self.operator.print()
-                );
-                return Err(Error::new(&self.operator, ErrorType::Type, message));
-            }
+            use DataType::*;
+            return match (left_type, right_type) {
+                (number,Number) => Ok(DataType::Number),
+                (Integer, Integer) => Ok(DataType::Integer),
+                (Float, Float) => Ok(DataType::Float),
+                _ => {
+                    let message = format!(
+                        "Invalid operand types for operator {}, expected Flt,Flt or Int,Int or Num,Num. Numeric types must match for arithmetic operations.",
+                        &self.operator.print());                    
+                    Err(Error::new(&self.operator, ErrorType::Type, message))
+                }
+            }; // match            
         }
 
         let message = format!(
@@ -822,8 +826,8 @@ impl TypeCheck for ArrayNode {
         let first_type = self.elements[0].determine_type(symbols)?;
         let mut last_type = first_type.clone();
         let array_length = self.elements.len();
-        let low_ind = DataValue::Number(0.0);
-        let high_ind = DataValue::Number(array_length as f64 - 1.0);
+        let low_ind = DataValue::Integer(0);
+        let high_ind = DataValue::Integer(array_length as i64 - 1);
 
         // Use enumerate to give an index to any error messages?
         for (index, t) in self.elements.iter().enumerate() {
@@ -841,7 +845,7 @@ impl TypeCheck for ArrayNode {
         Ok(DataType::Lookup(Box::new(LookupType::Array {
             contains_type: first_type.clone(),
             size: Some(array_length),
-            index_type: DataType::Number,
+            index_type: DataType::Integer,
             low_index: Some(Box::new(low_ind)),
             high_index: Some(Box::new(high_ind)),
         })))
@@ -867,8 +871,11 @@ impl TypeCheck for UnaryNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         use TokenType::*;
         let right_type = self.expr.determine_type(symbols)?;
-        if matches!(right_type, DataType::Number) && matches!(self.operator.token_type, Minus) {
-            return Ok(DataType::Number);
+        if (matches!(right_type, DataType::Integer) || 
+            matches!(right_type, DataType::Float) ||
+            matches!(right_type, DataType::Number))  
+                && matches!(self.operator.token_type, Minus) {
+            return Ok(right_type);
         }
 
         if matches!(right_type, DataType::Bool) && matches!(self.operator.token_type, Not) {

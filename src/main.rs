@@ -346,7 +346,7 @@ mod tests {
 	";
 
     // Only test passing record type param, not using it
-    const SRC_RECORD_PARAM: &str = "type Customer = Rec{ name: Str, id: Num, discount: Bool}
+    const SRC_RECORD_PARAM: &str = "type Customer = Rec{ name: Str, id: Int, discount: Bool}
 		
 		fun display(cust: Customer): Str {
 			return \"customer\"		
@@ -357,7 +357,7 @@ mod tests {
 	";
 
     const SRC_RECORD_TYPE_INFERENCE: &str = "
-        type Customer = Rec{name: Str, balance: Num}
+        type Customer = Rec{name: Str, balance: Int}
         val cust  = Customer(name: \"abc\", balance: 0)
     {
         var c =  Customer(name: \"Joe Smith\", balance: 25)
@@ -365,14 +365,14 @@ mod tests {
 ";
 
     const SRC_RECORD_TYPE_EXPLICIT: &str = "
-        type Customer=Rec{name: Str, balance: Num}
+        type Customer=Rec{name: Str, balance: Int}
         val cust: Customer = Customer(name: \"Joe Smith\", balance: 0)
     {
         var c: Customer =  Customer(name: \"John Smith\", balance: 25)
     }
     ";
 
-    const SRC_RECORD_RETURN: &str = "type Customer = Rec{name: Str, balance: Num}
+    const SRC_RECORD_RETURN: &str = "type Customer = Rec{name: Str, balance: Int}
 		fun new_customer(n: Str): Customer {
 			val cust = Customer(name: n, balance: 0)
 			return cust
@@ -382,25 +382,25 @@ mod tests {
 		}
 	";
     const SRC_RECORD_GETTER: &str = "
-        type Address = Rec {street: Str,zip: Num,state: Str}            
+        type Address = Rec {street: Str,zip: Int,state: Str}            
 
         type PizzaOrder = Rec {
             thin_crust: Bool
-            size: Num,
-            vegetarian: Bool,
-            price: Num
+            size: Flt
+            vegetarian: Bool
+            price: Flt
         }
         
         {
             var addr: Address = Address(street: \"2121 22 Street\",zip: 11111, state: \"AL\") 
             var street : Str = addr.street
-            var zip: Num = addr.zip
+            var zip: Int = addr.zip
             print street, zip
 
             val addr2 = Address(street: \"1234 Oak\", zip: 543210, state: \"AK\")
             print addr2.street, addr2.state, addr2.zip
 
-            val pizza = PizzaOrder(vegetarian: true, thin_crust: false, price: 15.75, size: 14)
+            val pizza = PizzaOrder(vegetarian: true, thin_crust: false, price: 15.75, size: 14.0)
             val pi = 3.14159
             val radius = pizza.size / 2.0            
             val price_per_inch = pizza.price / (radius * pi) * (radius * pi) 
@@ -467,8 +467,8 @@ mod tests {
             }
 
             {
-                val x: Num = test@module_val                
-                val y:Num =  2 * test@module_val - 3
+                val x: Int = test@module_val                
+                val y: Int =  2 * test@module_val - 3
                 print y,\"\\n\"
                 val z:Bool = test@module_fun(true)
 
@@ -479,9 +479,9 @@ mod tests {
     const SRC_MODULE_TYPES: &str = "            
             module test {            
                 type Color = Rec{
-                    red: Num
-                    green: Num
-                    blue: Num
+                    red: Int
+                    green: Int
+                    blue: Int
                 }
 
                 type Day = Enum {

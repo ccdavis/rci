@@ -127,6 +127,16 @@ pub enum DataType {
     Unresolved, // Incomplete type checker results
 }
 
+impl DataType {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            DataType::Integer | DataType::Float | DataType::Number => true,
+            _ => false,
+        }
+
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnumValue {
     pub member_of_enum: String,
@@ -217,6 +227,8 @@ impl DataType {
     pub fn from_token_type(tt: &TokenType) -> Option<DataType> {
         match tt {
             TokenType::NumberType => Some(DataType::Number),
+            TokenType::IntegerType => Some(DataType::Integer),
+            TokenType::FloatType => Some(DataType::Float),
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
             TokenType::ArrayType => Some(DataType::Lookup(Box::new(LookupType::Unresolved))),
@@ -291,6 +303,8 @@ impl DataValue {
         match tt {
             TokenType::Str(s) => DataValue::Str(s.to_owned()),
             TokenType::Number(n) => DataValue::Number(*n),
+            TokenType::Integer(i) => DataValue::Integer(*i),
+            TokenType::Float(f) => DataValue::Float(*f),
             TokenType::False => DataValue::Bool(false),
             TokenType::True => DataValue::Bool(true),
             _ => panic!("Not convertable to a ValueType: {}", tt.print()),
@@ -305,7 +319,7 @@ impl DataValue {
         let lexeme = self.print_value();
         match self {
             DataValue::Str(_) => format!("(rci_value) string_literal({})", &lexeme),
-            DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
+            DataValue::Integer(_) | DataValue::Float(_) | DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
             DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
             DataValue::Lookup { .. } => "//not implemented".to_string(),
             DataValue::User(ref u) => "//not implemented".to_string(),

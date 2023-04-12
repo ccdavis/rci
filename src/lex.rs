@@ -223,6 +223,15 @@ impl TokenType {
         }
     }
 
+    pub fn is_numeric(&self) -> bool {
+        use TokenType::*;
+        match self {
+            Number(_) | Integer(_) | Float(_) => true,
+            _ => false,
+        }
+
+    }
+
     // Store this in the scanner struct for quick lookup
     pub fn reserved_words() -> HashMap<String, TokenType> {
         use TokenType::*;
@@ -554,14 +563,21 @@ impl Scanner {
             }
         }
         let content: String = self.text[self.start..self.current].into_iter().collect();
-        let value: f64 = match content.parse() {
-            Ok(valid) => valid,
-            Err(msg) => {
-                return TokenType::ScanError(format!("{} when parsing '{}'", msg, &content));
-            }
-        };
-
-        TokenType::Number(value)
+        if integer_literal {
+            match content.parse() {
+                Ok(value) => TokenType::Integer(value),
+                Err(msg) => {
+                    return TokenType::ScanError(format!("{} when parsing '{}'", msg, &content));
+                }
+            }            
+        } else {
+            match content.parse() {
+                Ok(value) => TokenType::Float(value),
+                Err(msg) => {
+                    return TokenType::ScanError(format!("{} when parsing '{}'", msg, &content));
+                }
+            }            
+        }                    
     }
 
     fn is_alpha(&self, c: char) -> bool {
