@@ -10,19 +10,18 @@ The main idea behind RCI is to try out some familiar language features combined 
 
 * Improve error types (make them idiomatic Rust style) and capturing error messages
 * Improve error reporting by adding source code with a pointer in the error output
-* Improve build system to allow module imports and build more than one source file at a time
+* Improve build system to allow module imports and build more than one source file at a time. Modules are part of the language already but the builder doesn't associate files with modules and can't read more than one file at once.
 * Redo the code generation with an actual code generation library --It should be mostly SSA form.
 * Enhance the standard library with some file support
 
 ### Near term language to-do list
 
-* Add more built in types: Int, Flt
-* Nail down type coercion -- remove most of it.
 * Add some basic string functions to stdlib
 * Associate functions with Rec or Enum types
 
 ### Latest language updates
 
+* Added Int and Flt numeric types and type checking for them
 * Modules and the beginning of a standard library in the 'std' module
 
 Use `module module-name { ... }` to define them, use `module_name@name` to access things declared in a module. You can access functions, types and variables. Right now modules are primarily a name-spacing mechanism and there's no import system but that's coming.
