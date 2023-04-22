@@ -74,10 +74,8 @@ impl Parser {
     }
 
     fn is_finished(&self) -> bool {
-        match self.peek().token_type {
-            TokenType::Eof => true,
-            _ => false,
-        }
+        matches!(self.peek().token_type,TokenType::Eof)
+        
     }
 
     fn peek(&self) -> Token {

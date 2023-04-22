@@ -178,12 +178,10 @@ impl Builder {
 
         statements
             .iter()
-            .for_each(|stmt| match stmt.check_types(&global_symbols) {
-                Err(type_error) => {
+            .for_each(|stmt| 
+                if let Err(type_error) = stmt.check_types(&global_symbols) {                
                     had_type_error = true;
-                    eprintln!("{}\n", &type_error.format());
-                }
-                _ => {}
+                    eprintln!("{}\n", &type_error.format());                                
             });
 
         if had_type_error {

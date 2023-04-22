@@ -129,10 +129,7 @@ pub enum DataType {
 
 impl DataType {
     pub fn is_numeric(&self) -> bool {
-        match self {
-            DataType::Integer | DataType::Float | DataType::Number => true,
-            _ => false,
-        }
+        matches!(self, DataType::Integer | DataType::Float | DataType::Number)
     }
 }
 
