@@ -193,7 +193,7 @@ impl SymbolTableEntry {
     ) -> Self {
         Self {
             entry_number,
-            location: location,
+            location,
             name: name.to_owned(),
             module,
             alias_for,
@@ -256,7 +256,7 @@ impl SymbolTable {
     // hasn't reached it yet.
     pub fn distance_and_index(&self, name: &str, hops: usize) -> (Option<usize>, Option<usize>) {
         match self.entries.get(name) {
-            Some(ref ste) => (Some(hops), Some(ste.entry_number)),
+            Some(ste) => (Some(hops), Some(ste.entry_number)),
             None => {
                 if let Some(outer_scope) = &self.outer {
                     outer_scope.distance_and_index(name, hops + 1)

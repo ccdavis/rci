@@ -185,7 +185,7 @@ impl Parser {
                 Err(parse_error) => self.error(parse_error),
             }
         }
-        if self.errors.len() > 0 {
+        if !self.errors.is_empty() {
             Err(self.errors.clone())
         } else {
             Ok(statements)
@@ -202,7 +202,7 @@ impl Parser {
         while !self.is_finished() {
             if found_main {
                 let message =
-                    format!("Program entry point block already found,no more statements allowed.");
+                    "Program entry point block already found,no more statements allowed.".to_string();
                 return Err(parse_err(&self.previous(), &message));
             }
             let stmt = self.declaration(global_symbols)?;
@@ -216,7 +216,7 @@ impl Parser {
                 }
                 _ => {
                     let message =
-						format!("Programs can only have declarations (type, fun, var, val) and a block '{{','}}' at the end.");
+						"Programs can only have declarations (type, fun, var, val) and a block '{','}' at the end.".to_string();
                     return Err(parse_err(&self.previous(), &message));
                 }
             }
@@ -255,7 +255,7 @@ impl Parser {
     fn module(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
         let mut decls = Vec::new();
-        let name = self.consume_identifier(&format!("expect module name."))?;
+        let name = self.consume_identifier("expect module name.")?;
         let module_name = name.identifier_string();
         self.skip_all_newlines();
         let matching_brace = self.consume(
@@ -283,7 +283,7 @@ impl Parser {
                 }
                 _ => {
                     let message =
-                        format!("Modules can only have declarations (type, fun, var, val, module)");
+                        "Modules can only have declarations (type, fun, var, val, module)".to_string();
                     return Err(parse_err(&self.previous(), &message));
                 }
             }
@@ -460,7 +460,7 @@ impl Parser {
 
         // Check if this is an aliased function with CALLS
         let alias_for = if self.matches(&[Calls]) {
-            let alias_token = self.consume_identifier(&format!("expect a function name."))?;
+            let alias_token = self.consume_identifier("expect a function name.")?;
             self.match_terminator()?;
             self.skip_all_newlines();
             let function_alias = alias_token.identifier_string();
@@ -556,7 +556,7 @@ impl Parser {
         let type_name = type_name_token.identifier_string();
         if type_name.chars().next().unwrap().is_lowercase() {
             let msg = "Types must begin with upper-case ASCII letters.";
-            return Err(parse_err(&type_name_token, &msg));
+            return Err(parse_err(&type_name_token, msg));
         }
 
         self.consume(Equal, "Expect '=' after type name.")?;
@@ -623,7 +623,7 @@ impl Parser {
         self.consume(RightBrace, "Expect '}' to complete record definition.")?;
         let record_definition = types::RecordType { fields: field_list };
         let type_definition = DataType::Record(record_definition);
-        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
+        let type_definition_node = Stmt::type_decl(&location, type_name, &type_definition);
         let entry_number = symbols.entries.len();
         let ste = SymbolTableEntry::new_type(
             entry_number,
@@ -699,7 +699,7 @@ impl Parser {
             }
         }
 
-        let type_definition_node = Stmt::type_decl(&location, &type_name, &type_definition);
+        let type_definition_node = Stmt::type_decl(&location, type_name, &type_definition);
         let entry_number = symbols.entries.len();
         let ste = SymbolTableEntry::new_type(
             entry_number,
@@ -740,7 +740,7 @@ impl Parser {
         let next_token = &self.peek();
         let partial_type = match DataType::from_token_type(&next_token.token_type) {
             None => {
-                let msg = format!("Can't use as a type name.");
+                let msg = "Can't use as a type name.".to_string();
                 return Err(parse_err(next_token, &msg));
             }
             Some(data_type) => data_type,    
@@ -762,8 +762,8 @@ impl Parser {
                 self.advance();
                 // TODO: If we had generics here is where we would parse the
                 // generic parameter, like MyStruct<T> :
-                let completed_user_type = u.clone();
-                completed_user_type
+                
+                u.clone()
             };
             //let full_type = DataType::User(full_user_type);                
             
@@ -866,11 +866,11 @@ impl Parser {
                     Ok(Stmt::var_stmt(v, lhs_type, initializer))
                 } else {
                     // Already defined
-                    let message = format!("Variable already declared in this scope!");
+                    let message = "Variable already declared in this scope!".to_string();
                     Err(parse_err(&v, &message))
                 }
             } else {
-                let var_name = &v.identifier_string().clone();
+                let var_name = &v.identifier_string();
                 Err(parse_err(
                     &v,
                     &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
@@ -926,11 +926,11 @@ impl Parser {
                     Ok(Stmt::var_stmt(v, inferred_type, initializer))
                 } else {
                     // Already defined
-                    let message = format!("Variable already declared in this scope!");
+                    let message = "Variable already declared in this scope!".to_string();
                     Err(parse_err(&v, &message))
                 }
             } else {
-                let var_name = &v.identifier_string().clone();
+                let var_name = &v.identifier_string();
                 Err(parse_err(
                     &v,
                     &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
@@ -985,7 +985,7 @@ impl Parser {
                 ste.data_type.clone(),
             ))
         } else {
-            let message = format!("Return statement not in a function!");
+            let message = "Return statement not in a function!".to_string();
             Err(parse_err(&location, &message))
         }
     }
@@ -995,10 +995,10 @@ impl Parser {
         //self.consume(TokenType::SemiColon, "expect ';' after 'break' statement.")?;
         self.match_terminator()?;
 
-        if let Ok(_) = symbols.lookup("IN_BLOCK") {
+        if symbols.lookup("IN_BLOCK").is_ok() {
             Ok(Stmt::break_stmt(location))
         } else {
-            let message = format!("Break statement not in a block ( between '{{' and '}}')!");
+            let message = "Break statement not in a block ( between '{' and '}')!".to_string();
             Err(parse_err(&location, &message))
         }
     }
@@ -1361,7 +1361,7 @@ impl Parser {
     // string
     fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
         let first_part = self.consume_identifier("Expected identifier")?;        
-        let mut fully_qualified_name: String = first_part.identifier_string().clone();
+        let mut fully_qualified_name: String = first_part.identifier_string();
         //self.advance();
         while self.matches(&[MODULE_SEPARATOR]) {
             fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
@@ -1393,7 +1393,7 @@ impl Parser {
                     println!("identifier primary expression:");
                 }
                 self.advance();
-                let mut fully_qualified_name = name.clone();
+                let mut fully_qualified_name = name;
                 while self.matches(&[MODULE_SEPARATOR]) {
                     fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
                     let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;

@@ -135,7 +135,7 @@ impl Stmt {
         use Stmt::*;
         match self {
             Var(ref n) => n.name.clone(),
-            Fun(ref n) => n.name.identifier_string().clone(),
+            Fun(ref n) => n.name.identifier_string(),
             Type(ref n) => n.name.clone(),
             Module(ref n) => n.name.clone(),
             _ => panic!("Not a declaration statement. This was called in error during parsing or compilation because of a compiler bug."),
@@ -155,7 +155,7 @@ impl Stmt {
         // Names in source may have '@' to show module locations
         // The symbol table entry will have the name used in source at the call site.
         //  Also it will have the '@' in the name for exported symbols from a module.
-        let base_name = match entry.name.rsplit_once("@") {
+        let base_name = match entry.name.rsplit_once('@') {
             Some(n) => n.1.to_string(),
             None => entry.name.clone(),
         };
@@ -205,7 +205,7 @@ impl Compiler for PrintStmtNode {
                 _ => "** PRINTING NOT SUPPORTED **".to_string(),
             };
 
-            subst_codes = subst_codes + subst_code;
+            subst_codes += subst_code;
             values.push(printable);
         }
 
@@ -221,7 +221,7 @@ pub struct ExpressionStmtNode {
 
 impl ExpressionStmtNode {
     fn print(&self) -> String {
-        format!("{}", &self.expression.print())
+        self.expression.print()
     }
 }
 
@@ -290,7 +290,7 @@ impl Compiler for ModuleNode {
     ) -> Result<GlobalStatementObjectCode, errors::Error> {
         let code = GlobalStatementObjectCode {
             decl_type: DeclarationType::Val,
-            base_code: self.compile(&symbols)?,
+            base_code: self.compile(symbols)?,
             decl_name: self.name.clone(),
             init_code: "".to_string(),
             init_name: "".to_string(),
@@ -438,7 +438,7 @@ impl Compiler for VarStmtNode {
             .lookup(&self.name)
             .expect("Major compiler bug: Symbol should be in symbol table.");
 
-        let generated_symbol = Stmt::codegen_symbol(&entry);
+        let generated_symbol = Stmt::codegen_symbol(entry);
         let lhs = format!("rci_value {}", &generated_symbol);
         let rhs = self.initializer.compile(symbols)?;
         let code = format!("{} = {};", &lhs, &rhs.code);
@@ -452,7 +452,7 @@ impl Compiler for VarStmtNode {
         let ste = symbols
             .lookup(&self.name)
             .expect("Major compiler bug: Symbol should be in symbol table.");
-        let generated_symbol = Stmt::codegen_symbol(&ste);
+        let generated_symbol = Stmt::codegen_symbol(ste);
         let lhs = format!("rci_value {};\n", &generated_symbol);
 
         // make an initializer function to be called from an init_globals() function called first in main()
@@ -511,7 +511,7 @@ impl Compiler for FunStmtNode {
                     &local_function_name
                 );
             }
-            Some(ref entry) => Stmt::codegen_symbol(entry),
+            Some(entry) => Stmt::codegen_symbol(entry),
         };
 
         let mut params_code: Vec<String> = Vec::new();
@@ -560,10 +560,10 @@ impl Compiler for FunStmtNode {
         let function_name = self.name.token_type.print_value();
         let code = GlobalStatementObjectCode {
             decl_type: DeclarationType::Fun,
-            base_code: self.compile(&symbols)?,
+            base_code: self.compile(symbols)?,
             decl_name: function_name.clone(),
             init_code: "".to_string(),
-            init_name: function_name.clone(),
+            init_name: function_name,
         };
         Ok(code)
     }

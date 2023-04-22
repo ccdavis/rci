@@ -153,12 +153,12 @@ impl Builder {
 
     pub fn read_standard_lib_source(&self) -> String {
         let stdlib_src_full_path = self.standard_lib_source_directory.join("standard_lib.rci");
-        Builder::read_source(&stdlib_src_full_path.as_os_str())
+        Builder::read_source(stdlib_src_full_path.as_os_str())
     }
 
     pub fn read_user_source(&self, program_filename: &OsStr) -> String {
         let src_full_path = self.source_directory.join(program_filename);
-        Builder::read_source(&src_full_path.as_os_str())
+        Builder::read_source(src_full_path.as_os_str())
     }
 
     pub fn compile(&mut self, code: &str) -> String {
@@ -240,12 +240,10 @@ impl Builder {
         let use_standard_lib =
             format!("#include \"{}\"\n", &standard_lib_support.to_string_lossy());
 
-        let code_to_write = use_gc + &use_runtime + &use_standard_lib + &object_code;
+        let code_to_write = use_gc + &use_runtime + &use_standard_lib + object_code;
 
-        fs::write(&tmp_ir_path, code_to_write).expect(&format!(
-            "\nBuild error: Problem writing intermediate representation code to {}",
-            &tmp_ir_path.to_str().unwrap()
-        ));
+        fs::write(&tmp_ir_path, code_to_write).unwrap_or_else(|_| panic!("\nBuild error: Problem writing intermediate representation code to {}",
+            &tmp_ir_path.to_str().unwrap()));
         tmp_ir_path
     }
 
@@ -547,70 +545,70 @@ mod tests {
 
     #[test]
     fn test_enums() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_ENUMS2)?.len() > 0);
+        assert!(!parse(SRC_ENUMS2)?.is_empty());
         assert!(type_check(SRC_ENUMS2).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_ENUMS3)?.len() > 0);
+        assert!(!parse(SRC_ENUMS3)?.is_empty());
         assert!(type_check(SRC_ENUMS3).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_ENUMS)?.len() > 0);
+        assert!(!parse(SRC_ENUMS)?.is_empty());
         assert!(type_check(SRC_ENUMS).is_ok() );
         Ok(())
     }
 
     #[test]
     fn test_record_decl() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_DECL)?.len() > 0);
+        assert!(!parse(SRC_RECORD_DECL)?.is_empty());
         assert!(type_check(SRC_RECORD_DECL).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_PARAM)?.len() > 0);
+        assert!(!parse(SRC_RECORD_PARAM)?.is_empty());
         assert!(type_check(SRC_RECORD_PARAM).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_RETURN)?.len() > 0);
+        assert!(!parse(SRC_RECORD_RETURN)?.is_empty());
         assert!(type_check(SRC_RECORD_RETURN).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_getter() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_GETTER)?.len() > 0);
+        assert!(!parse(SRC_RECORD_GETTER)?.is_empty());
         assert!(type_check(SRC_RECORD_GETTER).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_TYPE_INFERENCE)?.len() > 0);
+        assert!(!parse(SRC_RECORD_TYPE_INFERENCE)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_INFERENCE).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_type_explicit() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_RECORD_TYPE_EXPLICIT)?.len() > 0);
+        assert!(!parse(SRC_RECORD_TYPE_EXPLICIT)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_EXPLICIT).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_modules() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_MODULE)?.len() > 0);
+        assert!(!parse(SRC_MODULE)?.is_empty());
         assert!(type_check(SRC_MODULE).is_ok());
 
         Ok(())
@@ -618,7 +616,7 @@ mod tests {
 
     #[test]
     fn test_module_types() -> Result<(), Vec<errors::Error>> {
-        assert!(parse(SRC_MODULE_TYPES)?.len() > 0);
+        assert!(!parse(SRC_MODULE_TYPES)?.is_empty());
         assert!(type_check(SRC_MODULE_TYPES).is_ok());
 
         Ok(())

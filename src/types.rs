@@ -293,7 +293,7 @@ impl DataValue {
                 varient: _v,
                 content: data,
             } => format!("{:?}", &data),
-            DataValue::User(u) => format!("{}", u),
+            DataValue::User(u) => u.to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
             _ => panic!("Print not implemented for this DataValue varient!"),
         }

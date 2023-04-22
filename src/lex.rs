@@ -94,16 +94,16 @@ impl TokenType {
     pub fn print_value(&self) -> String {
         use TokenType::*;
         match self {
-            Identifier(name) => format!("{}", &name),
+            Identifier(name) => (&name).to_string(),
             Number(value) => format!("{}", value),
             Integer(value) => format!("{}", value),
             Float(value) => format!("{}", value),
             AsciiChar(value) => format!("{}", value),
             Byte(value) => format!("{}", value),
             Range(l, r) => format!("{}..{}", l, r),
-            Str(value) => format!("{}", &value),
-            Comment(value) => format!("{}", &value),
-            ScanError(msg) => format!("{}", &msg),
+            Str(value) => (&value).to_string(),
+            Comment(value) => (&value).to_string(),
+            ScanError(msg) => (&msg).to_string(),
             _ => "".to_string(),
         }
     }
@@ -351,7 +351,7 @@ pub struct Scanner {
 impl Scanner {
     pub fn new(script: String) -> Self {
         Self {
-            text: script.clone().chars().collect(),
+            text: script.chars().collect(),
             start: 0,
             current: 0,
             line: 1,
@@ -521,7 +521,7 @@ impl Scanner {
     }
 
     fn is_digit(&self, c: char) -> bool {
-        c >= '0' && c <= '9'
+        c.is_ascii_digit()
     }
 
     // newlines are significant, so don't count as whitespace
@@ -562,26 +562,26 @@ impl Scanner {
                 self.advance();
             }
         }
-        let content: String = self.text[self.start..self.current].into_iter().collect();
+        let content: String = self.text[self.start..self.current].iter().collect();
         if integer_literal {
             match content.parse() {
                 Ok(value) => TokenType::Integer(value),
                 Err(msg) => {
-                    return TokenType::ScanError(format!("{} when parsing '{}'", msg, &content));
+                    TokenType::ScanError(format!("{} when parsing '{}'", msg, &content))
                 }
             }            
         } else {
             match content.parse() {
                 Ok(value) => TokenType::Float(value),
                 Err(msg) => {
-                    return TokenType::ScanError(format!("{} when parsing '{}'", msg, &content));
+                    TokenType::ScanError(format!("{} when parsing '{}'", msg, &content))
                 }
             }            
         }                    
     }
 
     fn is_alpha(&self, c: char) -> bool {
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '?' || c == '!'
+        c.is_ascii_lowercase() || c.is_ascii_uppercase() || c == '_' || c == '?' || c == '!'
     }
 
     fn is_alpha_numeric(&self, c: char) -> bool {
@@ -592,7 +592,7 @@ impl Scanner {
         while self.is_alpha_numeric(self.this_char()) {
             self.advance();
         }
-        let content: String = self.text[self.start..self.current].into_iter().collect();
+        let content: String = self.text[self.start..self.current].iter().collect();
 
         match self.reserved_words.get(&content) {
             Some(word) => word.clone(),

@@ -401,13 +401,13 @@ impl TypeCheck for SetterNode {
                 }
             }
             Err(not_declared) => {
-                let message = format!("{}", &not_declared.message);
+                let message = not_declared.message;
                 return Err(Error::new(&self.dot, ErrorType::Type, message));
             }
         };
         let callee_type = match data_type_for_symbol(symbols, &record_var_name) {
             Err(not_declared) => {
-                let message = format!("{}", &not_declared);
+                let message = not_declared;
                 Err(Error::new(&self.dot, ErrorType::Type, message))
             }
             Ok(data_type) => Ok(data_type),
@@ -689,10 +689,10 @@ impl Compiler for UserTypeLiteralNode {
             let field_value = self.field_values[index].clone();
             code = code + &field_value.compile(symbols)?.code;
             if index < self.field_names.len() - 1 {
-                code = code + ", ";
+                code += ", ";
             }
         }
-        code = code + &format!(")");
+        code += ")";
 
         Ok(ObjectCode { data_type, code })
     }
@@ -721,7 +721,7 @@ impl TypeCheck for LookupNode {
                     ..
                 } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match DirectMap index type");
+                        let message = "Index type doesn't match DirectMap index type".to_string();
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
@@ -732,7 +732,7 @@ impl TypeCheck for LookupNode {
                     ..
                 } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match HashedMap index type");
+                        let message = "Index type doesn't match HashedMap index type".to_string();
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
@@ -743,7 +743,7 @@ impl TypeCheck for LookupNode {
                     ..
                 } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match Vector index type");
+                        let message = "Index type doesn't match Vector index type".to_string();
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
@@ -754,18 +754,18 @@ impl TypeCheck for LookupNode {
                     ..
                 } => {
                     if index_type != t {
-                        let message = format!("Index type doesn't match Array index type");
+                        let message = "Index type doesn't match Array index type".to_string();
                         return Err(Error::new(&self.bracket, ErrorType::Type, message));
                     }
                     Ok(c)
                 }
                 _ => {
-                    let message = format!("Lookups  type expected.");
+                    let message = "Lookups  type expected.".to_string();
                     Err(Error::new(&self.bracket, ErrorType::Type, message))
                 }
             }
         } else {
-            let message = format!("Lookups  type expected.");
+            let message = "Lookups  type expected.".to_string();
             Err(Error::new(&self.bracket, ErrorType::Type, message))
         }
     }
@@ -933,7 +933,7 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
                 Ok(symbol_table_entry.data_type.clone())
             }
         }
-        Err(declaration_error) => Err(format!("{}", &declaration_error.message)),
+        Err(declaration_error) => Err(declaration_error.message),
     }
 }
 
@@ -1009,7 +1009,7 @@ impl Compiler for VariableNode {
                         &enum_value.member_of_enum, &enum_value.value
                     )
                 } else {
-                    format!("{}", Stmt::codegen_symbol(&ste))
+                    Stmt::codegen_symbol(&ste)
                 }
             },
         })
@@ -1048,14 +1048,14 @@ impl TypeCheck for AssignmentNode {
         let to_type = match symbols.lookup(&assignee_name) {
             Ok(ste) => {
                 if matches!(ste.entry_type, DeclarationType::Val) {
-                    let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
+                    let message = "Can't assign to a 'val'. Only 'var' is mutable.".to_string();
 
                     return Err(Error::new(&self.name, ErrorType::Type, message));
                 }
                 ste.data_type.clone()
             }
             Err(not_declared) => {
-                let message = format!("{}", &not_declared.message);
+                let message = not_declared.message;
                 return Err(Error::new(&self.name, ErrorType::Type, message));
             }
         };
@@ -1228,19 +1228,19 @@ impl Expr {
                 format!("{} {}", &n.operator.print(), &n.expr.print())
             }
             Literal(ref n) => {
-                format!("{}", &n.print())
+                n.print()
             }
             Grouping(n) => {
-                format!("{}", &n.expr.print())
+                n.expr.print()
             }
             Variable(_n) => {
-                format!("Variable Expression")
+                "Variable Expression".to_string()
             }
             Assignment(_n) => {
-                format!("Assignment Expression")
+                "Assignment Expression".to_string()
             }
             Call(_n) => {
-                format!("Call Expression")
+                "Call Expression".to_string()
             }
             Logical(n) => {
                 format!(
@@ -1250,8 +1250,8 @@ impl Expr {
                     &n.right.print()
                 )
             }
-            Setter(_n) => format!("Setter  Expression"),
-            Getter(_n) => format!("Getter Expression"),
+            Setter(_n) => "Setter  Expression".to_string(),
+            Getter(_n) => "Getter Expression".to_string(),
 
             _ => panic!("Not implemented"),
         };
