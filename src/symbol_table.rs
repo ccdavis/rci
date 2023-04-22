@@ -26,7 +26,7 @@ pub struct SymbolTableEntry {
     pub indexed_by_type: DataType,
 
     // For record / class members
-    pub fields: Vec<Box<SymbolTableEntry>>,
+    pub fields: Vec<SymbolTableEntry>,
 }
 
 impl SymbolTableEntry {
@@ -187,7 +187,7 @@ impl SymbolTableEntry {
         location: Option<Token>,
         name: &str,
         alias_for: Option<String>,
-        params: Vec<Box<SymbolTableEntry>>,
+        params: Vec<SymbolTableEntry>,
         data_type: &DataType,
         module: Vec<String>,
     ) -> Self {

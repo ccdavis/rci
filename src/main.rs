@@ -58,7 +58,7 @@ impl Builder {
     }
 
     fn is_windows() -> bool {
-        "windows".to_string() == env::consts::OS
+        "windows" == env::consts::OS
     }
 
     // Search out an env var or compiler on the path or else assume it's a git clone where we run from the root
@@ -78,7 +78,8 @@ impl Builder {
                 let which_result = std::str::from_utf8(&result.stdout);
                 match which_result {
                     Ok(res) => {
-                        if res.trim().len() == 0 {
+                        if res.trim().is_empty()
+                         {
                             None
                         } else {
                             Some(std::path::Path::new(res.trim()).to_path_buf())
@@ -115,8 +116,7 @@ impl Builder {
         if cc_path.exists() {
             cc_path
         } else {
-            eprintln!("");
-            eprintln!("Build configuration error: No C compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
+            eprintln!("\nBuild configuration error: No C compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
             eprintln!("On Ubuntu or Debian Linux do 'sudo apt install build-essential' or consult your operating system documentation.");
             std::process::exit(1);
         }
@@ -126,9 +126,8 @@ impl Builder {
         let tcc_path = Builder::check_program_path("tcc", "/usr/bin/tcc");
         if tcc_path.exists() {
             tcc_path
-        } else {
-            eprintln!("");
-            eprintln!("Build configuration error: No TCC compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
+        } else {            
+            eprintln!("\nBuild configuration error: No TCC compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
             eprintln!("On Ubuntu or Debian Linux do 'sudo apt install tcc' or consult your operating system documentation.");
             eprintln!("Or you can download TCC directly from http://download.savannah.gnu.org/releases/tinycc/");
             std::process::exit(1);
@@ -171,7 +170,7 @@ impl Builder {
 
         let statements = match ast.parse(&mut global_symbols) {
             Ok(stmts) => stmts,
-            Err(parse_errors) => {
+            Err(_parse_errors) => {
                 let msg = "Parse errors in source code. Compilation halted.".red();
                 eprintln!("\n{}\n", &msg);
                 std::process::exit(3);
@@ -549,70 +548,70 @@ mod tests {
     #[test]
     fn test_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS2)?.len() > 0);
-        assert!(type_check(SRC_ENUMS2)? == ());
+        assert!(type_check(SRC_ENUMS2).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS3)?.len() > 0);
-        assert!(type_check(SRC_ENUMS3)? == ());
+        assert!(type_check(SRC_ENUMS3).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_ENUMS)?.len() > 0);
-        assert!(type_check(SRC_ENUMS)? == ());
+        assert!(type_check(SRC_ENUMS).is_ok() );
         Ok(())
     }
 
     #[test]
     fn test_record_decl() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_DECL)?.len() > 0);
-        assert!(type_check(SRC_RECORD_DECL)? == ());
+        assert!(type_check(SRC_RECORD_DECL).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_PARAM)?.len() > 0);
-        assert!(type_check(SRC_RECORD_PARAM)? == ());
+        assert!(type_check(SRC_RECORD_PARAM).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_RETURN)?.len() > 0);
-        assert!(type_check(SRC_RECORD_RETURN)? == ());
+        assert!(type_check(SRC_RECORD_RETURN).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_getter() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_GETTER)?.len() > 0);
-        assert!(type_check(SRC_RECORD_GETTER)? == ());
+        assert!(type_check(SRC_RECORD_GETTER).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_TYPE_INFERENCE)?.len() > 0);
-        assert!(type_check(SRC_RECORD_TYPE_INFERENCE)? == ());
+        assert!(type_check(SRC_RECORD_TYPE_INFERENCE).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_record_type_explicit() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_RECORD_TYPE_EXPLICIT)?.len() > 0);
-        assert!(type_check(SRC_RECORD_TYPE_EXPLICIT)? == ());
+        assert!(type_check(SRC_RECORD_TYPE_EXPLICIT).is_ok());
         Ok(())
     }
 
     #[test]
     fn test_modules() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_MODULE)?.len() > 0);
-        assert!(type_check(SRC_MODULE)? == ());
+        assert!(type_check(SRC_MODULE).is_ok());
 
         Ok(())
     }
@@ -620,7 +619,7 @@ mod tests {
     #[test]
     fn test_module_types() -> Result<(), Vec<errors::Error>> {
         assert!(parse(SRC_MODULE_TYPES)?.len() > 0);
-        assert!(type_check(SRC_MODULE_TYPES)? == ());
+        assert!(type_check(SRC_MODULE_TYPES).is_ok());
 
         Ok(())
     }

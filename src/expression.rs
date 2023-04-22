@@ -104,7 +104,7 @@ impl Expr {
                 let parts = id_string.rsplit_once(&MODULE_SEPARATOR.print());
                 let base_symbol = match parts {
                     None =>  &id_string,                        
-                    Some((left, right)) =>  right,
+                    Some((_left, right)) =>  right,
                 };
                 base_symbol
                         .chars()
@@ -146,23 +146,18 @@ impl TypeCheck for BinaryNode {
         }
 
         if self.operator.is_comparison_operator() {
-            if left_type.is_numeric() && right_type.is_numeric() {            
-                return Ok(DataType::Bool);
+            // Allow boolean comparison with = or <>
 
-                // Allow boolean comparison with = or <>
-            } else if matches!(left_type, DataType::Enumeration(_))
-                && matches!(right_type, DataType::Enumeration(_))
+            if (left_type.is_numeric() && right_type.is_numeric()) ||                
+                (matches!(left_type, DataType::Bool)
+                    && matches!(right_type, DataType::Bool)) ||
+                (matches!(left_type, DataType::Enumeration(_))
+                    && matches!(right_type, DataType::Enumeration(_)))
                 && (matches!(self.operator.token_type, Equal)
                     || matches!(self.operator.token_type, LessGreater))
             {
                 return Ok(DataType::Bool);
-            } else if matches!(left_type, DataType::Bool)
-                && matches!(right_type, DataType::Bool)
-                && (matches!(self.operator.token_type, Equal)
-                    || matches!(self.operator.token_type, LessGreater))
-            {
-                return Ok(DataType::Bool);
-
+            
             // TODO: support String comparison
             } else {
                 let message = format!(
@@ -175,14 +170,14 @@ impl TypeCheck for BinaryNode {
 
         if self.operator.is_arithmetic_operator() {
             // Allow string concatenation with '+'
-            if matches!(self.operator.token_type, Plus) {
-                if matches!(left_type, DataType::Str) && matches!(right_type, DataType::Str) {
+            if matches!(self.operator.token_type, Plus) && 
+            matches!(left_type, DataType::Str) && matches!(right_type, DataType::Str) {
                     return Ok(DataType::Str);
-                }
+                
             } // allow + for strings
             use DataType::*;
             return match (left_type, right_type) {
-                (number,Number) => Ok(DataType::Number),
+                (_number,Number) => Ok(DataType::Number),
                 (Integer, Integer) => Ok(DataType::Integer),
                 (Float, Float) => Ok(DataType::Float),
                 _ => {
@@ -323,12 +318,12 @@ impl Compiler for GetterNode {
         // The local symbol table info is needed later to generate correct code if the
         // local record variable instance is a 'var' vs a 'val'
         let ste = match symbols.lookup(&record_var_name) {
-            Ok(ref entry) => entry.clone(),
+            Ok(entry) => entry.clone(),
             Err(error_msg) => {
                 return Err(errors::Error::new(
                     &self.dot,
                     ErrorType::Compiler,
-                    error_msg.message.clone(),
+                    error_msg.message,
                 ));
             }
         };
@@ -357,11 +352,11 @@ impl Compiler for GetterNode {
                     )
                 };
                 Ok(ObjectCode {
-                    data_type: callee_type.clone(),
+                    data_type: callee_type,
                     code,
                 })
             }
-            Expr::Getter(ref g) => {
+            Expr::Getter(ref _g) => {
                 /*
                 let inner_code = self.getter.compile()?;
 
@@ -399,9 +394,9 @@ impl TypeCheck for SetterNode {
         // This is almost the same as the type-checking for the GetterNode
         //        let callee_type = self.name.determine_type(symbols)?;
         match symbols.lookup(&record_var_name) {
-            Ok(ref ste) => {
+            Ok(ste) => {
                 if matches!(ste.entry_type, DeclarationType::Val) {
-                    let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
+                    let message = "Can't assign to a 'val'. Only 'var' is mutable.".to_string();
                     return Err(Error::new(&self.dot, ErrorType::Type, message));
                 }
             }
@@ -416,14 +411,10 @@ impl TypeCheck for SetterNode {
                 Err(Error::new(&self.dot, ErrorType::Type, message))
             }
             Ok(data_type) => Ok(data_type),
-        };
-
-        if callee_type.is_err() {
-            return callee_type;
-        }
+        }?;
 
         // Get the type of the field being set
-        let lhs_type = if let DataType::Record(ref rec_type) = callee_type.unwrap() {
+        let lhs_type = if let DataType::Record(ref rec_type) = callee_type {
             match *self.attr {
                 Expr::Variable(ref g) => {
                     let field_name = g.get_name();
@@ -471,12 +462,12 @@ impl Compiler for SetterNode {
         // The local symbol table info is needed later to generate correct code if the
         // local record variable instance is a 'var' vs a 'val'
         let ste = match symbols.lookup(&record_var_name) {
-            Ok(ref entry) => entry.clone(),
+            Ok(entry) => entry.clone(),
             Err(error_msg) => {
                 return Err(errors::Error::new(
                     &self.dot,
                     ErrorType::Compiler,
-                    error_msg.message.clone(),
+                    error_msg.message,
                 ));
             }
         };
@@ -549,7 +540,7 @@ impl Compiler for CallNode {
         };
 
         let function_ste = match symbols.lookup(&local_function_call) {
-            Ok(ref ste) => ste.clone(),
+            Ok(ste) => ste.clone(),
             Err(_) => panic!(
                 "Internal error: Expected to findfunction named {} which compiles to {}",
                 &local_function_call, &generated_function_name.code
@@ -637,8 +628,8 @@ impl TypeCheck for UserTypeLiteralNode {
         };
 
         let user_type = match symbols.lookup(&name) {
-            Ok(ref type_definition_ste) => Ok(type_definition_ste.data_type.clone()),
-            Err(msg) => Err(Error::new(
+            Ok(type_definition_ste) => Ok(type_definition_ste.data_type.clone()),
+            Err(_msg) => Err(Error::new(
                 &self.location,
                 ErrorType::Type,
                 format!("No type '{}' declared.", &name),
@@ -694,7 +685,7 @@ impl Compiler for UserTypeLiteralNode {
     fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         let mut code: String = format!("record_new({}, ", &self.field_values.len());
         let data_type = self.determine_type(symbols)?;
-        for (index, name) in self.field_names.iter().enumerate() {
+        for (index, _name) in self.field_names.iter().enumerate() {
             let field_value = self.field_values[index].clone();
             code = code + &field_value.compile(symbols)?.code;
             if index < self.field_names.len() - 1 {
@@ -781,7 +772,7 @@ impl TypeCheck for LookupNode {
 }
 
 impl Compiler for LookupNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         Ok(ObjectCode {
             data_type: DataType::Unresolved,
             code: " // unimplemented ".to_string(),
@@ -819,7 +810,7 @@ pub struct ArrayNode {
 
 impl TypeCheck for ArrayNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
-        if self.elements.len() == 0 {
+        if self.elements.is_empty() {
             return Ok(DataType::Unresolved);
         }
 
@@ -843,7 +834,7 @@ impl TypeCheck for ArrayNode {
             last_type = this_type;
         }
         Ok(DataType::Lookup(Box::new(LookupType::Array {
-            contains_type: first_type.clone(),
+            contains_type: first_type,
             size: Some(array_length),
             index_type: DataType::Integer,
             low_index: Some(Box::new(low_ind)),
@@ -853,7 +844,7 @@ impl TypeCheck for ArrayNode {
 }
 
 impl Compiler for ArrayNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         Ok(ObjectCode {
             data_type: DataType::Unresolved,
             code: " // unimplemented ".to_string(),
@@ -919,7 +910,7 @@ pub struct VariableNode {
 
 pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType, String> {
     match symbols.lookup(name) {
-        Ok(ref symbol_table_entry) => {
+        Ok(symbol_table_entry) => {
             if TRACE {
                 println!("HELPER Found symbol {}", &name);
             }
@@ -930,7 +921,7 @@ pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataTyp
                 );
             }
             if let DataType::User(ref user_type) = symbol_table_entry.data_type {
-                if matches!(DataType::Unresolved, user_type) {
+                if matches!(DataType::Unresolved, _user_type) {
                     match symbols.outer {
                         Some(ref outer_scope) => data_type_for_symbol(outer_scope, &user_type.name),
                         None => Err(format!("Type named {} not defined.", &user_type.name)),
@@ -993,12 +984,12 @@ impl Compiler for VariableNode {
             println!("COMPILE var name is {}", &var_name);
         }
         let ste = match symbols.lookup(&var_name) {
-            Ok(ref entry) => entry.clone(),
+            Ok(entry) => entry.clone(),
             Err(error_msg) => {
                 return Err(errors::Error::new(
                     &self.name,
                     ErrorType::Compiler,
-                    error_msg.message.clone(),
+                    error_msg.message,
                 ));
             }
         };
@@ -1018,7 +1009,7 @@ impl Compiler for VariableNode {
                         &enum_value.member_of_enum, &enum_value.value
                     )
                 } else {
-                    format!("{}", Stmt::codegen_symbol(ste))
+                    format!("{}", Stmt::codegen_symbol(&ste))
                 }
             },
         })
@@ -1055,7 +1046,7 @@ impl TypeCheck for AssignmentNode {
 		};
 
         let to_type = match symbols.lookup(&assignee_name) {
-            Ok(ref ste) => {
+            Ok(ste) => {
                 if matches!(ste.entry_type, DeclarationType::Val) {
                     let message = format!("Can't assign to a 'val'. Only 'var' is mutable.");
 
@@ -1242,13 +1233,13 @@ impl Expr {
             Grouping(n) => {
                 format!("{}", &n.expr.print())
             }
-            Variable(n) => {
+            Variable(_n) => {
                 format!("Variable Expression")
             }
-            Assignment(n) => {
+            Assignment(_n) => {
                 format!("Assignment Expression")
             }
-            Call(n) => {
+            Call(_n) => {
                 format!("Call Expression")
             }
             Logical(n) => {
@@ -1259,8 +1250,8 @@ impl Expr {
                     &n.right.print()
                 )
             }
-            Setter(n) => format!("Setter  Expression"),
-            Getter(n) => format!("Getter Expression"),
+            Setter(_n) => format!("Setter  Expression"),
+            Getter(_n) => format!("Getter Expression"),
 
             _ => panic!("Not implemented"),
         };

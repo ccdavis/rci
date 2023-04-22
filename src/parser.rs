@@ -353,7 +353,7 @@ impl Parser {
         let name = self.consume_identifier(&format!("expect {} name.", kind))?;
         let function_name = name.identifier_string();
         self.consume(LeftParen, &format!("expect '(' after {} name.", kind))?;
-        let mut parameters: Vec<Box<SymbolTableEntry>> = Vec::new();
+        let mut parameters: Vec<SymbolTableEntry> = Vec::new();
         self.skip_all_newlines();
         if !self.check(&RightParen) {
             loop {
@@ -430,7 +430,7 @@ impl Parser {
                     param_type,
                     self.modules.clone(),
                 );
-                parameters.push(Box::new(entry));
+                parameters.push(entry);
                 if !self.matches(&[Comma]) {
                     self.skip_if_newline();
                     break;
@@ -511,7 +511,7 @@ impl Parser {
         local_symbols.add(return_type_entry);
 
         for param in &parameters {
-            let mut p = *param.clone();
+            let mut p = param.clone();
             p.entry_number = local_symbols.entries.len();
             local_symbols.add(p);
         }
@@ -551,7 +551,7 @@ impl Parser {
     fn type_declaration(&mut self, symbols: &mut SymbolTable) -> Result<Stmt, ParseError> {
         use TokenType::*;
 
-        let decl_type = DeclarationType::Type;
+        let _decl_type = DeclarationType::Type;
         let type_name_token: Token = self.consume_identifier("Expect variable name")?;
         let type_name = type_name_token.identifier_string();
         if type_name.chars().next().unwrap().is_lowercase() {
@@ -662,7 +662,7 @@ impl Parser {
                 string_representation,
             };
 
-            let data_value = DataValue::Enumeration(enum_value.clone());
+            let _data_value = DataValue::Enumeration(enum_value.clone());
             enum_list.push(enum_value.clone());
 
             if matches!(self.peek().token_type, Comma) {
@@ -720,16 +720,16 @@ impl Parser {
 
     fn set_type_declaration(
         &mut self,
-        type_name: &str,
-        symbols: &mut SymbolTable,
+        _type_name: &str,
+        _symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         panic!("Not implemented")
     }
 
     fn array_type_declaration(
         &mut self,
-        type_name: &str,
-        symbols: &mut SymbolTable,
+        _type_name: &str,
+        _symbols: &mut SymbolTable,
     ) -> Result<Stmt, ParseError> {
         panic!("Not implemented!")
     }
@@ -762,7 +762,7 @@ impl Parser {
                 self.advance();
                 // TODO: If we had generics here is where we would parse the
                 // generic parameter, like MyStruct<T> :
-                let mut completed_user_type = u.clone();
+                let completed_user_type = u.clone();
                 completed_user_type
             };
             //let full_type = DataType::User(full_user_type);                
@@ -1268,7 +1268,7 @@ impl Parser {
         if TRACE {
             println!("In finish_getter:");
         }
-        use TokenType::*;
+        
         let dot = self.previous();
 
         // The remainder has to be a call node (variable, lookup, function call, getter)

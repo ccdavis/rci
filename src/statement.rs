@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+
 use crate::errors;
 use crate::errors::*;
 use crate::expression::Expr;
@@ -22,7 +22,7 @@ pub trait Compiler {
     fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error>;
     fn compile_global(
         &self,
-        symbols: &SymbolTable,
+        _symbols: &SymbolTable,
     ) -> Result<GlobalStatementObjectCode, errors::Error> {
         Err(errors::Error::internal(
             ErrorType::Internal,
@@ -148,7 +148,7 @@ impl Stmt {
         let mod_space = entry
             .module
             .iter()
-            .map(|m| m.to_uppercase().clone())
+            .map(|m| m.to_uppercase())
             .collect::<Vec<String>>()
             .join("_MOD_");
 
@@ -178,7 +178,7 @@ impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // print can take any type
         for expr in &self.expressions {
-            let expr_type = expr.determine_type(symbols)?;
+            let _expr_type = expr.determine_type(symbols)?;
         }
         Ok(())
     }
@@ -209,7 +209,7 @@ impl Compiler for PrintStmtNode {
             values.push(printable);
         }
 
-        let mut code = format!("printf(\"{}\",{});\n", &subst_codes, &values.join(","));
+        let code = format!("printf(\"{}\",{});\n", &subst_codes, &values.join(","));
         Ok(code)
     }
 }
@@ -228,7 +228,7 @@ impl ExpressionStmtNode {
 impl TypeChecking for ExpressionStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
         // Trigger type checks from the expression contained
-        let t = self.expression.determine_type(symbols)?;
+        let _t = self.expression.determine_type(symbols)?;
         Ok(())
     }
 }
@@ -258,7 +258,7 @@ impl ModuleNode {
 }
 
 impl TypeChecking for ModuleNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+    fn check_types(&self, _symbols: &SymbolTable) -> Result<(), errors::Error> {
         // TODO: For now just return error on the first
         // bad statement, but improve this to check them all.
         for stmt in &self.statements {
@@ -269,7 +269,7 @@ impl TypeChecking for ModuleNode {
 }
 
 impl Compiler for ModuleNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<String, errors::Error> {
         let mut stmts = Vec::new();
         for stmt in &self.statements {
             let stmt_code = stmt.compile(&self.symbols)?;
@@ -321,7 +321,7 @@ impl BlockStmtNode {
 impl TypeChecking for BlockStmtNode {
     // Ignore the symbols passed in for now; they will be useful when we have
     // lambdas with parameters.
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+    fn check_types(&self, _symbols: &SymbolTable) -> Result<(), errors::Error> {
         // TODO: For now just return error on the first
         // bad statement, but improve this to check them all.
         for stmt in &self.statements {
@@ -332,7 +332,7 @@ impl TypeChecking for BlockStmtNode {
 }
 
 impl Compiler for BlockStmtNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<String, errors::Error> {
         let mut stmts = Vec::new();
         for stmt in &self.statements {
             let stmt_code = stmt.compile(&self.symbols)?;
@@ -477,7 +477,7 @@ impl Compiler for VarStmtNode {
 #[derive(Debug, Clone)]
 pub struct FunStmtNode {
     name: Token, // name + line, column
-    params: Vec<Box<SymbolTableEntry>>,
+    params: Vec<SymbolTableEntry>,
     return_type: DataType,
     body: Vec<Stmt>,
     symbols: SymbolTable,
@@ -490,7 +490,7 @@ impl FunStmtNode {
 }
 
 impl TypeChecking for FunStmtNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+    fn check_types(&self, _symbols: &SymbolTable) -> Result<(), errors::Error> {
         for stmt in &self.body {
             stmt.check_types(&self.symbols)?
         }
@@ -641,13 +641,13 @@ impl BreakStmtNode {
 impl TypeChecking for BreakStmtNode {
     // We could add a special symbol to any block's symbol table and then the
     // break statement could check if it was valid ...
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+    fn check_types(&self, _symbols: &SymbolTable) -> Result<(), errors::Error> {
         Ok(())
     }
 }
 
 impl Compiler for BreakStmtNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<String, errors::Error> {
         Ok("break;".to_string())
     }
 }
@@ -778,13 +778,13 @@ pub struct TypeNode {
 }
 
 impl TypeChecking for TypeNode {
-    fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
+    fn check_types(&self, _symbols: &SymbolTable) -> Result<(), errors::Error> {
         Ok(())
     }
 }
 
 impl Compiler for TypeNode {
-    fn compile(&self, symbols: &SymbolTable) -> Result<String, errors::Error> {
+    fn compile(&self, _symbols: &SymbolTable) -> Result<String, errors::Error> {
         let code = match self.definition {
             DataType::Enumeration(ref enumeration_type) => {
                 let enumeration_list = enumeration_type
@@ -916,7 +916,7 @@ impl Stmt {
 
     pub fn fun_stmt(
         name: Token,
-        params: Vec<Box<SymbolTableEntry>>,
+        params: Vec<SymbolTableEntry>,
         return_type: DataType,
         body: Vec<Stmt>,
         symbols: SymbolTable,

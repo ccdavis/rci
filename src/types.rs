@@ -61,7 +61,7 @@ impl RecordType {
         field_name: &str,
         location: &Token,
     ) -> Result<DataType, errors::Error> {
-        let f = self.fields.iter().find(|field| &field.name == field_name);
+        let f = self.fields.iter().find(|field| field.name == field_name);
         match f {
             None => Err(Error::new(
                 location,
@@ -254,13 +254,13 @@ impl DataType {
             DataValue::Tuple(_) => {
                 panic!("Literal value to type not implemented for Tuple type yet.!")
             }
-            DataValue::Enumeration(enum_value) => panic!("Can't create type from enum value"),
+            DataValue::Enumeration(_enum_value) => panic!("Can't create type from enum value"),
             DataValue::Bool(_) => DataType::Bool,
             DataValue::Lookup {
-                varient: v,
+                varient: _v,
                 content: c,
             } => {
-                let element_type = if c.len() == 0 {
+                let element_type = if c.is_empty() {
                     DataType::Unresolved
                 } else {
                     DataType::from_data_value(&c[0])
@@ -290,10 +290,10 @@ impl DataValue {
             DataValue::Number(n) => format!("{}", n),
             DataValue::Bool(b) => format!("{}", b),
             DataValue::Lookup {
-                varient: v,
+                varient: _v,
                 content: data,
             } => format!("{:?}", &data),
-            DataValue::User(u) => format!("{}", u.to_string()),
+            DataValue::User(u) => format!("{}", u),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
             _ => panic!("Print not implemented for this DataValue varient!"),
         }
@@ -322,7 +322,7 @@ impl DataValue {
             DataValue::Integer(_) | DataValue::Float(_) | DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
             DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
             DataValue::Lookup { .. } => "//not implemented".to_string(),
-            DataValue::User(ref u) => "//not implemented".to_string(),
+            DataValue::User(ref _u) => "//not implemented".to_string(),
             DataValue::Unresolved => panic!("Unresolved value. Incomplete parsing or compilation!"),
             _ => panic!("Not implemented: DataValue can't be translated to object code!"),
         }
