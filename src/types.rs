@@ -133,7 +133,6 @@ impl DataType {
             DataType::Integer | DataType::Float | DataType::Number => true,
             _ => false,
         }
-
     }
 }
 
@@ -232,12 +231,10 @@ impl DataType {
             TokenType::StringType => Some(DataType::Str),
             TokenType::BooleanType => Some(DataType::Bool),
             TokenType::ArrayType => Some(DataType::Lookup(Box::new(LookupType::Unresolved))),
-            TokenType::Identifier(n) => {
-                    Some(DataType::User(Box::new(UserType {
-                    name: n.to_owned(),
-                    definition: Box::new(DataType::Unresolved),                    
-               })))
-            },
+            TokenType::Identifier(n) => Some(DataType::User(Box::new(UserType {
+                name: n.to_owned(),
+                definition: Box::new(DataType::Unresolved),
+            }))),
             _ => None,
         }
     }
@@ -319,7 +316,9 @@ impl DataValue {
         let lexeme = self.print_value();
         match self {
             DataValue::Str(_) => format!("(rci_value) string_literal({})", &lexeme),
-            DataValue::Integer(_) | DataValue::Float(_) | DataValue::Number(_) => format!("NUMBER_VAL({})", &lexeme),
+            DataValue::Integer(_) | DataValue::Float(_) | DataValue::Number(_) => {
+                format!("NUMBER_VAL({})", &lexeme)
+            }
             DataValue::Bool(_) => format!("BOOL_VAL({})", &lexeme),
             DataValue::Lookup { .. } => "//not implemented".to_string(),
             DataValue::User(ref _u) => "//not implemented".to_string(),

@@ -201,8 +201,8 @@ impl Parser {
 
         while !self.is_finished() {
             if found_main {
-                let message =
-                    "Program entry point block already found,no more statements allowed.".to_string();
+                let message = "Program entry point block already found,no more statements allowed."
+                    .to_string();
                 return Err(parse_err(&self.previous(), &message));
             }
             let stmt = self.declaration(global_symbols)?;
@@ -283,7 +283,8 @@ impl Parser {
                 }
                 _ => {
                     let message =
-                        "Modules can only have declarations (type, fun, var, val, module)".to_string();
+                        "Modules can only have declarations (type, fun, var, val, module)"
+                            .to_string();
                     return Err(parse_err(&self.previous(), &message));
                 }
             }
@@ -734,7 +735,7 @@ impl Parser {
         panic!("Not implemented!")
     }
 
-    // Get the type signature either after a var decl like "var x: Int = " or 
+    // Get the type signature either after a var decl like "var x: Int = " or
     // in function parameters or for type aliasing.
     fn type_signature(&mut self, symbols: &SymbolTable) -> Result<DataType, ParseError> {
         let next_token = &self.peek();
@@ -743,30 +744,37 @@ impl Parser {
                 let msg = "Can't use as a type name.".to_string();
                 return Err(parse_err(next_token, &msg));
             }
-            Some(data_type) => data_type,    
+            Some(data_type) => data_type,
         };
 
-        if TRACE { println!("reading type signature {:?}",&partial_type);}
+        if TRACE {
+            println!("reading type signature {:?}", &partial_type);
+        }
 
         // Check for module name rather than type name
         if let DataType::User(ref u) = partial_type {
-            let user_type = if u.name.chars().next().unwrap().is_lowercase()    {
-                if TRACE { println!("get type in module {} ",&u.name);}
-                // It's a module name that should be folloed  
-                // by a user defined type name                
+            let user_type = if u.name.chars().next().unwrap().is_lowercase() {
+                if TRACE {
+                    println!("get type in module {} ", &u.name);
+                }
+                // It's a module name that should be folloed
+                // by a user defined type name
                 let mut full_user_type = u.clone();
-                full_user_type.name = self.fully_qualified_symbol()?;                            
-                if TRACE { println!("Got full name for type in module: {}",&full_user_type.name)}
+                full_user_type.name = self.fully_qualified_symbol()?;
+                if TRACE {
+                    println!("Got full name for type in module: {}", &full_user_type.name)
+                }
                 full_user_type
-            } else { // It's a type name
+            } else {
+                // It's a type name
                 self.advance();
                 // TODO: If we had generics here is where we would parse the
                 // generic parameter, like MyStruct<T> :
-                
+
                 u.clone()
             };
-            //let full_type = DataType::User(full_user_type);                
-            
+            //let full_type = DataType::User(full_user_type);
+
             let has_type = symbols.lookup(&user_type.name);
             if has_type.is_err() {
                 let message = format!(
@@ -775,13 +783,13 @@ impl Parser {
                 );
                 return Err(parse_err(&self.previous(), &message));
             }
-            return Ok(has_type.unwrap().data_type.clone())
+            return Ok(has_type.unwrap().data_type.clone());
         }
 
         // partial type was derived from the token at peek(), so advance past it:
         self.advance();
 
-        let full_type =  match partial_type {
+        let full_type = match partial_type {
             DataType::Lookup(_) => {
                 self.consume(
                     TokenType::Less,
@@ -795,16 +803,15 @@ impl Parser {
                     ));
                 }
 
-                let array_type =
-                    match DataType::from_token_type(&array_type_name.token_type) {
-                        Some(simple_type) => simple_type,
-                        None => {
-                            return Err(parse_err(
+                let array_type = match DataType::from_token_type(&array_type_name.token_type) {
+                    Some(simple_type) => simple_type,
+                    None => {
+                        return Err(parse_err(
                             &array_type_name,
                             "Can't make an array of this type. Types must be built-in or user defined."
                         ));
-                        }
-                    };
+                    }
+                };
 
                 self.consume(TokenType::Greater, "expect '>' after array member type.")?;
                 DataType::Lookup(Box::new(LookupType::Array {
@@ -819,7 +826,7 @@ impl Parser {
             // TODO Map and Set go here
             _ => partial_type,
         };
-        
+
         Ok(full_type)
     }
 
@@ -834,12 +841,12 @@ impl Parser {
         let v: Token = self.consume_identifier("Expect variable name")?;
         let variable_name = v.identifier_string();
 
-        if self.matches(&[TokenType::Colon]) {                        
+        if self.matches(&[TokenType::Colon]) {
             let lhs_type = self.type_signature(symbols)?;
 
             if self.matches(&[TokenType::Equal]) {
                 self.skip_if_newline();
-                let initializer = self.expression(symbols)?;                
+                let initializer = self.expression(symbols)?;
                 self.match_terminator()?;
                 let entry_number = symbols.entries.len();
                 let entry = if matches!(decl_type, DeclarationType::Var) {
@@ -873,8 +880,10 @@ impl Parser {
                 let var_name = &v.identifier_string();
                 Err(parse_err(
                     &v,
-                    &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
-                    
+                    &format!(
+                        "Variable declaration for '{}' requires initial value assignment with '='.",
+                        &var_name
+                    ),
                 ))
             }
         } else {
@@ -933,7 +942,10 @@ impl Parser {
                 let var_name = &v.identifier_string();
                 Err(parse_err(
                     &v,
-                    &format!("Variable declaration for '{}' requires initial value assignment with '='.",&var_name),
+                    &format!(
+                        "Variable declaration for '{}' requires initial value assignment with '='.",
+                        &var_name
+                    ),
                 ))
             }
         }
@@ -1218,8 +1230,13 @@ impl Parser {
         loop {
             if self.matches(&[LeftParen]) {
                 // replace the expression with the full function call
-                if TRACE { println!("In parser for calls, expr is {:?} and is_type_name is: {}",&expr, &expr.is_type_name());}
-
+                if TRACE {
+                    println!(
+                        "In parser for calls, expr is {:?} and is_type_name is: {}",
+                        &expr,
+                        &expr.is_type_name()
+                    );
+                }
 
                 expr = if expr.is_type_name() {
                     self.finish_type_constructor(expr, symbols)?
@@ -1268,7 +1285,7 @@ impl Parser {
         if TRACE {
             println!("In finish_getter:");
         }
-        
+
         let dot = self.previous();
 
         // The remainder has to be a call node (variable, lookup, function call, getter)
@@ -1360,12 +1377,15 @@ impl Parser {
     // Anywhere we expect a identifier could use module separators, use this to read the full
     // string
     fn fully_qualified_symbol(&mut self) -> Result<String, ParseError> {
-        let first_part = self.consume_identifier("Expected identifier")?;        
+        let first_part = self.consume_identifier("Expected identifier")?;
         let mut fully_qualified_name: String = first_part.identifier_string();
         //self.advance();
         while self.matches(&[MODULE_SEPARATOR]) {
             fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-            let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
+            let part = self.consume_identifier(&format!(
+                "Expected identifier after '{}'.",
+                &MODULE_SEPARATOR.print()
+            ))?;
             fully_qualified_name.push_str(&part.identifier_string());
         }
         Ok(fully_qualified_name)
@@ -1381,13 +1401,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
-            Str(_) | 
-            Number(_) | 
-            Integer(_) | 
-            Float(_) => {
+            Str(_) | Number(_) | Integer(_) | Float(_) => {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
-            }                        
+            }
             Identifier(name) => {
                 if TRACE {
                     println!("identifier primary expression:");
@@ -1396,7 +1413,10 @@ impl Parser {
                 let mut fully_qualified_name = name;
                 while self.matches(&[MODULE_SEPARATOR]) {
                     fully_qualified_name.push_str(&MODULE_SEPARATOR.print());
-                    let part = self.consume_identifier(&format!("Expected identifier after '{}'.",&MODULE_SEPARATOR.print()))?;
+                    let part = self.consume_identifier(&format!(
+                        "Expected identifier after '{}'.",
+                        &MODULE_SEPARATOR.print()
+                    ))?;
                     fully_qualified_name.push_str(&part.identifier_string());
                 }
                 if TRACE {

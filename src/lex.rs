@@ -229,7 +229,6 @@ impl TokenType {
             Number(_) | Integer(_) | Float(_) => true,
             _ => false,
         }
-
     }
 
     // Store this in the scanner struct for quick lookup
@@ -566,18 +565,14 @@ impl Scanner {
         if integer_literal {
             match content.parse() {
                 Ok(value) => TokenType::Integer(value),
-                Err(msg) => {
-                    TokenType::ScanError(format!("{} when parsing '{}'", msg, &content))
-                }
-            }            
+                Err(msg) => TokenType::ScanError(format!("{} when parsing '{}'", msg, &content)),
+            }
         } else {
             match content.parse() {
                 Ok(value) => TokenType::Float(value),
-                Err(msg) => {
-                    TokenType::ScanError(format!("{} when parsing '{}'", msg, &content))
-                }
-            }            
-        }                    
+                Err(msg) => TokenType::ScanError(format!("{} when parsing '{}'", msg, &content)),
+            }
+        }
     }
 
     fn is_alpha(&self, c: char) -> bool {

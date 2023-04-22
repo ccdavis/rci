@@ -78,8 +78,7 @@ impl Builder {
                 let which_result = std::str::from_utf8(&result.stdout);
                 match which_result {
                     Ok(res) => {
-                        if res.trim().is_empty()
-                         {
+                        if res.trim().is_empty() {
                             None
                         } else {
                             Some(std::path::Path::new(res.trim()).to_path_buf())
@@ -126,7 +125,7 @@ impl Builder {
         let tcc_path = Builder::check_program_path("tcc", "/usr/bin/tcc");
         if tcc_path.exists() {
             tcc_path
-        } else {            
+        } else {
             eprintln!("\nBuild configuration error: No TCC compiler located. Add one to your path or to /usr/bin (default Linux installation.)");
             eprintln!("On Ubuntu or Debian Linux do 'sudo apt install tcc' or consult your operating system documentation.");
             eprintln!("Or you can download TCC directly from http://download.savannah.gnu.org/releases/tinycc/");
@@ -242,8 +241,12 @@ impl Builder {
 
         let code_to_write = use_gc + &use_runtime + &use_standard_lib + object_code;
 
-        fs::write(&tmp_ir_path, code_to_write).unwrap_or_else(|_| panic!("\nBuild error: Problem writing intermediate representation code to {}",
-            &tmp_ir_path.to_str().unwrap()));
+        fs::write(&tmp_ir_path, code_to_write).unwrap_or_else(|_| {
+            panic!(
+                "\nBuild error: Problem writing intermediate representation code to {}",
+                &tmp_ir_path.to_str().unwrap()
+            )
+        });
         tmp_ir_path
     }
 
@@ -560,7 +563,7 @@ mod tests {
     #[test]
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_ENUMS)?.is_empty());
-        assert!(type_check(SRC_ENUMS).is_ok() );
+        assert!(type_check(SRC_ENUMS).is_ok());
         Ok(())
     }
 

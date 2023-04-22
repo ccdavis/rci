@@ -148,16 +148,15 @@ impl TypeCheck for BinaryNode {
         if self.operator.is_comparison_operator() {
             // Allow boolean comparison with = or <>
 
-            if (left_type.is_numeric() && right_type.is_numeric()) ||                
-                (matches!(left_type, DataType::Bool)
-                    && matches!(right_type, DataType::Bool)) ||
-                (matches!(left_type, DataType::Enumeration(_))
+            if (left_type.is_numeric() && right_type.is_numeric())
+                || (matches!(left_type, DataType::Bool) && matches!(right_type, DataType::Bool))
+                || (matches!(left_type, DataType::Enumeration(_))
                     && matches!(right_type, DataType::Enumeration(_)))
-                && (matches!(self.operator.token_type, Equal)
-                    || matches!(self.operator.token_type, LessGreater))
+                    && (matches!(self.operator.token_type, Equal)
+                        || matches!(self.operator.token_type, LessGreater))
             {
                 return Ok(DataType::Bool);
-            
+
             // TODO: support String comparison
             } else {
                 let message = format!(
@@ -170,23 +169,24 @@ impl TypeCheck for BinaryNode {
 
         if self.operator.is_arithmetic_operator() {
             // Allow string concatenation with '+'
-            if matches!(self.operator.token_type, Plus) && 
-            matches!(left_type, DataType::Str) && matches!(right_type, DataType::Str) {
-                    return Ok(DataType::Str);
-                
+            if matches!(self.operator.token_type, Plus)
+                && matches!(left_type, DataType::Str)
+                && matches!(right_type, DataType::Str)
+            {
+                return Ok(DataType::Str);
             } // allow + for strings
             use DataType::*;
             return match (left_type, right_type) {
-                (_number,Number) => Ok(DataType::Number),
+                (_number, Number) => Ok(DataType::Number),
                 (Integer, Integer) => Ok(DataType::Integer),
                 (Float, Float) => Ok(DataType::Float),
                 _ => {
                     let message = format!(
                         "Invalid operand types for operator {}, expected Flt,Flt or Int,Int or Num,Num. Numeric types must match for arithmetic operations.",
-                        &self.operator.print());                    
+                        &self.operator.print());
                     Err(Error::new(&self.operator, ErrorType::Type, message))
                 }
-            }; // match            
+            }; // match
         }
 
         let message = format!(
@@ -862,10 +862,11 @@ impl TypeCheck for UnaryNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         use TokenType::*;
         let right_type = self.expr.determine_type(symbols)?;
-        if (matches!(right_type, DataType::Integer) || 
-            matches!(right_type, DataType::Float) ||
-            matches!(right_type, DataType::Number))  
-                && matches!(self.operator.token_type, Minus) {
+        if (matches!(right_type, DataType::Integer)
+            || matches!(right_type, DataType::Float)
+            || matches!(right_type, DataType::Number))
+            && matches!(self.operator.token_type, Minus)
+        {
             return Ok(right_type);
         }
 
@@ -1018,7 +1019,7 @@ impl Compiler for VariableNode {
 
 #[derive(Clone, Debug)]
 pub struct AssignmentNode {
-    name: Token,    
+    name: Token,
     value: Box<Expr>,
     distance: Option<usize>,
     index: Option<usize>,
@@ -1082,8 +1083,10 @@ impl Compiler for AssignmentNode {
 
         let assignee_decl_ste = match symbols.lookup(&assignee_name) {
             Ok(ste) => ste,
-            Err(_) => panic!("Internal compiler error, {} not in symbols.",&assignee_name),
-
+            Err(_) => panic!(
+                "Internal compiler error, {} not in symbols.",
+                &assignee_name
+            ),
         };
 
         let code = match value_to_store.data_type {
@@ -1093,7 +1096,11 @@ impl Compiler for AssignmentNode {
                     &assignee_name, &assignee_name, &value_to_store.code
                 )
             }
-            _ => format!("{} = {}", Stmt::codegen_symbol(assignee_decl_ste), &value_to_store.code),
+            _ => format!(
+                "{} = {}",
+                Stmt::codegen_symbol(assignee_decl_ste),
+                &value_to_store.code
+            ),
         };
 
         Ok(ObjectCode {
@@ -1227,21 +1234,11 @@ impl Expr {
             Unary(n) => {
                 format!("{} {}", &n.operator.print(), &n.expr.print())
             }
-            Literal(ref n) => {
-                n.print()
-            }
-            Grouping(n) => {
-                n.expr.print()
-            }
-            Variable(_n) => {
-                "Variable Expression".to_string()
-            }
-            Assignment(_n) => {
-                "Assignment Expression".to_string()
-            }
-            Call(_n) => {
-                "Call Expression".to_string()
-            }
+            Literal(ref n) => n.print(),
+            Grouping(n) => n.expr.print(),
+            Variable(_n) => "Variable Expression".to_string(),
+            Assignment(_n) => "Assignment Expression".to_string(),
+            Call(_n) => "Call Expression".to_string(),
             Logical(n) => {
                 format!(
                     "{} {} {}",
