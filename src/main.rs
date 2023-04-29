@@ -518,6 +518,28 @@ mod tests {
             }        
     ";
 
+    // Only the first type error on each code block is returned; the type checker fails after each
+    // block failure (to be improved)
+    // This code should return three errors: The type mismatch on math operators in main
+    // and the function, and the failure to infer the LHS type in the funtion code.
+    const SRC_INVALID_NUMERIC_OPERATIONS: &str ="
+            val x: Int = 5
+            val y: Flt = 8.0
+
+            fun bad_type_combo(t1: Int, t2: Flt): Int {
+                val r = t1 / t2
+                return r
+            }
+
+            {
+                val z: Int = x + y
+                val a: Int = x * y
+
+                print z,a
+
+            }
+    ";
+
     pub fn parse(code: &str) -> Result<Vec<Stmt>, Vec<errors::Error>> {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
@@ -542,6 +564,21 @@ mod tests {
             return Ok(());
         }
         Err(type_errors)
+    }
+
+    #[test]
+    fn test_typecheck_incompatible_numeric_ops() {
+        let results = type_check(SRC_INVALID_NUMERIC_OPERATIONS);
+        assert!(results.is_err());
+        
+        if let Err(ref errors) = results {
+            //println!("{:?}", errors);
+            assert_eq!(3, errors.len());
+            
+
+        }
+
+
     }
 
     #[test]
