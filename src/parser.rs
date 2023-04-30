@@ -74,8 +74,7 @@ impl Parser {
     }
 
     fn is_finished(&self) -> bool {
-        matches!(self.peek().token_type,TokenType::Eof)
-        
+        matches!(self.peek().token_type,TokenType::Eof)        
     }
 
     fn peek(&self) -> Token {
@@ -149,7 +148,7 @@ impl Parser {
             }
 
             match self.peek().token_type {
-                Class | Fun | Var | Val | For | If | While | Print | Break | Return => return,
+                 Fun | Var | Val | For | If | While | Print | Break | Return => return,
                 _ => {
                     self.advance();
                 }
@@ -1399,7 +1398,7 @@ impl Parser {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
-            Str(_) | Number(_) | Integer(_) | Float(_) => {
+            Str(_) |  Integer(_) | Float(_) => {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }

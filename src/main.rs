@@ -336,7 +336,7 @@ mod tests {
     use super::*;
 
     // Only test declaring record type
-    const SRC_RECORD_DECL: &str = "type Customer = Rec { name: Str, id: Num, discount: Bool }
+    const SRC_RECORD_DECL: &str = "type Customer = Rec { name: Str, id: Int, discount: Bool }
 		{
 			print \"Hello\"
 		}
@@ -588,63 +588,63 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_ENUMS3)?.is_empty());
         assert!(type_check(SRC_ENUMS3).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_ENUMS)?.is_empty());
         assert!(type_check(SRC_ENUMS).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_decl() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_DECL)?.is_empty());
         assert!(type_check(SRC_RECORD_DECL).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_PARAM)?.is_empty());
         assert!(type_check(SRC_RECORD_PARAM).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_RETURN)?.is_empty());
         assert!(type_check(SRC_RECORD_RETURN).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_getter() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_GETTER)?.is_empty());
         assert!(type_check(SRC_RECORD_GETTER).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_TYPE_INFERENCE)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_INFERENCE).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_record_type_explicit() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_TYPE_EXPLICIT)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_EXPLICIT).is_ok());
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_modules() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_MODULE)?.is_empty());
         assert!(type_check(SRC_MODULE).is_ok());
@@ -652,7 +652,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[test]    
     fn test_module_types() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_MODULE_TYPES)?.is_empty());
         assert!(type_check(SRC_MODULE_TYPES).is_ok());

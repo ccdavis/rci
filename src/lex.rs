@@ -26,8 +26,7 @@ pub enum TokenType {
     LessEqual,
     DotDot,
 
-    // literals
-    Number(f64),
+    // literals    
     Integer(i64),
     Float(f64),
     Range(i64, i64),
@@ -35,8 +34,7 @@ pub enum TokenType {
     Byte(u8),
 
     Identifier(String),
-    Str(String),
-    Bool,
+    Str(String),    
 
     Comment(String),
 
@@ -51,6 +49,7 @@ pub enum TokenType {
     ArrayType,
     RecordType,
     EnumType,
+    UnionType,
 
     // keywords
     In,
@@ -60,19 +59,18 @@ pub enum TokenType {
     Difference,
     Complement,
     Break,
-    And,
-    Class,
+    And,    
     Else,
     False,
     Fun,
     For,
     If,
-    Nil,
+
     Not,
     Or,
     Print,
     Return,
-    Super,
+    
     This,
     True,
     Var,
@@ -94,8 +92,7 @@ impl TokenType {
     pub fn print_value(&self) -> String {
         use TokenType::*;
         match self {
-            Identifier(name) => (&name).to_string(),
-            Number(value) => format!("{}", value),
+            Identifier(name) => (&name).to_string(),            
             Integer(value) => format!("{}", value),
             Float(value) => format!("{}", value),
             AsciiChar(value) => format!("{}", value),
@@ -146,18 +143,15 @@ impl TokenType {
             Break => "break",
             And => "and",
             Or => "or",
-            Class => "Class",
             Else => "else",
             False => "false",
             Fun => "fun",
             For => "for",
-            If => "if",
-            Nil => "nil",
+            If => "if",            
             Not => "not",
             LessGreater => "<>",
             Print => "print",
-            Return => "return",
-            Super => "super",
+            Return => "return",            
             This => "this",
             True => "true",
             Var => "var",
@@ -170,12 +164,12 @@ impl TokenType {
             Calls => "CALLS",
             Eol => "newline",
 
-            // Type names
-            NumberType => "Num",
+            // Type names            
             IntegerType => "Int",
             FloatType => "Flt",
             CharType => "Char",
             ByteType => "Byte",
+            UnionType => "Union",
 
             StringType => "Str",
             BooleanType => "Bool",
@@ -186,7 +180,6 @@ impl TokenType {
             _ => {
                 formatted = Some(match self {
                     // literals
-                    Number(n) => format!("num({})", n),
                     Integer(i) => format!("int({})", i),
                     Float(f) => format!("flt({})", f),
                     AsciiChar(c) => format!("char({})", c),
@@ -226,7 +219,7 @@ impl TokenType {
     pub fn is_numeric(&self) -> bool {
         use TokenType::*;
         match self {
-            Number(_) | Integer(_) | Float(_) => true,
+            Integer(_) | Float(_) => true,
             _ => false,
         }
     }
@@ -235,8 +228,7 @@ impl TokenType {
     pub fn reserved_words() -> HashMap<String, TokenType> {
         use TokenType::*;
         let words = vec![
-            StringType,
-            NumberType,
+            StringType,            
             IntegerType,
             FloatType,
             ByteType,
@@ -254,19 +246,16 @@ impl TokenType {
             Difference,
             Complement,
             And,
-            Break,
-            Class,
+            Break,            
             Else,
             False,
             Fun,
             For,
-            If,
-            Nil,
+            If,            
             Not,
             Or,
             Print,
-            Return,
-            Super,
+            Return,            
             This,
             True,
             Var,
@@ -288,8 +277,7 @@ impl TokenType {
 
     pub fn data_type(&self) -> TokenType {
         use TokenType::*;
-        match self {
-            Number(_) => NumberType,
+        match self {            
             Integer(_) => IntegerType,
             Float(_) => FloatType,
             Str(_) => StringType,
