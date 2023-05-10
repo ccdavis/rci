@@ -13,6 +13,9 @@ The main idea behind RCI is to try out some familiar language features combined 
 * Improve build system to allow module imports and build more than one source file at a time. Modules are part of the language already but the builder doesn't associate files with modules and can't read more than one file at once.
 * Redo the code generation with an actual code generation library --It should be mostly SSA form.
 * Enhance the standard library with some file support
+* Have the compiler tool ook for back-end (tcc, gcc, linkers) and organize intermediate and binary output files (mostly done)
+* Support creating a project work area, like ___Rust's___ `cargo new` and doing builds in that area
+* Auto formatter
 
 ### Near term language to-do list
 
@@ -122,7 +125,7 @@ On my PC, the Mandelbrot sample program compiles and runs with TCC or GCC as the
 
 The interpreter has been removed; it was a tree-walk style that was hard to maintain in parallel with the compiler. I may add in a byte code target at some point as a learning exercise.
 
-Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.  I followed along with the book and implemented the first interpreter in ___Rust___. After getting the interpreter running I added static types and made substantial changes to the language. Building the second interpreter -- the byte code compiler and VM -- looked quite challenging with ___Rust___, at least if you want good performance. Instead of implementing it I chose to build a regular compiler.
+Originally the language somewhat resembled "Lox" from the book, but with explicit types and user definable types.  I followed along with the book and implemented the first interpreter in Rust. After getting the interpreter running I added static types and made substantial changes to the language. Building the second interpreter -- the byte code compiler and VM -- looked quite challenging with Rust, at least if you want good performance. Instead of implementing it I chose to build a regular compiler.
 
 
 ## Current Language Proposal
@@ -141,8 +144,6 @@ Originally the language somewhat resembled "Lox" from the book, but with explici
 * Fixed-length arrays
 
 ###  Features in development
-
-Add a few more fundamental types: Int, Flt (currently both in Num), Chr and Byte. Add a bit more string functionality to the standard lib. Also add a few basic I/O features like standard in and files.This stuff isn't hard, I've just been putting it off.
 
 WIP to add string versions of enums:
 
@@ -356,16 +357,6 @@ fun Metal.color(this): Color= {
 * Table types made of records supporting special table-like operations (think Pandas-light)
 
 
-### Engineering to-do list
-
-* Garbage collector
-* Add a basic module system to load libraries.
-* Expand standard library
-* Look for back-end (tcc, gcc, linkers) and organize intermediate and binary output files (mostly done)
-* Support creating a project work area, like ___Rust's___ `cargo new` and doing builds in that area
-* Auto formatter
-* Compile to bytecode
-
 
 ## Performance
 
@@ -420,7 +411,7 @@ Just as a way to learn more about ___Rust___ it would be interesting to profile 
 Language:
 ============
 
-Expand this into a very informal  language specification.
+TODO: Expand this into a very informal  language specification.
 
 ### Program
 
@@ -471,10 +462,22 @@ type My_data = Rec  {
 	...
 }
 ```
-
+Make new record type and new record instance:
+```
+	type MyData = Rec {
+		f1: Int
+		f2: Flt
+		f3: Str
+		f4: Bool
+	}
+	
+	var r =  My_data(f1: 5, f2: 1.3, f3: "abc", f4: true)
+	r.f2 := 0.5
+	
+```
 #### Arrays
 ```
-type My_dataset_type = array<my_data>
+type My_dataset_type = array<entyry_type>
 ```
 
 ### Expressions

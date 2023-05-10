@@ -17,6 +17,14 @@ const TRACE: bool = false;
 // or multiple module names.
 pub const MODULE_SEPARATOR: TokenType = TokenType::At;
 
+pub fn print_line(tokens: &[Token], line: usize, focus: Option<Token>) -> String {
+    tokens.iter()
+        .filter(|t| t.line == line)
+        .map(|tt| tt.print())
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 pub struct Parser {
     tokens: Vec<Token>,       // ordered tokens in current file
     pub modules: Vec<String>, // Each entry is where the parser is in module namespace
