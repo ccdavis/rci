@@ -36,13 +36,15 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>, input_file: &Path) -> Self {
+    pub fn new(tokens: Vec<Token>, input_file: Option<&Path>) -> Self {
+        let p = input_file.unwrap_or(Path::new("NO INPUT FILE"));
+        let filename = PathBuf::from(p);
         Self {
             tokens,
             modules: Vec::new(),
             current: 0,
             errors: Vec::new(),
-            filename: input_file.to_path_buf(),
+            filename,
         }
     }
 

@@ -160,24 +160,34 @@ impl Builder {
         Builder::read_source(src_full_path.as_os_str())
     }
 
-    pub fn compile(&mut self, code: &str) -> String {
-        let mut had_type_error = false;
-        let mut global_symbols = symbol_table::SymbolTable::global();
-        let mut scanner = lex::Scanner::new(code.to_string());
-        let tokens = scanner.tokenize();
-        let mut ast = Parser::new(tokens);
+    //  Emits C, adds to symbol table
+    // The main difference is that files that aren't the main program are modules
+    // like with Rust., so we have to add a bit of source boiler-plate.
+    pub fn compile_module(&mut self, input_file: &std::path::Path, global_symbols: &mut symbol_table::SymbolTable) -> String {
+        "".to_string()
 
-        let statements = match ast.parse(&mut global_symbols) {
+    }
+
+    pub fn compile_source_file(&mut self, source_file: &std::path::Path, global_symbols: &mut symbol_table::SymbolTable) -> String {
+        let mut had_type_error = false;
+        let user_code = self.read_user_source(source_file.as_os_str());
+
+        let mut scanner = lex::Scanner::new(user_code.to_string());
+        let tokens = scanner.tokenize();
+        let mut ast = Parser::new(tokens, Some(source_file));
+
+        // We can catch errors from parsing and include a line of source code
+        let statements = match ast.parse(global_symbols) {
             Ok(stmts) => stmts,
             Err(_parse_errors) => {
                 let msg = "Parse errors in source code. Compilation halted.".red();
                 eprintln!("\n{}\n", &msg);
                 std::process::exit(3);
+
             }
         };
-
-        statements
-            .iter()
+        
+        statements.iter()
             .for_each(|stmt| 
                 if let Err(type_error) = stmt.check_types(&global_symbols) {                
                     had_type_error = true;
@@ -191,9 +201,6 @@ impl Builder {
             );
             std::process::exit(3);
         }
-
-        self.had_compiler_error = false;
-
         let mut compiled_statements: Vec<String> = Vec::new();
         for stmt in &statements {
             match stmt.compile(&global_symbols) {
@@ -205,6 +212,21 @@ impl Builder {
             };
         }
         compiled_statements.join("\n")
+    }
+
+    
+    pub fn compile_program(&mut self, main_file: &std::path::Path) -> String {        
+        let mut global_symbols = symbol_table::SymbolTable::global();            
+        self.had_compiler_error = false;
+
+        let stdlib_src_full_path = self.standard_lib_source_directory.join("standard_lib.rci");
+        let compiled_stdlib = self.compile_source_file(&stdlib_src_full_path, &mut global_symbols);
+        let compiled_main = self.compile_source_file(main_file, &mut global_symbols);
+        compiled_stdlib + &compiled_main
+
+
+
+        
     }
 
     fn prepare_build(&self, object_code: &str, program_name: &str) -> std::path::PathBuf {
@@ -309,12 +331,9 @@ fn main() {
         }
     };
 
-    let mut builder = Builder::new(src_dir.unwrap(), false);
-    let standard_lib_code = builder.read_standard_lib_source();
-    let user_code = builder.read_user_source(program_filename.unwrap());
-    let program_code = standard_lib_code + &user_code;
-
-    let object_code = builder.compile(&program_code);
+    let mut builder = Builder::new(src_dir.unwrap(), false);    
+    let main_file = program_filename.expect("Couldn't fine file for main.");
+    let object_code = builder.compile_program(&std::path::Path::new(main_file));
     let ir_src = builder.prepare_build(&object_code, program_name);
     if builder.had_compiler_error {
         eprintln!("\nError during compilation. Will not link or run.");
@@ -544,7 +563,7 @@ mod tests {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
         let tokens = scanner.tokenize();
-        let mut ast = Parser::new(tokens);
+        let mut ast = Parser::new(tokens, None);
         ast.parse(&mut global_symbols)
     }
 
@@ -553,7 +572,7 @@ mod tests {
         let mut global_symbols = symbol_table::SymbolTable::global();
         let mut scanner = lex::Scanner::new(code.to_string());
         let tokens = scanner.tokenize();
-        let mut ast = Parser::new(tokens);
+        let mut ast = Parser::new(tokens, None);
         let statements = ast.parse(&mut global_symbols)?;
         for s in statements {
             if let Err(type_error) = s.check_types(&global_symbols) {
