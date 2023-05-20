@@ -8,6 +8,8 @@ use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types;
 use crate::types::*;
+use std::path::PathBuf;
+use std::path::Path;
 
 type ParseError = crate::errors::Error;
 
@@ -30,15 +32,17 @@ pub struct Parser {
     pub modules: Vec<String>, // Each entry is where the parser is in module namespace
     current: usize,           // index into the tokens vec; tracks the parser's progress
     errors: Vec<ParseError>,  // After each parse err a "sync" is attempted and the error stored
+    filename: PathBuf,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, input_file: &Path) -> Self {
         Self {
             tokens,
             modules: Vec::new(),
             current: 0,
             errors: Vec::new(),
+            filename: input_file.to_path_buf(),
         }
     }
 
