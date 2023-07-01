@@ -1,0 +1,26 @@
+
+module time {
+
+	type Date = Rec {
+		day: Int
+		month: Int
+		year: Int
+	}
+
+
+	fun format_date(d: Date): Str {
+		return "Not implemented!"
+	}
+
+}
+
+fun test_for_date():Bool {
+	var d: time@Date = time@Date(day: 5, month: 3, year: 1985)
+	print time@format_date(d)
+	return true
+}
+
+
+{
+	test_for_date()
+}

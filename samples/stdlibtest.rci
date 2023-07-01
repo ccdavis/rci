@@ -1,0 +1,25 @@
+
+
+fun try_clock(): Bool {
+	
+	val time = std@clock()
+	print "Hello!, start clock at ",time
+	
+	val x = std@t1()
+	
+	return true
+}
+
+val initial_time = std@clock()
+
+{
+	print try_clock()
+	
+	var time_2 = std@clock()
+	var y = std@t1()	
+	print "\n"
+	std@random_seed(time_2)
+	val r = std@random()
+	print "Random number: ",r,"\n"
+	
+}
