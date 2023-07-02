@@ -10,11 +10,11 @@ use std::fmt;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum DeclarationType {
-    Var,   // all types
-    Val,   // all types
-    Cpy,   // all types
-    Fun,   // if functions aren't first class, no specific type associated    
-    Type,  // user defined, the name in the symbol table entry will have the definition
+    Var,  // all types
+    Val,  // all types
+    Cpy,  // all types
+    Fun,  // if functions aren't first class, no specific type associated
+    Type, // user defined, the name in the symbol table entry will have the definition
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -294,7 +294,7 @@ impl DataValue {
 
     pub fn from_token_type(tt: &TokenType) -> DataValue {
         match tt {
-            TokenType::Str(s) => DataValue::Str(s.to_owned()),            
+            TokenType::Str(s) => DataValue::Str(s.to_owned()),
             TokenType::Integer(i) => DataValue::Integer(*i),
             TokenType::Float(f) => DataValue::Float(*f),
             TokenType::False => DataValue::Bool(false),

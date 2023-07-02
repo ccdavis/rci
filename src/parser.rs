@@ -1,5 +1,4 @@
 use crate::errors::parse_err;
-
 use crate::expression::*;
 use crate::lex::Token;
 use crate::lex::TokenType;
@@ -8,9 +7,8 @@ use crate::statement::Stmt;
 use crate::symbol_table::*;
 use crate::types;
 use crate::types::*;
-use std::path::PathBuf;
 use std::path::Path;
-
+use std::path::PathBuf;
 type ParseError = crate::errors::Error;
 
 const TRACE: bool = false;
@@ -20,7 +18,8 @@ const TRACE: bool = false;
 pub const MODULE_SEPARATOR: TokenType = TokenType::At;
 
 pub fn print_line(tokens: &[Token], line: usize, focus: Option<Token>) -> String {
-    tokens.iter()
+    tokens
+        .iter()
         .filter(|t| t.line == line)
         .map(|tt| tt.print())
         .collect::<Vec<String>>()
@@ -88,7 +87,7 @@ impl Parser {
     }
 
     fn is_finished(&self) -> bool {
-        matches!(self.peek().token_type,TokenType::Eof)        
+        matches!(self.peek().token_type, TokenType::Eof)
     }
 
     fn peek(&self) -> Token {
@@ -162,7 +161,7 @@ impl Parser {
             }
 
             match self.peek().token_type {
-                 Fun | Var | Val | For | If | While | Print | Break | Return => return,
+                Fun | Var | Val | For | If | While | Print | Break | Return => return,
                 _ => {
                     self.advance();
                 }
@@ -188,14 +187,30 @@ impl Parser {
     pub fn parse(
         &mut self,
         global_symbols: &mut SymbolTable,
+        is_module: bool,
     ) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
-        while !self.is_finished() {
-            match self.program(global_symbols) {
-                Ok(stmt) => statements.push(stmt),
-                Err(parse_error) => self.error(parse_error),
+
+        if is_module {
+            self.skip_all_newlines();
+            if self.matches(&[TokenType::Module]) {
+                match self.module(global_symbols) {
+                    Ok(stmt) => statements.push(stmt),
+                    Err(parse_error) => self.error(parse_error),
+                }
+            } else {
+                let mod_err = parse_err(&self.peek(), "Expected a module declaration.");
+                self.error(mod_err)
+            }
+        } else {
+            while !self.is_finished() {
+                match self.program(global_symbols) {
+                    Ok(stmt) => statements.push(stmt),
+                    Err(parse_error) => self.error(parse_error),
+                }
             }
         }
+
         if !self.errors.is_empty() {
             Err(self.errors.clone())
         } else {
@@ -1412,7 +1427,7 @@ impl Parser {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }
-            Str(_) |  Integer(_) | Float(_) => {
+            Str(_) | Integer(_) | Float(_) => {
                 self.advance();
                 Ok(Expr::literal(self.previous()))
             }

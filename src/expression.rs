@@ -1249,9 +1249,9 @@ impl Expr {
             }
             Setter(_n) => "Setter  Expression".to_string(),
             Getter(_n) => "Getter Expression".to_string(),
-            UserTypeLiteral(ref utn) => format!("UserType literal: {}",utn.type_name.print()), 
+            UserTypeLiteral(ref utn) => format!("UserType literal: {}", utn.type_name.print()),
 
-            _ => panic!("Not implemented for '{:?}",&self),
+            _ => panic!("Not implemented for '{:?}", &self),
         };
         Expr::parenthesize(inside)
     }

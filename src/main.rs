@@ -163,12 +163,20 @@ impl Builder {
     //  Emits C, adds to symbol table
     // The main difference is that files that aren't the main program are modules
     // like with Rust., so we have to add a bit of source boiler-plate.
-    pub fn compile_module(&mut self, input_file: &std::path::Path, global_symbols: &mut symbol_table::SymbolTable) -> String {
+    pub fn compile_module(
+        &mut self,
+        input_file: &std::path::Path,
+        global_symbols: &mut symbol_table::SymbolTable,
+    ) -> String {
         "".to_string()
-
     }
 
-    pub fn compile_source_file(&mut self, source_file: &std::path::Path, global_symbols: &mut symbol_table::SymbolTable) -> String {
+    pub fn compile_source_file(
+        &mut self,
+        source_file: &std::path::Path,
+        global_symbols: &mut symbol_table::SymbolTable,
+        is_module: bool,
+    ) -> String {
         let mut had_type_error = false;
         let user_code = self.read_user_source(source_file.as_os_str());
 
@@ -177,22 +185,21 @@ impl Builder {
         let mut ast = Parser::new(tokens, Some(source_file));
 
         // We can catch errors from parsing and include a line of source code
-        let statements = match ast.parse(global_symbols) {
+        let statements = match ast.parse(global_symbols, is_module) {
             Ok(stmts) => stmts,
             Err(_parse_errors) => {
                 let msg = "Parse errors in source code. Compilation halted.".red();
                 eprintln!("\n{}\n", &msg);
                 std::process::exit(3);
-
             }
         };
-        
-        statements.iter()
-            .for_each(|stmt| 
-                if let Err(type_error) = stmt.check_types(&global_symbols) {                
-                    had_type_error = true;
-                    eprintln!("{}\n", &type_error.format());                                
-            });
+
+        statements.iter().for_each(|stmt| {
+            if let Err(type_error) = stmt.check_types(&global_symbols) {
+                had_type_error = true;
+                eprintln!("{}\n", &type_error.format());
+            }
+        });
 
         if had_type_error {
             eprintln!(
@@ -214,19 +221,15 @@ impl Builder {
         compiled_statements.join("\n")
     }
 
-    
-    pub fn compile_program(&mut self, main_file: &std::path::Path) -> String {        
-        let mut global_symbols = symbol_table::SymbolTable::global();            
+    pub fn compile_program(&mut self, main_file: &std::path::Path) -> String {
+        let mut global_symbols = symbol_table::SymbolTable::global();
         self.had_compiler_error = false;
 
         let stdlib_src_full_path = self.standard_lib_source_directory.join("standard_lib.rci");
-        let compiled_stdlib = self.compile_source_file(&stdlib_src_full_path, &mut global_symbols);
-        let compiled_main = self.compile_source_file(main_file, &mut global_symbols);
+        let compiled_stdlib =
+            self.compile_source_file(&stdlib_src_full_path, &mut global_symbols, true);
+        let compiled_main = self.compile_source_file(main_file, &mut global_symbols, false);
         compiled_stdlib + &compiled_main
-
-
-
-        
     }
 
     fn prepare_build(&self, object_code: &str, program_name: &str) -> std::path::PathBuf {
@@ -331,7 +334,7 @@ fn main() {
         }
     };
 
-    let mut builder = Builder::new(src_dir.unwrap(), false);    
+    let mut builder = Builder::new(src_dir.unwrap(), false);
     let main_file = program_filename.expect("Couldn't fine file for main.");
     let object_code = builder.compile_program(&std::path::Path::new(main_file));
     let ir_src = builder.prepare_build(&object_code, program_name);
@@ -541,7 +544,7 @@ mod tests {
     // block failure (to be improved)
     // This code should return three errors: The type mismatch on math operators in main
     // and the function, and the failure to infer the LHS type in the funtion code.
-    const SRC_INVALID_NUMERIC_OPERATIONS: &str ="
+    const SRC_INVALID_NUMERIC_OPERATIONS: &str = "
             val x: Int = 5
             val y: Flt = 8.0
 
@@ -564,7 +567,7 @@ mod tests {
         let mut scanner = lex::Scanner::new(code.to_string());
         let tokens = scanner.tokenize();
         let mut ast = Parser::new(tokens, None);
-        ast.parse(&mut global_symbols)
+        ast.parse(&mut global_symbols, false)
     }
 
     pub fn type_check(code: &str) -> Result<(), Vec<errors::Error>> {
@@ -573,7 +576,7 @@ mod tests {
         let mut scanner = lex::Scanner::new(code.to_string());
         let tokens = scanner.tokenize();
         let mut ast = Parser::new(tokens, None);
-        let statements = ast.parse(&mut global_symbols)?;
+        let statements = ast.parse(&mut global_symbols, false)?;
         for s in statements {
             if let Err(type_error) = s.check_types(&global_symbols) {
                 type_errors.push(type_error);
@@ -589,15 +592,11 @@ mod tests {
     fn test_typecheck_incompatible_numeric_ops() {
         let results = type_check(SRC_INVALID_NUMERIC_OPERATIONS);
         assert!(results.is_err());
-        
+
         if let Err(ref errors) = results {
             //println!("{:?}", errors);
             assert_eq!(3, errors.len());
-            
-
         }
-
-
     }
 
     #[test]
@@ -607,63 +606,63 @@ mod tests {
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_decl_enums() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_ENUMS3)?.is_empty());
         assert!(type_check(SRC_ENUMS3).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_enums_as_fn_args() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_ENUMS)?.is_empty());
         assert!(type_check(SRC_ENUMS).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_decl() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_DECL)?.is_empty());
         assert!(type_check(SRC_RECORD_DECL).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_param() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_PARAM)?.is_empty());
         assert!(type_check(SRC_RECORD_PARAM).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_return() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_RETURN)?.is_empty());
         assert!(type_check(SRC_RECORD_RETURN).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_getter() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_GETTER)?.is_empty());
         assert!(type_check(SRC_RECORD_GETTER).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_type_inference() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_TYPE_INFERENCE)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_INFERENCE).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_record_type_explicit() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_RECORD_TYPE_EXPLICIT)?.is_empty());
         assert!(type_check(SRC_RECORD_TYPE_EXPLICIT).is_ok());
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_modules() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_MODULE)?.is_empty());
         assert!(type_check(SRC_MODULE).is_ok());
@@ -671,7 +670,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]    
+    #[test]
     fn test_module_types() -> Result<(), Vec<errors::Error>> {
         assert!(!parse(SRC_MODULE_TYPES)?.is_empty());
         assert!(type_check(SRC_MODULE_TYPES).is_ok());
