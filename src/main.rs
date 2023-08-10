@@ -9,21 +9,36 @@ use parser::*;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
+use std::fmt::Display;
 
 use colored::Colorize;
 
 const TRACE: bool = true;
 
 struct Builder {
+    // Print every directory and file created, read or written
+    verbose: bool,
+    // Flag after every module or program compiled
     had_compiler_error: bool,
+    // This is the source code or project directory
     source_directory: std::path::PathBuf,
+    // This is where the intermediate compiler output goes
     tmp_compiler_output_directory: std::path::PathBuf,
+    // This is where the compiler is installed: standard libraries and other support files go here.
     installation_location: std::path::PathBuf,
+    // Normally this iwll be under the installation_dir but can be different during testing
     standard_lib_source_directory: std::path::PathBuf,
+    // Final output location for binaries
     target_directory: std::path::PathBuf,
+    // Location for backend compilers and linkers
     tcc_path: std::path::PathBuf,
     cc_path: std::path::PathBuf,
 }
+
+pub fn plog(action: &str, p: impl Display) {
+    println!("{}: {}",action, p);
+}
+
 // TODO eventually this should read from external config
 impl Builder {
     // If in a "project", we assume build_dir is the top level of the project structure
@@ -34,6 +49,7 @@ impl Builder {
         if in_project {
             let src_path = std::path::Path::new("src").to_path_buf();
             Builder {
+                verbose: true,
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
                 standard_lib_source_directory: standard_lib_directory,
@@ -45,6 +61,7 @@ impl Builder {
             }
         } else {
             Builder {
+                verbose: true,
                 had_compiler_error: false,
                 tmp_compiler_output_directory: build_dir.join(cache_path),
                 source_directory: build_dir.to_path_buf(),
@@ -57,6 +74,13 @@ impl Builder {
         }
     }
 
+    pub fn log<T: Display>(&self, action: &str, p:T){
+        if self.verbose {
+            println!("{}: {}",action, &p);
+        }   
+    }
+
+    
     fn is_windows() -> bool {
         "windows" == env::consts::OS
     }
@@ -67,7 +91,9 @@ impl Builder {
     // compiler, like "tcc -I." or "gcc -I." or "gcc -I/home/ccd/.rci_installation"
     pub fn find_installation() -> std::path::PathBuf {
         // TODO add installer and search for installation; for now default to expecting the git clone install
-        std::path::Path::new(".").to_path_buf()
+        let installation = std::path::Path::new(".").to_path_buf();
+        plog("Located installation:", &installation.display());
+        installation
     }
 
     fn locate_program(name: &str) -> Option<std::path::PathBuf> {
@@ -81,7 +107,10 @@ impl Builder {
                         if res.trim().is_empty() {
                             None
                         } else {
-                            Some(std::path::Path::new(res.trim()).to_path_buf())
+                            let prog = std::path::Path::new(res.trim()).to_path_buf();
+                            plog("Located program: ", &prog.display());
+
+                            Some(prog)
                         }
                     }
                     Err(msg) => panic!("Problem with 'which' result: {}", &msg),
@@ -137,6 +166,7 @@ impl Builder {
         if TRACE {
             println!("Read RCI source code from: {:?}", src_full_path);
         }
+        plog("Try to read source file",src_full_path.to_string_lossy());
         match fs::read_to_string(src_full_path) {
             Ok(file_content) => file_content,
             Err(msg) => {
@@ -178,6 +208,7 @@ impl Builder {
         is_module: bool,
     ) -> String {
         let mut had_type_error = false;
+        self.log("Read and compile source file",&source_file.display());
         let user_code = self.read_user_source(source_file.as_os_str());
 
         let mut scanner = lex::Scanner::new(user_code.to_string());
@@ -245,7 +276,9 @@ impl Builder {
             }
         }
         let tmp_output_filename = format!("{}.c", &program_name);
+        self.log("Temporary intermediate output",&tmp_output_filename);
         let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
+        self.log("Write to full temp output path", &tmp_ir_path.display());
 
         let gc_support = self.standard_lib_source_directory.join("tgc.h");
         let use_gc = format!(
@@ -259,6 +292,7 @@ impl Builder {
         let use_runtime = format!("#include \"{}\"\n", &runtime_support.to_string_lossy());
 
         let standard_lib_support = self.standard_lib_source_directory.join("standard_lib.h");
+        self.log("Standard lib include file",standard_lib_support.display());
         let use_standard_lib =
             format!("#include \"{}\"\n", &standard_lib_support.to_string_lossy());
 
