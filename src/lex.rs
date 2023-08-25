@@ -188,40 +188,29 @@ impl TokenType {
                     Identifier(s) => format!("identifier({})", &s),
                     Bool => "bool".to_string(),
                     Comment(c) => format!("comment({})", &c),
-                    _ => panic!("Printing of literal value unhandled {:?}", self),
                 });
                 ""
             }
         };
-        if formatted.is_none() {
-            name.to_string()
-        } else {
-            formatted.unwrap()
-        }
+        formatted.unwrap_or(name.to_string())
     }
 
     pub fn is_comparison_operator(&self) -> bool {
         use TokenType::*;
-        match self {
-            LessGreater | Equal | Greater | GreaterEqual | Less | LessEqual => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            LessGreater | Equal | Greater | GreaterEqual | Less | LessEqual
+        )
     }
 
     pub fn is_arithmetic_operator(&self) -> bool {
         use TokenType::*;
-        match self {
-            Plus | Minus | Slash | Star => true,
-            _ => false,
-        }
+        matches!(self, Plus | Minus | Slash | Star)
     }
 
     pub fn is_numeric(&self) -> bool {
         use TokenType::*;
-        match self {
-            Integer(_) | Float(_) => true,
-            _ => false,
-        }
+        matches!(self, Integer(_) | Float(_))
     }
 
     // Store this in the scanner struct for quick lookup
@@ -391,10 +380,7 @@ impl Scanner {
 
         tokens
             .into_iter()
-            .filter(|t| match t.token_type {
-                TokenType::Comment(_) => false,
-                _ => true,
-            })
+            .filter(|t| !matches!(t.token_type, TokenType::Comment(_)))
             .collect()
     }
 

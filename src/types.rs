@@ -74,7 +74,7 @@ impl RecordType {
     pub fn index_of_field(&self, field_name: &str) -> Option<usize> {
         self.fields
             .iter()
-            .position(|field| &field.name == field_name)
+            .position(|field| field.name == field_name)
     }
 }
 
@@ -271,7 +271,6 @@ impl DataType {
                 definition: Box::new(DataType::Unresolved),
             })),
             DataValue::Unresolved => DataType::Unresolved,
-            _ => panic!("DataValue to DataType not implemented for this type."),
         }
     }
 }

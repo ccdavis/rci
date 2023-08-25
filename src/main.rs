@@ -8,8 +8,8 @@ mod types;
 use parser::*;
 use std::env;
 use std::ffi::OsStr;
-use std::fs;
 use std::fmt::Display;
+use std::fs;
 
 use colored::Colorize;
 
@@ -36,7 +36,7 @@ struct Builder {
 }
 
 pub fn plog(action: &str, p: impl Display) {
-    println!("{}: {}",action, p);
+    println!("{}: {}", action, p);
 }
 
 // TODO eventually this should read from external config
@@ -74,13 +74,12 @@ impl Builder {
         }
     }
 
-    pub fn log<T: Display>(&self, action: &str, p:T){
+    pub fn log<T: Display>(&self, action: &str, p: T) {
         if self.verbose {
-            println!("{}: {}",action, &p);
-        }   
+            println!("{}: {}", action, &p);
+        }
     }
 
-    
     fn is_windows() -> bool {
         "windows" == env::consts::OS
     }
@@ -92,7 +91,7 @@ impl Builder {
     pub fn find_installation() -> std::path::PathBuf {
         // TODO add installer and search for installation; for now default to expecting the git clone install
         let installation = std::path::Path::new(".").to_path_buf();
-        plog("Located installation:", &installation.display());
+        plog("Located installation:", installation.display());
         installation
     }
 
@@ -108,7 +107,7 @@ impl Builder {
                             None
                         } else {
                             let prog = std::path::Path::new(res.trim()).to_path_buf();
-                            plog("Located program: ", &prog.display());
+                            plog("Located program: ", prog.display());
 
                             Some(prog)
                         }
@@ -166,7 +165,7 @@ impl Builder {
         if TRACE {
             println!("Read RCI source code from: {:?}", src_full_path);
         }
-        plog("Try to read source file",src_full_path.to_string_lossy());
+        plog("Try to read source file", src_full_path.to_string_lossy());
         match fs::read_to_string(src_full_path) {
             Ok(file_content) => file_content,
             Err(msg) => {
@@ -208,10 +207,10 @@ impl Builder {
         is_module: bool,
     ) -> String {
         let mut had_type_error = false;
-        self.log("Read and compile source file",&source_file.display());
+        self.log("Read and compile source file", &source_file.display());
         let user_code = self.read_user_source(source_file.as_os_str());
 
-        let mut scanner = lex::Scanner::new(user_code.to_string());
+        let mut scanner = lex::Scanner::new(user_code);
         let tokens = scanner.tokenize();
         let mut ast = Parser::new(tokens, Some(source_file));
 
@@ -226,7 +225,7 @@ impl Builder {
         };
 
         statements.iter().for_each(|stmt| {
-            if let Err(type_error) = stmt.check_types(&global_symbols) {
+            if let Err(type_error) = stmt.check_types(global_symbols) {
                 had_type_error = true;
                 eprintln!("{}\n", &type_error.format());
             }
@@ -241,7 +240,7 @@ impl Builder {
         }
         let mut compiled_statements: Vec<String> = Vec::new();
         for stmt in &statements {
-            match stmt.compile(&global_symbols) {
+            match stmt.compile(global_symbols) {
                 Ok(code) => compiled_statements.push(code),
                 Err(msg) => {
                     eprintln!("{}\n", &msg.format());
@@ -276,9 +275,9 @@ impl Builder {
             }
         }
         let tmp_output_filename = format!("{}.c", &program_name);
-        self.log("Temporary intermediate output",&tmp_output_filename);
+        self.log("Temporary intermediate output", &tmp_output_filename);
         let tmp_ir_path = self.tmp_compiler_output_directory.join(tmp_output_filename);
-        self.log("Write to full temp output path", &tmp_ir_path.display());
+        self.log("Write to full temp output path", tmp_ir_path.display());
 
         let gc_support = self.standard_lib_source_directory.join("tgc.h");
         let use_gc = format!(
@@ -292,7 +291,7 @@ impl Builder {
         let use_runtime = format!("#include \"{}\"\n", &runtime_support.to_string_lossy());
 
         let standard_lib_support = self.standard_lib_source_directory.join("standard_lib.h");
-        self.log("Standard lib include file",standard_lib_support.display());
+        self.log("Standard lib include file", standard_lib_support.display());
         let use_standard_lib =
             format!("#include \"{}\"\n", &standard_lib_support.to_string_lossy());
 
@@ -370,7 +369,7 @@ fn main() {
 
     let mut builder = Builder::new(src_dir.unwrap(), false);
     let main_file = program_filename.expect("Couldn't fine file for main.");
-    let object_code = builder.compile_program(&std::path::Path::new(main_file));
+    let object_code = builder.compile_program(std::path::Path::new(main_file));
     let ir_src = builder.prepare_build(&object_code, program_name);
     if builder.had_compiler_error {
         eprintln!("\nError during compilation. Will not link or run.");

@@ -124,10 +124,7 @@ impl Stmt {
 
     pub fn is_declaration(&self) -> bool {
         use Stmt::*;
-        match self {
-            Var(_) | Fun(_) | Type(_) | Module(_) => true,
-            _ => false,
-        }
+        matches!(self, Var(_) | Fun(_) | Type(_) | Module(_))
     }
 
     pub fn declaration_name(&self) -> String {
