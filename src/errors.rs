@@ -55,9 +55,10 @@ impl Error {
         Error::no_location(error, msg)
     }
 
-    pub fn format(&self) -> String {
+    pub fn format(&self, filename: &str) -> String {
         format!(
-            "{} at {}, {}: {}",
+            "{}: {} at {}, {}: {}",
+            filename,
             self.error_type,
             self.ln,
             self.col,
@@ -66,8 +67,8 @@ impl Error {
     }
 
     //TODO:  Use the ln and col to add a line of source and a ^ to show the error location.
-    pub fn show_with_source(&self, _source: String) -> String {
-        self.format()
+    pub fn show_with_source(&self, filename: &str,  _source: String) -> String {
+        self.format(filename)
     }
 }
 

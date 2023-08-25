@@ -176,6 +176,10 @@ impl TypeCheck for BinaryNode {
                 return Ok(DataType::Str);
             } // allow + for strings
             use DataType::*;
+
+            if matches!(self.operator.token_type, Slash) {
+                return Ok(DataType::Float);
+            }
             return match (left_type, right_type) {
                 (_number, Number) => Ok(DataType::Number),
                 (Integer, Integer) => Ok(DataType::Integer),

@@ -23,63 +23,62 @@ val max_iterations = 50
 val escape_radius = 2.0
 
 
-fun not_escaped(x:Num,iy:Num):Bool {
-	return (x*x + iy*iy) < 2*escape_radius; 	
+fun not_escaped(x: Flt, iy: Flt):Bool {
+	return (x*x + iy*iy) < 2.0 *escape_radius
 }
 
 // Check a point in the complex plane for membership
-fun in_mandelbrot(c_x:Num, c_iy:Num): Bool {
-	var iterations = 0;
-	var zn_x = 0.0;
-	var zn_iy = 0.0;
+fun in_mandelbrot(c_x: Flt, c_iy: Flt): Bool {
+	var iterations = 0
+	var zn_x = 0.0
+	var zn_iy = 0.0
 	
-	var tmp_zx = 0.0;
+	var tmp_zx = 0.0
 	
 	while iterations < max_iterations and not_escaped(zn_x, zn_iy) {			
-		tmp_zx := c_x + (zn_x * zn_x - zn_iy * zn_iy);
-		zn_iy := c_iy + 2.0 * zn_x * zn_iy;    
-		zn_x := tmp_zx;
+		tmp_zx := c_x + (zn_x * zn_x - zn_iy * zn_iy)
+		zn_iy := c_iy + 2.0 * zn_x * zn_iy
+		zn_x := tmp_zx
 		iterations := iterations + 1;
 	}
 	return iterations < max_iterations;
 }
 
-fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
-	var left = x1;
-	val right = x2;
-	var top = y1;
-	val bottom = y2;
+fun calc(x1: Flt, y1: Flt, x2: Flt, y2: Flt):Int {
+	var left = x1
+	val right = x2
+	var top = y1
+	val bottom = y2
 	
-	val height= bottom - top;
-	val width =  right - left;
-	val x_increment =width / x_resolution;
-	val y_increment =height / y_resolution; 
+	val height= bottom - top
+	val width =  right - left
+	val x_increment: Flt =width / x_resolution
+	val y_increment: Flt =height / y_resolution
 	
-	var points = 0;	
-	var inside = 0;
+	var points = 0
+	var inside = 0
 	
 	while left < right {						
-		//val line = "";
+		//val line = ""
 		while top < bottom {
 			if in_mandelbrot(left, top) {
-				//line := line + "*";
+				//line := line + "*"
 				print "*"
-				inside := inside +1;
-			} 
-			else {
-				//line := line + " ";
+				inside := inside +1
+			}  else {
+				//line := line + " "
 				print " "
 			}
-			top := top + y_increment;
-			points := points + 1;			
+			top := top + y_increment
+			points := points + 1
 		}
 		print "\n"
-		//print line;
-		top := y1;
-		left := left + x_increment;
+		//print line
+		top := y1
+		left := left + x_increment
 	}
 	
-	return points;
+	return points
 }
 
 
@@ -89,16 +88,15 @@ fun calc(x1:Num, y1:Num, x2:Num, y2:Num):Num {
 	val iters = std@random()
 	print "random number: ",iters
 	
-	
 	print "Clocks per second: ", std@clock_per_second(),"\n"
 	
-	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution,"\n";
-	val calc_start = std@clock();
-	calc(-1.5, -1.0, 1.0, 1.0);
+	print "Starting with  X-resolution: ",x_resolution, " Y-resolution: ", y_resolution,"\n"
+	val calc_start = std@clock()
+	calc(-1.5, -1.0, 1.0, 1.0)
 	
 	val calc_end = std@clock()
 	print "calc_start: ", calc_start,"\n"
 	print "calc_end: ",  calc_end,"\n"
-	print "Timer: ", (calc_end - calc_start) / std@clock_per_second(),"\n";	
-	print "Finished\n";
+	print "Timer: ", (calc_end - calc_start) / std@clock_per_second(),"\n"
+	print "Finished\n"
 }

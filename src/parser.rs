@@ -48,7 +48,7 @@ impl Parser {
     }
 
     pub fn error(&mut self, error: ParseError) {
-        eprintln!("{}", &error.format());
+        eprintln!("{}", &error.format(&self.filename.display().to_string()));
         self.errors.push(error);
     }
 
