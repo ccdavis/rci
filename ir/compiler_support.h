@@ -228,14 +228,19 @@ unsigned char  rci_value_to_c_boolean(rci_value v) {
 	return (unsigned char) AS_BOOL(v);
 }
 
-char * rci_value_to_c_str(rci_value value) {
+char * rci_value_to_c_str(rci_value value) {	
 	StringObject *str = (StringObject*) AS_OBJECT(value);
 	return (char*) str->string_data.data;
 }
 
 double rci_value_to_c_double(rci_value value) {
-	return (double) value.as._number;
+	return (double) value.as._float;
 }
+
+long rci_value_to_c_long(rci_value value) {
+	return (long) value.as._integer;
+}
+
 
 rci_value c_boolean_to_rci_value(unsigned char b) {
 	return (rci_value) BOOL_VAL(b);

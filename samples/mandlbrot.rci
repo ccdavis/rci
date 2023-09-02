@@ -16,8 +16,9 @@
 //  Swapping in sqr() for everywhere we mutiply square a var by itself slows things
 // down by about 10%. Not bad actually.
 
-val x_resolution = 1600
+
 val y_resolution = 1600
+val x_resolution = 1600
 
 val max_iterations = 50
 val escape_radius = 2.0
@@ -82,10 +83,9 @@ fun calc(x1: Flt, y1: Flt, x2: Flt, y2: Flt):Int {
 }
 
 
-
 {
 	std@random_seed(std@clock())
-	val iters = std@random()
+	val iters: Int = std@random()
 	print "random number: ",iters
 	
 	print "Clocks per second: ", std@clock_per_second(),"\n"

@@ -190,14 +190,18 @@ impl Compiler for PrintStmtNode {
             let subst_code = match obj_code.data_type {
                 DataType::Str => "%s",
                 DataType::Number => "%f",
+				DataType::Integer => "%ld",
+				DataType::Float => "%f",
                 DataType::Bool => "%d",
                 _ => "%s",
             };
 
             let printable = match obj_code.data_type {
                 DataType::Str => format!("rci_value_to_c_str({})", &obj_code.code),
-                DataType::Number => format!("rci_value_to_c_double({})", &obj_code.code),
+                DataType::Float => format!("rci_value_to_c_double({})", &obj_code.code),
+                DataType::Integer => format!("rci_value_to_c_long({})", &obj_code.code),
                 DataType::Bool => format!("rci_value_to_c_boolean({})", &obj_code.code),
+                
                 _ => "** PRINTING NOT SUPPORTED **".to_string(),
             };
 
@@ -274,7 +278,7 @@ impl Compiler for ModuleNode {
         let stmts_code = stmts.join("\n");
 
         let code = format!(
-            "// BEGIN MODULE {}\n\t{}\n//END MODULE {}",
+            "// BEGIN MODULE {}\n\t{}\n//END MODULE {}\n\n",
             &self.name, &stmts_code, &self.name
         );
         Ok(code)
@@ -721,9 +725,11 @@ impl Compiler for ProgramNode {
         }
 
         for decl in &self.declarations {
-            let decl_code = decl.compile_global(symbols)?;
+            let decl_code = decl.compile_global(symbols)?;            
             if TRACE {
                 println!("Generating code: {}", &decl_code.base_code);
+                println!("initializer code: {}",&decl_code.init_code)
+                
             }
             decls.push(decl_code);
         }
@@ -731,10 +737,14 @@ impl Compiler for ProgramNode {
         let declarations_code = decls
             .iter()
             .map(|decl| match decl.decl_type {
-                DeclarationType::Val | DeclarationType::Var => {
-                    format!("{}\n{}\n", &decl.base_code, &decl.init_code)
+                DeclarationType::Val | DeclarationType::Var => {                    
+                    let decl_init = format!("{}\n{}\n", &decl.base_code, &decl.init_code);
+                    if TRACE {println!("decl-init pair to generate: {}",&decl_init)}
+                    decl_init
                 }
-                _ => decl.base_code.clone(),
+                _ => {
+                    decl.base_code.clone()
+                },
             })
             .collect::<Vec<String>>()
             .join("\n");
@@ -742,12 +752,14 @@ impl Compiler for ProgramNode {
         let initializer_stmts: Vec<String> = decls
             .iter()
             .filter(|d| {
-                matches!(d.decl_type, DeclarationType::Var)
-                    || matches!(d.decl_type, DeclarationType::Val)
+                matches!(d.decl_type, DeclarationType::Var | DeclarationType::Val)                    
             })
-            .map(|decl| format!("{};", &decl.init_name))
+            .map(|decl|{
+                 let init_code =  format!("{};", &decl.init_name);
+                 if TRACE {println!("Emit initialization code: {}",&init_code);}
+                 init_code
+                })
             .collect();
-
         let imperatives_code = self.imperatives.compile(symbols)?;
         let init_globals = format!(
             "void init_globals() {{\n {} \n}}\n",
@@ -759,6 +771,10 @@ impl Compiler for ProgramNode {
             "\tinit_globals();\n", &imperatives_code
         );
 
+        if TRACE{
+            println!("Declarations code: {}",&declarations_code);
+        }
+        
         Ok(format!(
             "{}\n\n{}\n{}\n",
             &declarations_code, &init_globals, &main_fn
