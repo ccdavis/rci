@@ -32,6 +32,7 @@ pub trait Compiler {
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
+    Uses(UsesStmtNode),
     Print(PrintStmtNode),
     ExpressionStmt(ExpressionStmtNode),
     Block(BlockStmtNode),
@@ -99,6 +100,7 @@ impl Stmt {
             Program(n) => n.compile(symbols),
             Type(n) => n.compile(symbols),
             Module(n) => n.compile(symbols),
+            Uses(n) => Ok("".to_string()),
             NoOp => Ok("".to_string()),
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -117,6 +119,7 @@ impl Stmt {
             Fun(n) => n.compile_global(symbols),
             Type(n) => n.compile_global(symbols),
             Module(n) => n.compile_global(symbols),
+            Uses(n) => Ok(GlobalStatementObjectCode::no_op()),
             NoOp => Ok(GlobalStatementObjectCode::no_op()),
             _ => panic!("Statement type compilation not supported yet."),
         }
@@ -159,6 +162,18 @@ impl Stmt {
     }
 }
 
+#[derive(Clone,Debug)]
+struct UsesStmtNode {
+    // This should be an identifier matching a file name or importable module.
+    // If it's a filename all code in it gets added to a module with the 'module_name'
+    // here.  If it's a directory all files in the directory get included and the
+    // directory is the parent module and each file is a module inside of that.
+    module_name: Box<Expr>,
+    // If this is a value, look for the file if it's a filepath pattern or in future a git:// or 
+    // other type of URL could be supported.
+    source: Option<String>,    
+}
+
 #[derive(Clone, Debug)]
 pub struct PrintStmtNode {
     expressions: Vec<Expr>,
@@ -169,6 +184,8 @@ impl PrintStmtNode {
         format!("print {:?}", &self.expressions)
     }
 }
+
+
 
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
