@@ -14,7 +14,9 @@ module std {
 		return n * n * n
 	}
 	
-	val pi = 3.14159
+//  The compiler emits code that while a literal struct, the gcc compiler doesn't
+// consider constant. This does work on tcc however.
+//	val pi = 3.14159
 	
 	
 
