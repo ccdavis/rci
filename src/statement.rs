@@ -162,16 +162,16 @@ impl Stmt {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 struct UsesStmtNode {
     // This should be an identifier matching a file name or importable module.
     // If it's a filename all code in it gets added to a module with the 'module_name'
     // here.  If it's a directory all files in the directory get included and the
     // directory is the parent module and each file is a module inside of that.
     module_name: Box<Expr>,
-    // If this is a value, look for the file if it's a filepath pattern or in future a git:// or 
+    // If this is a value, look for the file if it's a filepath pattern or in future a git:// or
     // other type of URL could be supported.
-    source: Option<String>,    
+    source: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -184,8 +184,6 @@ impl PrintStmtNode {
         format!("print {:?}", &self.expressions)
     }
 }
-
-
 
 impl TypeChecking for PrintStmtNode {
     fn check_types(&self, symbols: &SymbolTable) -> Result<(), errors::Error> {
@@ -207,8 +205,8 @@ impl Compiler for PrintStmtNode {
             let subst_code = match obj_code.data_type {
                 DataType::Str => "%s",
                 DataType::Number => "%f",
-				DataType::Integer => "%ld",
-				DataType::Float => "%f",
+                DataType::Integer => "%ld",
+                DataType::Float => "%f",
                 DataType::Bool => "%d",
                 _ => "%s",
             };
@@ -218,7 +216,7 @@ impl Compiler for PrintStmtNode {
                 DataType::Float => format!("rci_value_to_c_double({})", &obj_code.code),
                 DataType::Integer => format!("rci_value_to_c_long({})", &obj_code.code),
                 DataType::Bool => format!("rci_value_to_c_boolean({})", &obj_code.code),
-                
+
                 _ => "** PRINTING NOT SUPPORTED **".to_string(),
             };
 
@@ -742,11 +740,10 @@ impl Compiler for ProgramNode {
         }
 
         for decl in &self.declarations {
-            let decl_code = decl.compile_global(symbols)?;            
+            let decl_code = decl.compile_global(symbols)?;
             if TRACE {
                 println!("Generating code: {}", &decl_code.base_code);
-                println!("initializer code: {}",&decl_code.init_code)
-                
+                println!("initializer code: {}", &decl_code.init_code)
             }
             decls.push(decl_code);
         }
@@ -754,28 +751,28 @@ impl Compiler for ProgramNode {
         let declarations_code = decls
             .iter()
             .map(|decl| match decl.decl_type {
-                DeclarationType::Val | DeclarationType::Var => {                    
+                DeclarationType::Val | DeclarationType::Var => {
                     let decl_init = format!("{}\n{}\n", &decl.base_code, &decl.init_code);
-                    if TRACE {println!("decl-init pair to generate: {}",&decl_init)}
+                    if TRACE {
+                        println!("decl-init pair to generate: {}", &decl_init)
+                    }
                     decl_init
                 }
-                _ => {
-                    decl.base_code.clone()
-                },
+                _ => decl.base_code.clone(),
             })
             .collect::<Vec<String>>()
             .join("\n");
 
         let initializer_stmts: Vec<String> = decls
             .iter()
-            .filter(|d| {
-                matches!(d.decl_type, DeclarationType::Var | DeclarationType::Val)                    
+            .filter(|d| matches!(d.decl_type, DeclarationType::Var | DeclarationType::Val))
+            .map(|decl| {
+                let init_code = format!("{};", &decl.init_name);
+                if TRACE {
+                    println!("Emit initialization code: {}", &init_code);
+                }
+                init_code
             })
-            .map(|decl|{
-                 let init_code =  format!("{};", &decl.init_name);
-                 if TRACE {println!("Emit initialization code: {}",&init_code);}
-                 init_code
-                })
             .collect();
         let imperatives_code = self.imperatives.compile(symbols)?;
         let init_globals = format!(
@@ -788,10 +785,10 @@ impl Compiler for ProgramNode {
             "\tinit_globals();\n", &imperatives_code
         );
 
-        if TRACE{
-            println!("Declarations code: {}",&declarations_code);
+        if TRACE {
+            println!("Declarations code: {}", &declarations_code);
         }
-        
+
         Ok(format!(
             "{}\n\n{}\n{}\n",
             &declarations_code, &init_globals, &main_fn

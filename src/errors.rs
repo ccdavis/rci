@@ -67,7 +67,7 @@ impl Error {
     }
 
     //TODO:  Use the ln and col to add a line of source and a ^ to show the error location.
-    pub fn show_with_source(&self, filename: &str,  _source: String) -> String {
+    pub fn show_with_source(&self, filename: &str, _source: String) -> String {
         self.format(filename)
     }
 }

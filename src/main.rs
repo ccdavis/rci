@@ -219,8 +219,7 @@ impl Builder {
             Ok(stmts) => stmts,
             Err(_parse_errors) => {
                 let msg = "Parse errors in source code. Compilation halted.".red();
-                eprintln!("\n{}: {}\n",
-                source_file.display(), &msg);
+                eprintln!("\n{}: {}\n", source_file.display(), &msg);
                 std::process::exit(3);
             }
         };
@@ -228,11 +227,11 @@ impl Builder {
         statements.iter().for_each(|stmt| {
             if let Err(type_error) = stmt.check_types(global_symbols) {
                 had_type_error = true;
-                eprintln!("{}\n", 
+                eprintln!(
+                    "{}\n",
                     &type_error.format(&source_file.display().to_string())
                 );
             }
-
         });
 
         if had_type_error {
@@ -247,8 +246,7 @@ impl Builder {
             match stmt.compile(global_symbols) {
                 Ok(code) => compiled_statements.push(code),
                 Err(msg) => {
-                    eprintln!("{}\n",
-                    &msg.format(&source_file.to_string_lossy()));
+                    eprintln!("{}\n", &msg.format(&source_file.to_string_lossy()));
                     self.had_compiler_error = true;
                 }
             };

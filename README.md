@@ -116,6 +116,10 @@ fun charge(var cust: Customer, day: Days, price: Num):Bool{
 
 See below for full description of the language's syntax and future plans.
 
+---------------------------------------------------------------------------------------------------------------
+
+#  Extra Notes
+
 
 ### Performance 
 

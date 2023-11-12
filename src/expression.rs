@@ -25,7 +25,7 @@ pub trait Compiler {
 #[derive(Clone, Debug)]
 pub enum Expr {
     When(WhenNode),
-    Binary(BinaryNode),    
+    Binary(BinaryNode),
     Logical(LogicalNode),
     Call(CallNode),
     Lookup(LookupNode), // a subscripted variable, an array or map instance
@@ -129,12 +129,12 @@ impl Expr {
     }
 } // impl expr
 
-#[derive(Clone,Debug)]
-pub struct WhenNode{
+#[derive(Clone, Debug)]
+pub struct WhenNode {
     location: Token,
     test_expr: Box<Expr>,
-    match_cases: Vec<(Expr,Expr)>,
-    default_case: Box<Expr>
+    match_cases: Vec<(Expr, Expr)>,
+    default_case: Box<Expr>,
 }
 impl TypeCheck for WhenNode {
     fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
@@ -144,38 +144,40 @@ impl TypeCheck for WhenNode {
         let mut return_type_errors = Vec::new();
         let mut match_type_errors = Vec::new();
 
-        if self.match_cases.is_empty(){
-            // The parser should be catching this 
+        if self.match_cases.is_empty() {
+            // The parser should be catching this
             let message = "Must have at least one match clause in a 'when' expression.".to_string();
-            return Err(Error::new(&self.location, ErrorType::Type, message));            
+            return Err(Error::new(&self.location, ErrorType::Type, message));
         }
-        
-        for (c,r) in &self.match_cases {
+
+        for (c, r) in &self.match_cases {
             match c.determine_type(symbols) {
                 Err(msg) => match_type_errors.push(msg),
-                Ok(match_type) => match_types.push(match_type), 
+                Ok(match_type) => match_types.push(match_type),
             }
             match r.determine_type(symbols) {
                 Err(msg) => return_type_errors.push(msg),
                 Ok(return_type) => return_types.push(return_type),
             }
         }
-        // TODO we really need to return the whole list, not just one error; maybe make 
+        // TODO we really need to return the whole list, not just one error; maybe make
         // and error varient that's an error list?
         if !match_type_errors.is_empty() {
-            return Err(match_type_errors.first().unwrap().clone())
+            return Err(match_type_errors.first().unwrap().clone());
         }
         if !return_type_errors.is_empty() {
-            return Err(return_type_errors.first().unwrap().clone())
+            return Err(return_type_errors.first().unwrap().clone());
         }
 
         let return_type = return_types.first()
             .expect("Internal compiler error: The type checker should have ensured that the 'when' expression has one or more return type values.");
-        
+
         // All returned expressions should have the same type
-        if !return_types.iter().all(|r| r == return_type) {            
-            let msg = format!("All return types in a 'when' expression must match. Expected {} types.",
-                return_type);
+        if !return_types.iter().all(|r| r == return_type) {
+            let msg = format!(
+                "All return types in a 'when' expression must match. Expected {} types.",
+                return_type
+            );
             return Err(Error::new(&self.location, ErrorType::Type, msg));
         }
 
@@ -184,12 +186,10 @@ impl TypeCheck for WhenNode {
             let msg = format!("All match types in a 'when' expression must match the test expression type. Expected {} types.",
                 &self.test_expr.print());
             return Err(Error::new(&self.location, ErrorType::Type, msg));
-
         }
 
-    Ok(return_type.clone())
-
-}
+        Ok(return_type.clone())
+    }
 }
 
 impl Compiler for WhenNode {
@@ -197,10 +197,9 @@ impl Compiler for WhenNode {
         let data_type = self.test_expr.determine_type(symbols)?;
         Ok(ObjectCode {
             data_type,
-            code: format!("Not implemented!")
+            code: format!("Not implemented!"),
         })
     }
-
 }
 
 #[derive(Clone, Debug)]
