@@ -24,7 +24,8 @@ pub trait Compiler {
 }
 #[derive(Clone, Debug)]
 pub enum Expr {
-    Binary(BinaryNode),
+    When(WhenNode),
+    Binary(BinaryNode),    
     Logical(LogicalNode),
     Call(CallNode),
     Lookup(LookupNode), // a subscripted variable, an array or map instance
@@ -45,6 +46,7 @@ impl Expr {
 
     pub fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
         match self {
+            Expr::When(n) => n.determine_type(symbols),
             Expr::Binary(n) => n.determine_type(symbols),
             Expr::Logical(n) => n.determine_type(symbols),
             Expr::Call(n) => n.determine_type(symbols),
@@ -64,6 +66,7 @@ impl Expr {
 
     pub fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
         match self {
+            Expr::When(n) => n.compile(symbols),
             Expr::Binary(n) => n.compile(symbols),
             Expr::Logical(n) => n.compile(symbols),
             Expr::Call(n) => n.compile(symbols),
@@ -125,6 +128,80 @@ impl Expr {
         }
     }
 } // impl expr
+
+#[derive(Clone,Debug)]
+pub struct WhenNode{
+    location: Token,
+    test_expr: Box<Expr>,
+    match_cases: Vec<(Expr,Expr)>,
+    default_case: Box<Expr>
+}
+impl TypeCheck for WhenNode {
+    fn determine_type(&self, symbols: &SymbolTable) -> Result<DataType, errors::Error> {
+        let test_type = self.test_expr.determine_type(symbols)?;
+        let mut return_types = Vec::new();
+        let mut match_types = Vec::new();
+        let mut return_type_errors = Vec::new();
+        let mut match_type_errors = Vec::new();
+
+        if self.match_cases.is_empty(){
+            // The parser should be catching this 
+            let message = "Must have at least one match clause in a 'when' expression.".to_string();
+            return Err(Error::new(&self.location, ErrorType::Type, message));            
+        }
+        
+        for (c,r) in &self.match_cases {
+            match c.determine_type(symbols) {
+                Err(msg) => match_type_errors.push(msg),
+                Ok(match_type) => match_types.push(match_type), 
+            }
+            match r.determine_type(symbols) {
+                Err(msg) => return_type_errors.push(msg),
+                Ok(return_type) => return_types.push(return_type),
+            }
+        }
+        // TODO we really need to return the whole list, not just one error; maybe make 
+        // and error varient that's an error list?
+        if !match_type_errors.is_empty() {
+            return Err(match_type_errors.first().unwrap().clone())
+        }
+        if !return_type_errors.is_empty() {
+            return Err(return_type_errors.first().unwrap().clone())
+        }
+
+        let return_type = return_types.first()
+            .expect("Internal compiler error: The type checker should have ensured that the 'when' expression has one or more return type values.");
+        
+        // All returned expressions should have the same type
+        if !return_types.iter().all(|r| r == return_type) {            
+            let msg = format!("All return types in a 'when' expression must match. Expected {} types.",
+                return_type);
+            return Err(Error::new(&self.location, ErrorType::Type, msg));
+        }
+
+        // all match_types should match the test_type
+        if !match_types.iter().all(|m| m == &test_type) {
+            let msg = format!("All match types in a 'when' expression must match the test expression type. Expected {} types.",
+                &self.test_expr.print());
+            return Err(Error::new(&self.location, ErrorType::Type, msg));
+
+        }
+
+    Ok(return_type.clone())
+
+}
+}
+
+impl Compiler for WhenNode {
+    fn compile(&self, symbols: &SymbolTable) -> Result<ObjectCode, errors::Error> {
+        let data_type = self.test_expr.determine_type(symbols)?;
+        Ok(ObjectCode {
+            data_type,
+            code: format!("Not implemented!")
+        })
+    }
+
+}
 
 #[derive(Clone, Debug)]
 pub struct BinaryNode {
@@ -913,7 +990,7 @@ pub struct VariableNode {
     pub index: Option<usize>,
 }
 
-pub fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType, String> {
+fn data_type_for_symbol(symbols: &SymbolTable, name: &str) -> Result<DataType, String> {
     match symbols.lookup(name) {
         Ok(symbol_table_entry) => {
             if TRACE {
